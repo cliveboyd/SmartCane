@@ -1,0 +1,15 @@
+.\objects\mpl3115.o: MPL3115.c
+.\objects\mpl3115.o: MPL3115.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\hal\nrf_delay.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\nrf.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\nrf51.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include\core_cm0.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include\core_cmInstr.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include\core_cmFunc.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\system_nrf51.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\nrf51_bitfields.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\nrf51_deprecated.h
+.\objects\mpl3115.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\compiler_abstraction.h
+.\objects\mpl3115.o: Communication.h

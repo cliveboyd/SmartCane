@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Characteristic>
+<Characteristic version="1.0">
+    <Name>7746Cap</Name>
+    <Uuid>3459</Uuid>
+    <Value></Value>
+    <UsePresentationFormat>0</UsePresentationFormat>
+    <MaxDataLength>3</MaxDataLength>
+    <AttributeLenType>1</AttributeLenType>
+    <Descriptor Value="0000" Exponent="0" Format="1" NameSpace="01" Unit="0000"/>
+</Characteristic>

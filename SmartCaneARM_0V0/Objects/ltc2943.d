@@ -1,0 +1,17 @@
+.\objects\ltc2943.o: ltc2943.c
+.\objects\ltc2943.o: ltc2943.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\hal\nrf_delay.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\nrf.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\nrf51.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include\core_cm0.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include\core_cmInstr.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include\core_cmFunc.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\system_nrf51.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\nrf51_bitfields.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\nrf51_deprecated.h
+.\objects\ltc2943.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include\compiler_abstraction.h
+.\objects\ltc2943.o: Communication.h

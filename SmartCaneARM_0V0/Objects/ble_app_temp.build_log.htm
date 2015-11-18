@@ -1,0 +1,358 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: µVision V5.16a
+Copyright (C) 2015 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: CLIVE CCC, CCC, LIC=MGX2Z-JZT6W-XAFDC-73NVG-YCSLW-IJJ2A
+ 
+Tool Versions:
+Toolchain:       MDK-ARM Professional  Version: 5.16a
+Toolchain Path:  c:\Keil_v5\ARM\ARMCC\Bin
+C Compiler:      Armcc.exe V5.06 (build 20)
+Assembler:       Armasm.exe V5.06 (build 20)
+Linker/Locator:  ArmLink.exe V5.06 (build 20)
+Library Manager: ArmAr.exe V5.06 (build 20)
+Hex Converter:   FromElf.exe V5.06 (build 20)
+CPU DLL:         SARMCM3.DLL V5.16a
+Dialog DLL:      DARMCM1.DLL V1.12.0.0
+Target DLL:      Segger\JL2CM3.dll V2.99.15.2
+Dialog DLL:      TARMCM1.DLL V1.9.0.0
+ 
+<h2>Project:</h2>
+C:\Users\boydc\Documents\_SmartCaneARM\SmartCaneARM_0V0 - Leo 17NOV\ble_app_temp.uvprojx
+Project File Date:  10/20/2015
+
+<h2>Output:</h2>
+*** Using Compiler 'V5.06 (build 20)', folder: 'c:\Keil_v5\ARM\ARMCC\Bin'
+Build target 'ble_app_temp'
+compiling ble_ad7746.c...
+compiling Communication.c...
+compiling ds2401.c...
+compiling MPU_9150.c...
+MPU_9150.c(313): warning:  #177-D: variable "status" was declared but never referenced
+  	   unsigned char status = 0;
+MPU_9150.c: 1 warning, 0 errors
+compiling main.c...
+main.c(342): warning:  #177-D: variable "data" was declared but never referenced
+      short data[3];
+main.c(343): warning:  #177-D: variable "timestamp" was declared but never referenced
+  	unsigned long timestamp;
+main.c(896): warning:  #177-D: function "nus_data_handler" was declared but never referenced
+  static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
+main.c: 4 warnings, 0 errors
+compiling sensorADC.c...
+compiling AD7746.c...
+compiling inv_mpu.c...
+inv_mpu.c(1975): warning:  #111-D: statement is unreachable
+          if (i2c_read(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
+inv_mpu.c(2005): warning:  #111-D: statement is unreachable
+          if (i2c_read(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
+inv_mpu.c: 2 warnings, 0 errors
+compiling A2035H.c...
+compiling bsp.c...
+compiling ltc2943.c...
+ltc2943.c(492): warning:  #177-D: variable "reg_start" was declared but never referenced
+          u8 reg_start = reg;
+ltc2943.c(434): warning:  #177-D: function "i2c_smbus_write_i2c_block_data" was declared but never referenced
+  static int i2c_smbus_write_i2c_block_data(struct i2c_client *client, 
+ltc2943.c: 2 warnings, 0 errors
+assembling arm_startup_nrf51.s...
+compiling nrf_pwm.c...
+compiling MPL3115.c...
+MPL3115.c(137): warning:  #111-D: statement is unreachable
+  	return false;
+MPL3115.c: 1 warning, 0 errors
+compiling AD9837.c...
+compiling ble_advdata.c...
+compiling system_nrf51.c...
+compiling ble_conn_params.c...
+compiling ble_nus.c...
+compiling ble_srv_common.c...
+compiling ble_debug_assert_handler.c...
+compiling ble_advertising.c...
+compiling ble_error_log.c...
+compiling device_manager_peripheral.c...
+compiling pstorage.c...
+compiling app_uart.c...
+compiling ble_flash.c...
+compiling nrf_adc.c...
+compiling nrf_delay.c...
+compiling app_gpiote.c...
+compiling twi_hw_master.c...
+compiling spi_master.c...
+compiling app_button.c...
+compiling app_error.c...
+compiling app_scheduler.c...
+compiling app_timer.c...
+compiling app_trace.c...
+compiling app_timer_appsh.c...
+compiling nrf_assert.c...
+compiling softdevice_handler.c...
+compiling retarget.c...
+linking...
+Program Size: Code=36832 RO-data=572 RW-data=536 ZI-data=7352  
+FromELF: creating hex file...
+".\Objects\ble_app_temp.axf" - 0 Error(s), 9 Warning(s).
+
+<h2>Software Packages used:</h2>
+
+Package Vendor: ARM
+                http://www.keil.com/pack/ARM.CMSIS.4.3.0.pack
+                ARM::CMSIS:CORE:4.1.0
+                CMSIS (Cortex Microcontroller Software Interface Standard)
+   * Component: CORE Version: 4.1.0
+
+Package Vendor: NordicSemiconductor
+                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Examples/NordicSemiconductor.nRF_Examples.8.0.0.pack
+                NordicSemiconductor::Board Support:bsp:default:8.0.0
+                Examples and BSP for Nordic Semiconductor nRF family.
+   * Component: bsp Variant: default Version: 8.0.0
+
+Package Vendor: NordicSemiconductor
+                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_BLE/NordicSemiconductor.nRF_BLE.2.0.0.pack
+                NordicSemiconductor::nRF_BLE:BLE_Modules:ble_conn_params:2.0.0
+                Bluetooth Low Energy (Bluetooth Smart) services and software modules for Nordic Semiconductor nRF family.
+   * Component: ble_conn_params Version: 2.0.0
+   * Component: ble_service_common Version: 2.0.0
+   * Component: ble_debug_assert_handler Version: 2.0.0
+   * Component: ble_nus Version: 2.0.0
+   * Component: device_manager Variant: Peripheral Version: 2.0.0
+   * Component: ble_common Version: 2.0.0
+   * Component: ble_error_log Version: 2.0.0
+   * Component: ble_advertising Version: 2.0.0
+   * Component: ble_advdata Version: 2.0.0
+
+Package Vendor: NordicSemiconductor
+                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/NordicSemiconductor.nRF_Drivers.2.0.0.pack
+                NordicSemiconductor::nRF_Drivers:nrf_delay:2.0.0
+                Drivers for Nordic Semiconductor nRF family.
+   * Component: nrf_delay Version: 2.0.0
+   * Component: nrf_gpio Version: 2.0.0
+   * Component: ble_flash Version: 2.0.0
+   * Component: spi_master Version: 2.0.0
+   * Component: nrf_error Variant: default Version: 2.0.0
+   * Component: pstorage Variant: default Version: 2.0.0
+   * Component: twi_master Variant: Hardware Version: 2.0.0
+   * Component: nrf_soc Variant: default Version: 2.0.0
+   * Component: app_uart Variant: default Version: 2.0.0
+   * Component: nrf_adc Version: 2.0.0
+
+Package Vendor: NordicSemiconductor
+                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Libraries/NordicSemiconductor.nRF_Libraries.2.0.0.pack
+                NordicSemiconductor::nRF_Libraries:app_button:2.0.0
+                Software modules for Nordic Semiconductor nRF family.
+   * Component: app_button Version: 2.0.0
+   * Component: app_error Version: 2.0.0
+   * Component: app_gpiote Variant: default Version: 2.0.0
+   * Component: app_scheduler Variant: default Version: 2.0.0
+   * Component: app_timer_with_app_scheduler Version: 2.0.0
+   * Component: retarget Version: 2.0.0
+   * Component: app_trace Variant: default Version: 2.0.0
+   * Component: nrf_assert Version: 2.0.0
+   * Component: app_timer Variant: default Version: 2.0.0
+   * Component: app_util Variant: default Version: 2.0.0
+
+Package Vendor: NordicSemiconductor
+                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_Common/NordicSemiconductor.nRF_SoftDevice_Common.1.1.2.pack
+                NordicSemiconductor::nRF_SoftDevice:Internal:sd_common:default:1.1.2
+                Common components for Nordic Semiconductor nRF family SoftDevices.
+   * Component: sd_common Variant: default Version: 1.1.2
+   * Component: softdevice_present Version: 1.1.2
+
+Package Vendor: NordicSemiconductor
+                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S110/NordicSemiconductor.nRF_SoftDevice_S110.8.0.0.pack
+                NordicSemiconductor::nRF_SoftDevice:s110_hex:8.0.0
+                Components for Bluetooth Low Energy (Bluetooth Smart) S110 SoftDevice for Nordic Semiconductor nRF family.
+   * Component: s110_hex Version: 8.0.0
+   * Component: s110 Variant: default Version: 8.0.0
+
+Package Vendor: NordicSemiconductor
+                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_DeviceFamilyPack/NordicSemiconductor.nRF_DeviceFamilyPack.7.1.0.pack
+                NordicSemiconductor::Device:Startup:7.1.0
+                Nordic Semiconductor nRF ARM devices Device Family Pack.
+   * Component: Startup Version: 7.1.0
+
+<h2>Collection of Component include folders:</h2>
+  C:\Users\boydc\Documents\_SmartCaneARM\SmartCaneARM_0V0 - Leo 17NOV\RTE
+  C:\Users\boydc\Documents\_SmartCaneARM\SmartCaneARM_0V0 - Leo 17NOV\RTE\nRF_BLE\nRF51822_xxAA
+  C:\Users\boydc\Documents\_SmartCaneARM\SmartCaneARM_0V0 - Leo 17NOV\RTE\nRF_Drivers\nRF51822_xxAA
+  C:\Users\boydc\Documents\_SmartCaneARM\SmartCaneARM_0V0 - Leo 17NOV\RTE\nRF_Libraries\nRF51822_xxAA
+  c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_BLE\2.0.0\ble_advertising
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_BLE\2.0.0\ble_debug_assert_handler
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_BLE\2.0.0\ble_error_log
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_BLE\2.0.0\ble_services\ble_nus
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_BLE\2.0.0\common
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_BLE\2.0.0\device_manager
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\8.0.3\Device\Include
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\ble_flash
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\hal
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\pstorage
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\spi_master
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\twi_master
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\twi_master\config
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\uart
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Examples\8.0.0\bsp
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\button
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\gpiote
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\scheduler
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\timer
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\trace
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\util
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_SoftDevice_Common\1.1.2\softdevice_handler
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_SoftDevice_S110\8.0.0\headers
+
+<h2>Collection of Component Files used:</h2>
+
+   * Component: ARM::CMSIS:CORE:4.1.0
+
+   * Component: NordicSemiconductor::Board Support:bsp:default:8.0.0
+      Source file:   bsp\bsp.c
+
+   * Component: NordicSemiconductor::nRF_BLE:BLE_Modules:ble_conn_params:2.0.0
+      Source file:   common\ble_conn_params.c
+      Include file:  common\ble_conn_params.h
+
+   * Component: NordicSemiconductor::nRF_BLE:BLE_Modules:ble_service_common:2.0.0
+      Source file:   common\ble_srv_common.c
+      Include file:  common\ble_srv_common.h
+
+   * Component: NordicSemiconductor::nRF_BLE:BLE_Modules:ble_debug_assert_handler:2.0.0
+      Source file:   ble_debug_assert_handler\ble_debug_assert_handler.c
+      Include file:  ble_debug_assert_handler\ble_debug_assert_handler.h
+
+   * Component: NordicSemiconductor::nRF_BLE:BLE_Services:ble_nus:2.0.0
+      Source file:   ble_services\ble_nus\ble_nus.c
+      Include file:  ble_services\ble_nus\ble_nus.h
+
+   * Component: NordicSemiconductor::nRF_BLE:BLE_Modules:device_manager:Peripheral:2.0.0
+      Source file:   device_manager\device_manager_peripheral.c
+      Include file:  device_manager\config\device_manager_cnfg.h
+      Include file:  device_manager\device_manager.h
+
+   * Component: NordicSemiconductor::nRF_BLE:BLE_Modules:ble_common:2.0.0
+
+   * Component: NordicSemiconductor::nRF_BLE:BLE_Modules:ble_error_log:2.0.0
+      Source file:   ble_error_log\ble_error_log.c
+      Include file:  ble_error_log\ble_error_log.h
+
+   * Component: NordicSemiconductor::nRF_BLE:BLE_Modules:ble_advertising:2.0.0
+      Source file:   ble_advertising\ble_advertising.c
+      Include file:  ble_advertising\ble_advertising.h
+
+   * Component: NordicSemiconductor::nRF_BLE:BLE_Modules:ble_advdata:2.0.0
+      Source file:   common\ble_advdata.c
+      Include file:  common\ble_advdata.h
+
+   * Component: NordicSemiconductor::nRF_Drivers:nrf_delay:2.0.0
+      Source file:   hal\nrf_delay.c
+      Include file:  hal\nrf_delay.h
+
+   * Component: NordicSemiconductor::nRF_Drivers:nrf_gpio:2.0.0
+      Include file:  hal\nrf_gpio.h
+
+   * Component: NordicSemiconductor::nRF_Drivers:ble_flash:2.0.0
+      Source file:   ble_flash\ble_flash.c
+
+   * Component: NordicSemiconductor::nRF_Drivers:spi_master:2.0.0
+      Source file:   spi_master\spi_master.c
+      Include file:  spi_master\spi_master.h
+
+   * Component: NordicSemiconductor::nRF_Drivers:nrf_error:default:2.0.0
+
+   * Component: NordicSemiconductor::nRF_Drivers:pstorage:default:2.0.0
+      Source file:   pstorage\pstorage.c
+      Include file:  pstorage\pstorage.h
+      Include file:  pstorage\config\pstorage_platform.h
+
+   * Component: NordicSemiconductor::nRF_Drivers:twi_master:Hardware:2.0.0
+      Source file:   twi_master\twi_hw_master.c
+      Include file:  twi_master\twi_master.h
+      Include file:  twi_master\config\twi_master_config.h
+
+   * Component: NordicSemiconductor::nRF_Drivers:nrf_soc:default:2.0.0
+
+   * Component: NordicSemiconductor::nRF_Drivers:app_uart:default:2.0.0
+      Source file:   uart\app_uart.c
+      Include file:  uart\app_uart.h
+
+   * Component: NordicSemiconductor::nRF_Drivers:nrf_adc:2.0.0
+      Source file:   hal\nrf_adc.c
+      Include file:  hal\nrf_adc.h
+
+   * Component: NordicSemiconductor::nRF_Libraries:app_button:2.0.0
+      Source file:   button\app_button.c
+      Include file:  button\app_button.h
+
+   * Component: NordicSemiconductor::nRF_Libraries:app_error:2.0.0
+      Source file:   util\app_error.c
+      Include file:  util\app_error.h
+
+   * Component: NordicSemiconductor::nRF_Libraries:app_gpiote:default:2.0.0
+      Source file:   gpiote\app_gpiote.c
+      Include file:  gpiote\app_gpiote.h
+
+   * Component: NordicSemiconductor::nRF_Libraries:app_scheduler:default:2.0.0
+      Source file:   scheduler\app_scheduler.c
+      Include file:  scheduler\app_scheduler.h
+
+   * Component: NordicSemiconductor::nRF_Libraries:app_timer_with_app_scheduler:2.0.0
+      Source file:   timer\app_timer_appsh.c
+      Include file:  timer\app_timer_appsh.h
+
+   * Component: NordicSemiconductor::nRF_Libraries:retarget:2.0.0
+      Source file:   uart\retarget.c
+
+   * Component: NordicSemiconductor::nRF_Libraries:app_trace:default:2.0.0
+      Source file:   trace\app_trace.c
+      Include file:  trace\app_trace.h
+
+   * Component: NordicSemiconductor::nRF_Libraries:nrf_assert:2.0.0
+      Source file:   util\nrf_assert.c
+      Include file:  util\nrf_assert.h
+
+   * Component: NordicSemiconductor::nRF_Libraries:app_timer:default:2.0.0
+      Source file:   timer\app_timer.c
+      Include file:  timer\app_timer.h
+
+   * Component: NordicSemiconductor::nRF_Libraries:app_util:default:2.0.0
+
+   * Component: NordicSemiconductor::nRF_SoftDevice:Internal:sd_common:default:1.1.2
+      Source file:   softdevice_handler\softdevice_handler.c
+
+   * Component: NordicSemiconductor::nRF_SoftDevice:Internal:softdevice_present:1.1.2
+
+   * Component: NordicSemiconductor::nRF_SoftDevice:s110_hex:8.0.0
+
+   * Component: NordicSemiconductor::nRF_SoftDevice:s110:default:8.0.0
+      Include file:  headers\ble.h
+      Include file:  headers\ble_gatt.h
+      Include file:  headers\ble_hci.h
+      Include file:  headers\ble_types.h
+      Include file:  headers\nrf_error_soc.h
+      Include file:  headers\nrf_soc.h
+      Include file:  headers\ble_err.h
+      Include file:  headers\ble_gattc.h
+      Include file:  headers\ble_l2cap.h
+      Include file:  headers\nrf_error.h
+      Include file:  headers\nrf_mbr.h
+      Include file:  headers\nrf_svc.h
+      Include file:  headers\ble_gap.h
+      Include file:  headers\ble_gatts.h
+      Include file:  headers\ble_ranges.h
+      Include file:  headers\nrf_error_sdm.h
+      Include file:  headers\nrf_sdm.h
+      Include file:  headers\softdevice_assert.h
+      Include file:  headers\nrf_sd_def.h
+
+   * Component: NordicSemiconductor::Device:Startup:7.1.0
+      Source file:   Device\Source\arm\arm_startup_nrf51.s
+      Source file:   Device\Source\system_nrf51.c
+      Include file:  Device\Include\system_nrf51.h
+Build Time Elapsed:  00:00:26
+</pre>
+</body>
+</html>
