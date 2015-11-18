@@ -74,7 +74,7 @@ void uart_event_handle_withBle(app_uart_evt_t * p_event)  // is setup callback i
 
             if ((data_array[index - 1] == '\n') || (index >= (BLE_NUS_MAX_DATA_LEN)))
             {
-                err_code = ble_nus_string_send(&m_nus, data_array, index);
+                //err_code = ble_nus_string_send(&m_nus, data_array, index);
                 if (err_code != NRF_ERROR_INVALID_STATE)
                 {
                     APP_ERROR_CHECK(err_code);
