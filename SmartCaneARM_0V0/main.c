@@ -219,10 +219,10 @@ void someother_module_init()
 //	
 //	mpu_run_6500_self_test(&gyro, &accel,0);
 		timestamp +=1;
-		initA2035H();
+//		initA2035H();
 	MPL3115A2_init();
 	float f = MPL3115A2_getAltitude();
-//	
+	
 	ltc294x_init();
 	int temp;
 	ltc294x_get_current(&temp);
@@ -347,16 +347,16 @@ static void tempmeasure_timer_handler(void * p_context)
 //	readAccelFloatMG(Acc);
 //	readGyroFloatDeg(Acc);
 
-	readMagFloatUT(Acc);
-	err_code = ble_AD7746_send_temp_notify(&m_AD7746, Acc[0]);
-		if ((err_code != NRF_SUCCESS) &&
-				(err_code != NRF_ERROR_INVALID_STATE) &&
-				(err_code != BLE_ERROR_NO_TX_BUFFERS) &&
-				(err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
-			)  // ignore these errors as they appear only during setup and are normal
-		{
-			APP_ERROR_HANDLER(err_code);
-		}
+//	readMagFloatUT(Acc);
+//	err_code = ble_AD7746_send_temp_notify(&m_AD7746, Acc[0]);
+//		if ((err_code != NRF_SUCCESS) &&
+//				(err_code != NRF_ERROR_INVALID_STATE) &&
+//				(err_code != BLE_ERROR_NO_TX_BUFFERS) &&
+//				(err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
+//			)  // ignore these errors as they appear only during setup and are normal
+//		{
+//			APP_ERROR_HANDLER(err_code);
+//		}
 
 	//readAccelData(data);
 	// do measurement and notify
