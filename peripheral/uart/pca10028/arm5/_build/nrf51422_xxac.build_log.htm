@@ -3,37 +3,53 @@
 <pre>
 <h1>µVision Build Log</h1>
 <h2>Tool Versions:</h2>
-IDE-Version: µVision V5.14.0.0
+IDE-Version: µVision V5.16a
 Copyright (C) 2015 ARM Ltd and ARM Germany GmbH. All rights reserved.
-License Information: ww ww, ww, LIC=P6FSB-2712V-LT53E-5VE0R-IRF74-JSXS5
+License Information: CLIVE CCC, CCC, LIC=MGX2Z-JZT6W-XAFDC-73NVG-YCSLW-IJJ2A
  
 Tool Versions:
-Toolchain:       MDK-ARM Professional  Version: 5.14.0.0
-Toolchain Path:  G:\Keil_v5\ARM\ARMCC\Bin
-C Compiler:      Armcc.exe V5.05 update 1 (build 106)
-Assembler:       Armasm.exe V5.05 update 1 (build 106)
-Linker/Locator:  ArmLink.exe V5.05 update 1 (build 106)
-Library Manager: ArmAr.exe V5.05 update 1 (build 106)
-Hex Converter:   FromElf.exe V5.05 update 1 (build 106)
-CPU DLL:         SARMCM3.DLL V5.14.0.0
+Toolchain:       MDK-ARM Professional  Version: 5.16a
+Toolchain Path:  c:\Keil_v5\ARM\ARMCC\Bin
+C Compiler:      Armcc.exe V5.06 (build 20)
+Assembler:       Armasm.exe V5.06 (build 20)
+Linker/Locator:  ArmLink.exe V5.06 (build 20)
+Library Manager: ArmAr.exe V5.06 (build 20)
+Hex Converter:   FromElf.exe V5.06 (build 20)
+CPU DLL:         SARMCM3.DLL V5.16a
 Dialog DLL:      DARMCM1.DLL V1.12.0.0
-Target DLL:      Segger\JL2CM3.dll V2.99.13.0
+Target DLL:      Segger\JL2CM3.dll V2.99.15.2
 Dialog DLL:      TARMCM1.DLL V1.9.0.0
  
 <h2>Project:</h2>
-E:\SmartCane\peripheral\uart\pca10028\arm5\uart_pca10028.uvprojx
-Project File Date:  03/06/2015
+C:\Users\boydc\Documents\_SmartCaneARM\_SmartCane\peripheral\uart\pca10028\arm5\uart_pca10028.uvprojx
+Project File Date:  11/19/2015
 
 <h2>Output:</h2>
-Build target '51822'
+*** Using Compiler 'V5.06 (build 20)', folder: 'c:\Keil_v5\ARM\ARMCC\Bin'
+Rebuild target '51822'
+compiling app_fifo.c...
+compiling system_nrf51.c...
+assembling arm_startup_nrf51.s...
+compiling nrf_delay.c...
 compiling main.c...
-..\..\main.c(55): warning:  #177-D: function "show_error" was declared but never referenced
-  static void show_error(void)
-..\..\main.c: 1 warning, 0 errors
+..\..\main.c(63): warning:  #177-D: variable "MenuLevel" was declared but never referenced
+  	  uint8_t MenuLevel=00;
+..\..\main.c(84): warning:  #177-D: variable "MenuLevel" was declared but never referenced
+  		uint8_t MenuLevel=10;
+..\..\main.c(225): warning:  #187-D: use of "=" where "==" may have been intended
+  			} while (i=2); 
+..\..\main.c(165): warning:  #550-D: variable "i" was set but never used
+      uint8_t i=2;
+..\..\main.c: 4 warnings, 0 errors
+compiling app_util_platform.c...
+compiling app_uart_fifo.c...
+compiling app_error.c...
+compiling retarget.c...
+compiling app_gpiote.c...
 linking...
-Program Size: Code=3440 RO-data=236 RW-data=36 ZI-data=2340  
+Program Size: Code=4852 RO-data=236 RW-data=44 ZI-data=2596  
 FromELF: creating hex file...
-".\_build\nrf51422_xxac.axf" - 0 Error(s), 1 Warning(s).
+".\_build\nrf51422_xxac.axf" - 0 Error(s), 4 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -44,10 +60,10 @@ Package Vendor: ARM
    * Component: CORE Version: 4.1.0
 
 Package Vendor: NordicSemiconductor
-                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_DeviceFamilyPack/NordicSemiconductor.nRF_DeviceFamilyPack.7.1.0.pack
-                NordicSemiconductor::Device:Startup:7.1.0
-                Nordic Semiconductor nRF ARM devices Device Family Pack.
-   * Component: Startup Version: 7.1.0
+                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Examples/NordicSemiconductor.nRF_Examples.8.0.0.pack
+                NordicSemiconductor::Board Support:bsp:Defines:8.0.0
+                Examples and BSP for Nordic Semiconductor nRF family.
+   * Component: bsp Variant: Defines Version: 8.0.0
 
 Package Vendor: NordicSemiconductor
                 http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/NordicSemiconductor.nRF_Drivers.2.0.0.pack
@@ -59,12 +75,6 @@ Package Vendor: NordicSemiconductor
    * Component: app_uart Variant: Fifo Version: 2.0.0
 
 Package Vendor: NordicSemiconductor
-                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Examples/NordicSemiconductor.nRF_Examples.8.0.0.pack
-                NordicSemiconductor::Board Support:bsp:Defines:8.0.0
-                Examples and BSP for Nordic Semiconductor nRF family.
-   * Component: bsp Variant: Defines Version: 8.0.0
-
-Package Vendor: NordicSemiconductor
                 http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Libraries/NordicSemiconductor.nRF_Libraries.2.0.0.pack
                 NordicSemiconductor::nRF_Libraries:app_error:2.0.0
                 Software modules for Nordic Semiconductor nRF family.
@@ -74,28 +84,31 @@ Package Vendor: NordicSemiconductor
    * Component: app_fifo Version: 2.0.0
    * Component: app_util Variant: No_softdevice Version: 2.0.0
 
+Package Vendor: NordicSemiconductor
+                http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_DeviceFamilyPack/NordicSemiconductor.nRF_DeviceFamilyPack.8.0.3.pack
+                NordicSemiconductor::Device:Startup:8.0.3
+                Nordic Semiconductor nRF ARM devices Device Family Pack.
+   * Component: Startup Version: 8.0.3
+
 <h2>Collection of Component include folders:</h2>
-  E:\SmartCane\peripheral\uart\pca10028\arm5\RTE
-  E:\SmartCane\peripheral\uart\pca10028\arm5\RTE\nRF_Drivers\nRF51822_xxAA
-  E:\SmartCane\peripheral\uart\pca10028\arm5\RTE\nRF_Libraries\nRF51822_xxAA
-  G:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include
-  G:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\7.1.0\Device\Include
-  G:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\hal
-  G:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\nrf_soc_nosd
-  G:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\uart
-  G:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Examples\8.0.0\bsp
-  G:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\fifo
-  G:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\gpiote
-  G:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\util
+  C:\Users\boydc\Documents\_SmartCaneARM\_SmartCane\peripheral\uart\pca10028\arm5\RTE
+  C:\Users\boydc\Documents\_SmartCaneARM\_SmartCane\peripheral\uart\pca10028\arm5\RTE\nRF_Drivers\nRF51822_xxAA
+  C:\Users\boydc\Documents\_SmartCaneARM\_SmartCane\peripheral\uart\pca10028\arm5\RTE\nRF_Libraries\nRF51822_xxAA
+  c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\8.0.3\Device\Include
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\hal
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\nrf_soc_nosd
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\uart
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Examples\8.0.0\bsp
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\fifo
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\gpiote
+  c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\util
 
 <h2>Collection of Component Files used:</h2>
 
    * Component: ARM::CMSIS:CORE:4.1.0
 
-   * Component: NordicSemiconductor::Device:Startup:7.1.0
-      Source file:   Device\Source\arm\arm_startup_nrf51.s
-      Source file:   Device\Source\system_nrf51.c
-      Include file:  Device\Include\system_nrf51.h
+   * Component: NordicSemiconductor::Board Support:bsp:Defines:8.0.0
 
    * Component: NordicSemiconductor::nRF_Drivers:nrf_delay:2.0.0
       Source file:   hal\nrf_delay.c
@@ -109,8 +122,6 @@ Package Vendor: NordicSemiconductor
    * Component: NordicSemiconductor::nRF_Drivers:app_uart:Fifo:2.0.0
       Source file:   uart\app_uart_fifo.c
       Include file:  uart\app_uart.h
-
-   * Component: NordicSemiconductor::Board Support:bsp:Defines:8.0.0
 
    * Component: NordicSemiconductor::nRF_Libraries:app_error:2.0.0
       Source file:   util\app_error.c
@@ -129,6 +140,12 @@ Package Vendor: NordicSemiconductor
 
    * Component: NordicSemiconductor::nRF_Libraries:app_util:No_softdevice:2.0.0
       Source file:   util\app_util_platform.c
+
+   * Component: NordicSemiconductor::Device:Startup:8.0.3
+      Source file:   Device\Source\arm\arm_startup_nrf51.s
+      Source file:   Device\Source\system_nrf51.c
+      Include file:  Device\Include\system_nrf51.h
+Build Time Elapsed:  00:00:05
 </pre>
 </body>
 </html>
