@@ -28,28 +28,42 @@ Project File Date:  11/19/2015
 *** Using Compiler 'V5.06 (build 20)', folder: 'c:\Keil_v5\ARM\ARMCC\Bin'
 Rebuild target '51822'
 compiling app_fifo.c...
-compiling system_nrf51.c...
 assembling arm_startup_nrf51.s...
+compiling app_util_platform.c...
+compiling app_uart_fifo.c...
 compiling nrf_delay.c...
+compiling system_nrf51.c...
+compiling retarget.c...
 compiling main.c...
 ..\..\main.c(63): warning:  #177-D: variable "MenuLevel" was declared but never referenced
   	  uint8_t MenuLevel=00;
-..\..\main.c(84): warning:  #177-D: variable "MenuLevel" was declared but never referenced
+..\..\main.c(92): warning:  #177-D: variable "MenuLevel" was declared but never referenced
   		uint8_t MenuLevel=10;
-..\..\main.c(225): warning:  #187-D: use of "=" where "==" may have been intended
+..\..\main.c(147): warning:  #177-D: variable "MenuLevel" was declared but never referenced
+  		uint8_t MenuLevel=20;
+..\..\main.c(180): warning:  #177-D: variable "MenuLevel" was declared but never referenced
+  		uint8_t MenuLevel=30;
+..\..\main.c(221): warning:  #177-D: variable "MenuLevel" was declared but never referenced
+  		uint8_t MenuLevel=40;
+..\..\main.c(253): warning:  #177-D: variable "MenuLevel" was declared but never referenced
+  		uint8_t MenuLevel=50;
+..\..\main.c(292): warning:  #177-D: variable "MenuLevel" was declared but never referenced
+  		uint8_t MenuLevel=60;
+..\..\main.c(326): warning:  #177-D: variable "MenuLevel" was declared but never referenced
+  		uint8_t MenuLevel=70;
+..\..\main.c(364): warning:  #177-D: variable "MenuLevel" was declared but never referenced
+  		uint8_t MenuLevel=100;
+..\..\main.c(497): warning:  #187-D: use of "=" where "==" may have been intended
   			} while (i=2); 
-..\..\main.c(165): warning:  #550-D: variable "i" was set but never used
+..\..\main.c(427): warning:  #550-D: variable "i" was set but never used
       uint8_t i=2;
-..\..\main.c: 4 warnings, 0 errors
-compiling app_util_platform.c...
-compiling app_uart_fifo.c...
-compiling app_error.c...
-compiling retarget.c...
+..\..\main.c: 11 warnings, 0 errors
 compiling app_gpiote.c...
+compiling app_error.c...
 linking...
-Program Size: Code=4852 RO-data=236 RW-data=44 ZI-data=2596  
+Program Size: Code=8268 RO-data=320 RW-data=44 ZI-data=2596  
 FromELF: creating hex file...
-".\_build\nrf51422_xxac.axf" - 0 Error(s), 4 Warning(s).
+".\_build\nrf51422_xxac.axf" - 0 Error(s), 11 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -145,7 +159,7 @@ Package Vendor: NordicSemiconductor
       Source file:   Device\Source\arm\arm_startup_nrf51.s
       Source file:   Device\Source\system_nrf51.c
       Include file:  Device\Include\system_nrf51.h
-Build Time Elapsed:  00:00:05
+Build Time Elapsed:  00:00:02
 </pre>
 </body>
 </html>

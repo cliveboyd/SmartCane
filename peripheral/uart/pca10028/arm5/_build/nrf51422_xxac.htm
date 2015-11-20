@@ -3,7 +3,7 @@
 <title>Static Call Graph - [.\_build\nrf51422_xxac.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\_build\nrf51422_xxac.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060020: Last Updated: Thu Nov 19 17:57:26 2015
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060020: Last Updated: Fri Nov 20 11:05:54 2015
 <BR><P>
 <H3>Maximum Stack Usage =        160 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -68,7 +68,7 @@ Global Symbols
 <P><STRONG><a name="[21]"></a>__main</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry.o(.ARM.Collect$$$$00000000))
 <BR>[Address Reference Count : 1]<UL><LI> arm_startup_nrf51.o(.text)
 </UL>
-<P><STRONG><a name="[4e]"></a>_main_stk</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry2.o(.ARM.Collect$$$$00000001))
+<P><STRONG><a name="[55]"></a>_main_stk</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry2.o(.ARM.Collect$$$$00000001))
 
 <P><STRONG><a name="[25]"></a>_main_scatterload</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry5.o(.ARM.Collect$$$$00000004))
 <BR><BR>[Calls]<UL><LI><a href="#[26]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__scatterload
@@ -78,15 +78,15 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[26]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__scatterload
 </UL>
 
-<P><STRONG><a name="[4f]"></a>_main_clock</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry7b.o(.ARM.Collect$$$$00000008))
+<P><STRONG><a name="[56]"></a>_main_clock</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry7b.o(.ARM.Collect$$$$00000008))
 
-<P><STRONG><a name="[50]"></a>_main_cpp_init</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry8b.o(.ARM.Collect$$$$0000000A))
+<P><STRONG><a name="[57]"></a>_main_cpp_init</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry8b.o(.ARM.Collect$$$$0000000A))
 
-<P><STRONG><a name="[51]"></a>_main_init</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry9a.o(.ARM.Collect$$$$0000000B))
+<P><STRONG><a name="[58]"></a>_main_init</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry9a.o(.ARM.Collect$$$$0000000B))
 
-<P><STRONG><a name="[52]"></a>__rt_final_cpp</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry10a.o(.ARM.Collect$$$$0000000D))
+<P><STRONG><a name="[59]"></a>__rt_final_cpp</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry10a.o(.ARM.Collect$$$$0000000D))
 
-<P><STRONG><a name="[53]"></a>__rt_final_exit</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry11a.o(.ARM.Collect$$$$0000000F))
+<P><STRONG><a name="[5a]"></a>__rt_final_exit</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, entry11a.o(.ARM.Collect$$$$0000000F))
 
 <P><STRONG><a name="[27]"></a>__asm___11_nrf_delay_c_532987f3__nrf_delay_us</STRONG> (Thumb, 30 bytes, Stack size 0 bytes, nrf_delay.o(.emb_text))
 <BR><BR>[Calls]<UL><LI><a href="#[27]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__asm___11_nrf_delay_c_532987f3__nrf_delay_us
@@ -212,7 +212,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[25]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;_main_scatterload
 </UL>
 
-<P><STRONG><a name="[54]"></a>__scatterload_rt2</STRONG> (Thumb, 0 bytes, Stack size 0 bytes, init.o(.text), UNUSED)
+<P><STRONG><a name="[5b]"></a>__scatterload_rt2</STRONG> (Thumb, 0 bytes, Stack size 0 bytes, init.o(.text), UNUSED)
 
 <P><STRONG><a name="[b]"></a>GPIOTE_IRQHandler</STRONG> (Thumb, 200 bytes, Stack size 40 bytes, app_gpiote.o(i.GPIOTE_IRQHandler))
 <BR><BR>[Stack]<UL><LI>Max Depth = 60<LI>Call Chain = GPIOTE_IRQHandler &rArr; sense_level_toggle
@@ -242,14 +242,21 @@ Global Symbols
 <BR><BR>[Calls]<UL><LI><a href="#[30]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;_printf_core
 </UL>
 
-<P><STRONG><a name="[55]"></a>__1printf$bare</STRONG> (Thumb, 0 bytes, Stack size 8 bytes, printfb.o(i.__0printf$bare), UNUSED)
+<P><STRONG><a name="[5c]"></a>__1printf$bare</STRONG> (Thumb, 0 bytes, Stack size 8 bytes, printfb.o(i.__0printf$bare), UNUSED)
 
 <P><STRONG><a name="[44]"></a>__2printf</STRONG> (Thumb, 0 bytes, Stack size 8 bytes, printfb.o(i.__0printf$bare))
 <BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = __2printf
 </UL>
 <BR>[Called By]<UL><LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+<LI><a href="#[4d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_7
+<LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_6
+<LI><a href="#[4b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_5
+<LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_4
+<LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_3
+<LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_2
 <LI><a href="#[47]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_1
 <LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Main_Menu
+<LI><a href="#[4e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Help_Menu
 </UL>
 
 <P><STRONG><a name="[46]"></a>__ARM_common_switch8</STRONG> (Thumb, 28 bytes, Stack size 8 bytes, main.o(i.__ARM_common_switch8))
@@ -259,11 +266,11 @@ Global Symbols
 <LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[56]"></a>__scatterload_copy</STRONG> (Thumb, 14 bytes, Stack size unknown bytes, handlers.o(i.__scatterload_copy), UNUSED)
+<P><STRONG><a name="[5d]"></a>__scatterload_copy</STRONG> (Thumb, 14 bytes, Stack size unknown bytes, handlers.o(i.__scatterload_copy), UNUSED)
 
-<P><STRONG><a name="[57]"></a>__scatterload_null</STRONG> (Thumb, 2 bytes, Stack size unknown bytes, handlers.o(i.__scatterload_null), UNUSED)
+<P><STRONG><a name="[5e]"></a>__scatterload_null</STRONG> (Thumb, 2 bytes, Stack size unknown bytes, handlers.o(i.__scatterload_null), UNUSED)
 
-<P><STRONG><a name="[58]"></a>__scatterload_zeroinit</STRONG> (Thumb, 14 bytes, Stack size unknown bytes, handlers.o(i.__scatterload_zeroinit), UNUSED)
+<P><STRONG><a name="[5f]"></a>__scatterload_zeroinit</STRONG> (Thumb, 14 bytes, Stack size unknown bytes, handlers.o(i.__scatterload_zeroinit), UNUSED)
 
 <P><STRONG><a name="[33]"></a>action_tx_stop</STRONG> (Thumb, 28 bytes, Stack size 16 bytes, app_uart_fifo.o(i.action_tx_stop))
 <BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = action_tx_stop
@@ -360,7 +367,7 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> printfb.o(i.__0printf$bare)
 </UL>
-<P><STRONG><a name="[1f]"></a>main</STRONG> (Thumb, 328 bytes, Stack size 56 bytes, main.o(i.main))
+<P><STRONG><a name="[1f]"></a>main</STRONG> (Thumb, 380 bytes, Stack size 56 bytes, main.o(i.main))
 <BR><BR>[Stack]<UL><LI>Max Depth = 160<LI>Call Chain = main &rArr; app_uart_init &rArr; on_uart_event &rArr; on_tx_ready &rArr; action_tx_ready &rArr; action_tx_send &rArr; app_fifo_get
 </UL>
 <BR>[Calls]<UL><LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
@@ -369,8 +376,15 @@ Global Symbols
 <LI><a href="#[38]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;app_uart_get
 <LI><a href="#[42]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;app_error_handler
 <LI><a href="#[46]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__ARM_common_switch8
+<LI><a href="#[4d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_7
+<LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_6
+<LI><a href="#[4b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_5
+<LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_4
+<LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_3
+<LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_2
 <LI><a href="#[47]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_1
 <LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Main_Menu
+<LI><a href="#[4e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Help_Menu
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> entry9a.o(.ARM.Collect$$$$0000000B)
 </UL>
@@ -380,7 +394,14 @@ Global Symbols
 <BR>[Calls]<UL><LI><a href="#[27]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__asm___11_nrf_delay_c_532987f3__nrf_delay_us
 </UL>
 <BR>[Called By]<UL><LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+<LI><a href="#[4d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_7
+<LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_6
+<LI><a href="#[4b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_5
+<LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_4
+<LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_3
+<LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_2
 <LI><a href="#[47]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Menu_1
+<LI><a href="#[4e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;uart_VT100_Help_Menu
 </UL>
 
 <P><STRONG><a name="[24]"></a>uart_error_handle</STRONG> (Thumb, 46 bytes, Stack size 8 bytes, main.o(i.uart_error_handle))
@@ -393,7 +414,16 @@ Global Symbols
 <H3>
 Local Symbols
 </H3>
-<P><STRONG><a name="[43]"></a>uart_VT100_Main_Menu</STRONG> (Thumb, 78 bytes, Stack size 8 bytes, main.o(i.uart_VT100_Main_Menu))
+<P><STRONG><a name="[4e]"></a>uart_VT100_Help_Menu</STRONG> (Thumb, 120 bytes, Stack size 8 bytes, main.o(i.uart_VT100_Help_Menu))
+<BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = uart_VT100_Help_Menu &rArr; __2printf
+</UL>
+<BR>[Calls]<UL><LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
+<LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
+</UL>
+<BR>[Called By]<UL><LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+</UL>
+
+<P><STRONG><a name="[43]"></a>uart_VT100_Main_Menu</STRONG> (Thumb, 90 bytes, Stack size 8 bytes, main.o(i.uart_VT100_Main_Menu))
 <BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = uart_VT100_Main_Menu &rArr; __2printf
 </UL>
 <BR>[Calls]<UL><LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
@@ -403,6 +433,60 @@ Local Symbols
 
 <P><STRONG><a name="[47]"></a>uart_VT100_Menu_1</STRONG> (Thumb, 198 bytes, Stack size 8 bytes, main.o(i.uart_VT100_Menu_1))
 <BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = uart_VT100_Menu_1 &rArr; __2printf
+</UL>
+<BR>[Calls]<UL><LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
+<LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
+</UL>
+<BR>[Called By]<UL><LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+</UL>
+
+<P><STRONG><a name="[48]"></a>uart_VT100_Menu_2</STRONG> (Thumb, 102 bytes, Stack size 8 bytes, main.o(i.uart_VT100_Menu_2))
+<BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = uart_VT100_Menu_2 &rArr; __2printf
+</UL>
+<BR>[Calls]<UL><LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
+<LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
+</UL>
+<BR>[Called By]<UL><LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+</UL>
+
+<P><STRONG><a name="[49]"></a>uart_VT100_Menu_3</STRONG> (Thumb, 138 bytes, Stack size 8 bytes, main.o(i.uart_VT100_Menu_3))
+<BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = uart_VT100_Menu_3 &rArr; __2printf
+</UL>
+<BR>[Calls]<UL><LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
+<LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
+</UL>
+<BR>[Called By]<UL><LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+</UL>
+
+<P><STRONG><a name="[4a]"></a>uart_VT100_Menu_4</STRONG> (Thumb, 90 bytes, Stack size 8 bytes, main.o(i.uart_VT100_Menu_4))
+<BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = uart_VT100_Menu_4 &rArr; __2printf
+</UL>
+<BR>[Calls]<UL><LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
+<LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
+</UL>
+<BR>[Called By]<UL><LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+</UL>
+
+<P><STRONG><a name="[4b]"></a>uart_VT100_Menu_5</STRONG> (Thumb, 120 bytes, Stack size 8 bytes, main.o(i.uart_VT100_Menu_5))
+<BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = uart_VT100_Menu_5 &rArr; __2printf
+</UL>
+<BR>[Calls]<UL><LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
+<LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
+</UL>
+<BR>[Called By]<UL><LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+</UL>
+
+<P><STRONG><a name="[4c]"></a>uart_VT100_Menu_6</STRONG> (Thumb, 102 bytes, Stack size 8 bytes, main.o(i.uart_VT100_Menu_6))
+<BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = uart_VT100_Menu_6 &rArr; __2printf
+</UL>
+<BR>[Calls]<UL><LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
+<LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
+</UL>
+<BR>[Called By]<UL><LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+</UL>
+
+<P><STRONG><a name="[4d]"></a>uart_VT100_Menu_7</STRONG> (Thumb, 120 bytes, Stack size 8 bytes, main.o(i.uart_VT100_Menu_7))
+<BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = uart_VT100_Menu_7 &rArr; __2printf
 </UL>
 <BR>[Calls]<UL><LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
 <LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
@@ -431,7 +515,7 @@ Local Symbols
 <LI><a href="#[2d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;fifo_length
 <LI><a href="#[32]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_tx_send
 </UL>
-<BR>[Called By]<UL><LI><a href="#[4b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_tx_ready
+<BR>[Called By]<UL><LI><a href="#[52]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_tx_ready
 </UL>
 
 <P><STRONG><a name="[32]"></a>action_tx_send</STRONG> (Thumb, 64 bytes, Stack size 8 bytes, app_uart_fifo.o(i.action_tx_send))
@@ -440,20 +524,20 @@ Local Symbols
 <BR>[Calls]<UL><LI><a href="#[34]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;app_fifo_get
 <LI><a href="#[33]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_tx_stop
 </UL>
-<BR>[Called By]<UL><LI><a href="#[4d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_put
-<LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_cts_low
+<BR>[Called By]<UL><LI><a href="#[54]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_put
+<LI><a href="#[51]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_cts_low
 <LI><a href="#[31]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_tx_ready
 </UL>
 
-<P><STRONG><a name="[49]"></a>action_uart_deactivate</STRONG> (Thumb, 22 bytes, Stack size 0 bytes, app_uart_fifo.o(i.action_uart_deactivate))
-<BR><BR>[Called By]<UL><LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_close
-<LI><a href="#[4b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_tx_ready
-<LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_cts_high
+<P><STRONG><a name="[50]"></a>action_uart_deactivate</STRONG> (Thumb, 22 bytes, Stack size 0 bytes, app_uart_fifo.o(i.action_uart_deactivate))
+<BR><BR>[Called By]<UL><LI><a href="#[53]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_close
+<LI><a href="#[52]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_tx_ready
+<LI><a href="#[4f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_cts_high
 </UL>
 
 <P><STRONG><a name="[2d]"></a>fifo_length</STRONG> (Thumb, 10 bytes, Stack size 0 bytes, app_uart_fifo.o(i.fifo_length))
 <BR><BR>[Called By]<UL><LI><a href="#[8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART0_IRQHandler
-<LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_cts_low
+<LI><a href="#[51]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_cts_low
 <LI><a href="#[31]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_tx_ready
 </UL>
 
@@ -469,15 +553,15 @@ Local Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[39]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;app_uart_init
 </UL>
 
-<P><STRONG><a name="[48]"></a>on_cts_high</STRONG> (Thumb, 36 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_cts_high))
+<P><STRONG><a name="[4f]"></a>on_cts_high</STRONG> (Thumb, 36 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_cts_high))
 <BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = on_cts_high
 </UL>
-<BR>[Calls]<UL><LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_uart_deactivate
+<BR>[Calls]<UL><LI><a href="#[50]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_uart_deactivate
 </UL>
 <BR>[Called By]<UL><LI><a href="#[2e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_event
 </UL>
 
-<P><STRONG><a name="[4a]"></a>on_cts_low</STRONG> (Thumb, 66 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_cts_low))
+<P><STRONG><a name="[51]"></a>on_cts_low</STRONG> (Thumb, 66 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_cts_low))
 <BR><BR>[Stack]<UL><LI>Max Depth = 32<LI>Call Chain = on_cts_low &rArr; action_tx_send &rArr; app_fifo_get
 </UL>
 <BR>[Calls]<UL><LI><a href="#[2d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;fifo_length
@@ -486,19 +570,19 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[2e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_event
 </UL>
 
-<P><STRONG><a name="[4b]"></a>on_tx_ready</STRONG> (Thumb, 38 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_tx_ready))
+<P><STRONG><a name="[52]"></a>on_tx_ready</STRONG> (Thumb, 38 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_tx_ready))
 <BR><BR>[Stack]<UL><LI>Max Depth = 40<LI>Call Chain = on_tx_ready &rArr; action_tx_ready &rArr; action_tx_send &rArr; app_fifo_get
 </UL>
-<BR>[Calls]<UL><LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_uart_deactivate
+<BR>[Calls]<UL><LI><a href="#[50]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_uart_deactivate
 <LI><a href="#[31]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_tx_ready
 </UL>
 <BR>[Called By]<UL><LI><a href="#[2e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_event
 </UL>
 
-<P><STRONG><a name="[4c]"></a>on_uart_close</STRONG> (Thumb, 8 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_uart_close))
+<P><STRONG><a name="[53]"></a>on_uart_close</STRONG> (Thumb, 8 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_uart_close))
 <BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = on_uart_close
 </UL>
-<BR>[Calls]<UL><LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_uart_deactivate
+<BR>[Calls]<UL><LI><a href="#[50]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_uart_deactivate
 </UL>
 <BR>[Called By]<UL><LI><a href="#[2e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_event
 </UL>
@@ -506,11 +590,11 @@ Local Symbols
 <P><STRONG><a name="[2e]"></a>on_uart_event</STRONG> (Thumb, 54 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_uart_event))
 <BR><BR>[Stack]<UL><LI>Max Depth = 48<LI>Call Chain = on_uart_event &rArr; on_tx_ready &rArr; action_tx_ready &rArr; action_tx_send &rArr; app_fifo_get
 </UL>
-<BR>[Calls]<UL><LI><a href="#[4d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_put
-<LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_close
-<LI><a href="#[4b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_tx_ready
-<LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_cts_low
-<LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_cts_high
+<BR>[Calls]<UL><LI><a href="#[54]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_put
+<LI><a href="#[53]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_uart_close
+<LI><a href="#[52]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_tx_ready
+<LI><a href="#[51]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_cts_low
+<LI><a href="#[4f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_cts_high
 <LI><a href="#[46]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__ARM_common_switch8
 </UL>
 <BR>[Called By]<UL><LI><a href="#[41]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;app_uart_put
@@ -519,7 +603,7 @@ Local Symbols
 <LI><a href="#[39]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;app_uart_init
 </UL>
 
-<P><STRONG><a name="[4d]"></a>on_uart_put</STRONG> (Thumb, 16 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_uart_put))
+<P><STRONG><a name="[54]"></a>on_uart_put</STRONG> (Thumb, 16 bytes, Stack size 8 bytes, app_uart_fifo.o(i.on_uart_put))
 <BR><BR>[Stack]<UL><LI>Max Depth = 32<LI>Call Chain = on_uart_put &rArr; action_tx_send &rArr; app_fifo_get
 </UL>
 <BR>[Calls]<UL><LI><a href="#[32]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;action_tx_send
