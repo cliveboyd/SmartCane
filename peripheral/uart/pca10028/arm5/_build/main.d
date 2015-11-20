@@ -20,3 +20,7 @@
 .\_build\main.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Examples\8.0.0\bsp\boards.h
 .\_build\main.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\hal\nrf_gpio.h
 .\_build\main.o: ..\..\custom_board.h
+.\_build\main.o: ..\..\ltc2943.h
+.\_build\main.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+.\_build\main.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+.\_build\main.o: ..\..\Communication.h

@@ -28,14 +28,15 @@
 #include "nrf_delay.h"
 #include "nrf.h"
 #include "bsp.h"
+#include "ltc2943.h"
+#include "Communication.h"
 
 
 #define MAX_TEST_DATA_BYTES     (55U)               /**< max number of test bytes per TX Burst to be used for tx and rx. */
 #define UART_TX_BUF_SIZE 512                        /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE 1                          /**< UART RX buffer size. */
 
- uint8_t MenuLevel;
- uint8_t MenuLevel=0;
+uint8_t MenuLevel=0;
 
 void uart_error_handle(app_uart_evt_t * p_event)
 {
@@ -60,7 +61,7 @@ static void uart_VT100_Main_Menu()		// $$$$$$ TOP LEVEL MENU $$$$$$
 {
 	
 //  Static menu loaded once and refreshed with menu level values elswhere.
-	  uint8_t MenuLevel=00;
+	  MenuLevel=00;
 	
     printf("\x1B[2J");		//VT100 CLR SCREEN
   	printf("\x1B[H");			//VT100 CURSOR HOME
@@ -89,7 +90,7 @@ static void uart_VT100_Main_Menu()		// $$$$$$ TOP LEVEL MENU $$$$$$
 static void uart_VT100_Menu_1()				// $$$$$$  ALL SENSORS  $$$$$$
 {
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		uint8_t MenuLevel=10;
+		MenuLevel=10;
 	
 		printf("\x1B[2J");		//VT100 CLR SCREEN
   	printf("\x1B[H");			//VT100 CURSOR HOME
@@ -144,7 +145,7 @@ static void uart_VT100_Menu_1()				// $$$$$$  ALL SENSORS  $$$$$$
 static void uart_VT100_Menu_2()				// $$$$$$  GPS GLOBAL POSITION MENU  $$$$$$
 {
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		uint8_t MenuLevel=20;
+		MenuLevel=20;
 	
 		printf("\x1B[2J");		//VT100 CLR SCREEN
   	printf("\x1B[H");			//VT100 CURSOR HOME
@@ -177,7 +178,7 @@ static void uart_VT100_Menu_2()				// $$$$$$  GPS GLOBAL POSITION MENU  $$$$$$
 static void uart_VT100_Menu_3()				// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 {
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		uint8_t MenuLevel=30;
+		MenuLevel=30;
 	
 		printf("\x1B[2J");		//VT100 CLR SCREEN
   	printf("\x1B[H");			//VT100 CURSOR HOME
@@ -218,7 +219,7 @@ static void uart_VT100_Menu_3()				// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 static void uart_VT100_Menu_4()				// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$$$$
 {
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		uint8_t MenuLevel=40;
+		MenuLevel=40;
 	
 		printf("\x1B[2J");		//VT100 CLR SCREEN
   	printf("\x1B[H");			//VT100 CURSOR HOME
@@ -250,7 +251,7 @@ static void uart_VT100_Menu_4()				// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$$$$
 static void uart_VT100_Menu_5()				// $$$$$$  SFLASH EEPROM SoC_FLASH MEMORY MANAGEMENT MENU  $$$$$$
 {
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		uint8_t MenuLevel=50;
+		MenuLevel=50;
 	
 		printf("\x1B[2J");		//VT100 CLR SCREEN
   	printf("\x1B[H");			//VT100 CURSOR HOME
@@ -289,7 +290,7 @@ static void uart_VT100_Menu_5()				// $$$$$$  SFLASH EEPROM SoC_FLASH MEMORY MAN
 static void uart_VT100_Menu_6()		    // $$$$$$  POWER MANAGEMENT MENU  $$$$$$
 {
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		uint8_t MenuLevel=60;
+		MenuLevel=60;
 	
 		printf("\x1B[2J");		//VT100 CLR SCREEN
   	printf("\x1B[H");			//VT100 CURSOR HOME
@@ -315,6 +316,23 @@ static void uart_VT100_Menu_6()		    // $$$$$$  POWER MANAGEMENT MENU  $$$$$$
 		printf("\x1B[24;05H  X... exit    ?...Help");
 }	
 
+static void display_power_data()		    // $$$$$$  POWER MANAGEMENT MENU  $$$$$$
+{
+//  Static menu loaded once and refreshed with MenuLevel values elswhere.
+	int value;
+	if (!ltc294x_get_current(&value))
+		printf("\x1B[07;22H%10d",value);
+	if (!ltc294x_get_voltage(&value))
+		printf("\x1B[06;22H%10d ",value);
+
+
+//  	printf("\x1B[08;05H Batt Status   = "); 
+	if (!ltc294x_get_charge_counter(&value))
+		printf("\x1B[09;22H%10d",value);
+	 if (!ltc294x_get_temperature(&value))
+		printf("\x1B[10;22H%10d",value);
+}	
+
 /** @brief 		Function to load CANE DIAGNOSTIC MENU to VT100 Terminal Screen. 
  *  @details 	Loads VT100 ESC Sequenceone character to clear screen and load menu data.
  *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
@@ -323,7 +341,7 @@ static void uart_VT100_Menu_6()		    // $$$$$$  POWER MANAGEMENT MENU  $$$$$$
 static void uart_VT100_Menu_7()		    // $$$$$$  CANE DIAGNOSTIC MENU $$$$$$
 {
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		uint8_t MenuLevel=70;
+		MenuLevel=70;
 	
 		printf("\x1B[2J");		//VT100 CLR SCREEN
   	printf("\x1B[H");			//VT100 CURSOR HOME
@@ -361,7 +379,7 @@ static void uart_VT100_Menu_7()		    // $$$$$$  CANE DIAGNOSTIC MENU $$$$$$
 static void uart_VT100_Help_Menu()		// $$$$$$  SCREEN HELP MENU  $$$$$$
 {
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		uint8_t MenuLevel=100;
+		MenuLevel=100;
 	
 		printf("\x1B[2J");		//VT100 CLR SCREEN
   	printf("\x1B[H");			//VT100 CURSOR HOME
@@ -419,82 +437,94 @@ int main(void)
                          err_code);
 
     APP_ERROR_CHECK(err_code);
-			
-		uart_VT100_Main_Menu();
+	
+	uint8_t status = 0;	  
+	while(!status)  status = I2C_Init();
+	ltc294x_init();
+	  
+	uart_VT100_Main_Menu();
 
-			
-			
-    uint8_t i=2;
-		do {
+	while (true) {
         printf("\x1B[01;75H");		//park VT100 cursor at row 01 column 75
 			  
-			  nrf_delay_ms(5);
 			
-			  uint8_t cr;
-        while(app_uart_get(&cr) != NRF_SUCCESS);
-
-				switch (cr)
-							{
-							case '1':
-								printf("1");
-								uart_VT100_Menu_1();
-							break;
-							
-							case '2':
-								printf("2");
-							  uart_VT100_Menu_2();
-							break;
-							
-							case '3':
-								printf("3");
-								uart_VT100_Menu_3();
-							break;
-							
-							case '4':
-								printf("4");
-								uart_VT100_Menu_4();							
-							break;
-							
-							case '5':
-								 printf("5");
-								 uart_VT100_Menu_5();							
-							break;
-							
-							case '6':
-								 printf("6");
-								 uart_VT100_Menu_6();							
-							break;
-							
-							case '7':
-								 printf("7");
-								 uart_VT100_Menu_7();							
-							break;
-							
-							case 'q':
-								printf("q");	
-							break;
-								
-							case 'Q':
-								printf("Q");								
-							break;
 		
-							case 'x':
-								printf("x");
-								uart_VT100_Main_Menu();
-							break;
-							
-							case 'X':
-								printf("X");
-								uart_VT100_Main_Menu();
-							break;
-							
-							case '?':
-								printf("?");
-				  			uart_VT100_Help_Menu();
-							break;
-							} 
+		nrf_delay_ms(5);
+	
+		uint8_t cr;
+        if(app_uart_get(&cr) == NRF_SUCCESS) {
+			switch (cr)
+			{
+			case '1':
+				printf("1");
+				uart_VT100_Menu_1();
+			break;
+			
+			case '2':
+				printf("2");
+			  uart_VT100_Menu_2();
+			break;
+			
+			case '3':
+				printf("3");
+				uart_VT100_Menu_3();
+			break;
+			
+			case '4':
+				printf("4");
+				uart_VT100_Menu_4();							
+			break;
+			
+			case '5':
+				 printf("5");
+				 uart_VT100_Menu_5();							
+			break;
+			
+			case '6':
+				 printf("6");
+				 uart_VT100_Menu_6();							
+			break;
+			
+			case '7':
+				 printf("7");
+				 uart_VT100_Menu_7();							
+			break;
+			
+			case 'q':
+				printf("q");	
+			break;
+				
+			case 'Q':
+				printf("Q");								
+			break;
+
+			case 'x':
+				printf("x");
+				uart_VT100_Main_Menu();
+			break;
+			
+			case 'X':
+				printf("X");
+				uart_VT100_Main_Menu();
+			break;
+			
+			case '?':
+				printf("?");
+			uart_VT100_Help_Menu();
+			break;
+			} 
+		}		
+		else {
+		
 					
-			} while (i=2); 
+							
+			if (MenuLevel==60) {
+				display_power_data();
+			}
+			printf("\x1B[01;75H");		//park VT100 cursor at row 01 column 75
+			nrf_delay_ms(5);
+		}
+	}; // while loop 
 
 
 			

@@ -343,13 +343,15 @@ v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include -Ic:\Keil_v5\ARM\PACK\NordicSemicondu
 ctor\nRF_DeviceFamilyPack\8.0.3\Device\Include -Ic:\Keil_v5\ARM\PACK\NordicSemi
 conductor\nRF_Drivers\2.0.0\hal -Ic:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_D
 rivers\2.0.0\nrf_soc_nosd -Ic:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers
-\2.0.0\uart -Ic:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Examples\8.0.0\bsp -I
-c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\fifo -Ic:\Keil_v5\A
-RM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\gpiote -Ic:\Keil_v5\ARM\PACK\No
-rdicSemiconductor\nRF_Libraries\2.0.0\util --predefine="__MICROLIB SETA 1" --pr
-edefine="__UVISION_VERSION SETA 516" --predefine="_RTE_ SETA 1" --predefine="NR
-F51 SETA 1" --list=.\_build\arm_startup_nrf51.lst RTE\Device\nRF51822_xxAA\arm_
-startup_nrf51.s
+\2.0.0\twi_master -Ic:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\t
+wi_master\config -Ic:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\ua
+rt -Ic:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Examples\8.0.0\bsp -Ic:\Keil_v
+5\ARM\PACK\NordicSemiconductor\nRF_Libraries\2.0.0\fifo -Ic:\Keil_v5\ARM\PACK\N
+ordicSemiconductor\nRF_Libraries\2.0.0\gpiote -Ic:\Keil_v5\ARM\PACK\NordicSemic
+onductor\nRF_Libraries\2.0.0\util --predefine="__MICROLIB SETA 1" --predefine="
+__UVISION_VERSION SETA 516" --predefine="_RTE_ SETA 1" --predefine="NRF51 SETA 
+1" --list=.\_build\arm_startup_nrf51.lst RTE\Device\nRF51822_xxAA\arm_startup_n
+rf51.s
 
 
 

@@ -1,9 +1,12 @@
 --cpu Cortex-M0
 ".\_build\main.o"
+".\_build\ltc2943.o"
+".\_build\communication.o"
 ".\_build\arm_startup_nrf51.o"
 ".\_build\system_nrf51.o"
 ".\_build\app_uart_fifo.o"
 ".\_build\nrf_delay.o"
+".\_build\twi_hw_master.o"
 ".\_build\app_error.o"
 ".\_build\app_fifo.o"
 ".\_build\app_gpiote.o"

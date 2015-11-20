@@ -467,6 +467,16 @@
                 </FileArmAds>
               </FileOption>
             </File>
+            <File>
+              <FileName>ltc2943.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\ltc2943.c</FilePath>
+            </File>
+            <File>
+              <FileName>Communication.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Communication.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -963,6 +973,16 @@
                 </FileArmAds>
               </FileOption>
             </File>
+            <File>
+              <FileName>ltc2943.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\ltc2943.c</FilePath>
+            </File>
+            <File>
+              <FileName>Communication.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Communication.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1051,8 +1071,8 @@
           <targetInfo name="nrf51422_xxac" versionMatchMode="fixed"/>
         </targetInfos>
       </component>
-      <component Cclass="Device" Cgroup="Startup" Cvendor="NordicSemiconductor" Cversion="7.1.0" condition="nRF51 Series CMSIS Device">
-        <package name="nRF_DeviceFamilyPack" schemaVersion="1.0" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_DeviceFamilyPack/" vendor="NordicSemiconductor" version="7.1.0"/>
+      <component Cclass="Device" Cgroup="Startup" Cvendor="NordicSemiconductor" Cversion="8.0.3" condition="nRF51 Series CMSIS Device">
+        <package name="nRF_DeviceFamilyPack" schemaVersion="1.0" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_DeviceFamilyPack/" vendor="NordicSemiconductor" version="8.0.3"/>
         <targetInfos>
           <targetInfo name="51822"/>
           <targetInfo name="nrf51422_xxac"/>
@@ -1084,6 +1104,13 @@
         <targetInfos>
           <targetInfo name="51822" versionMatchMode="fixed"/>
           <targetInfo name="nrf51422_xxac" versionMatchMode="fixed"/>
+        </targetInfos>
+      </component>
+      <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware">
+        <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
+        <targetInfos>
+          <targetInfo name="51822"/>
+          <targetInfo name="nrf51422_xxac"/>
         </targetInfos>
       </component>
       <component Cclass="nRF_Libraries" Cgroup="app_error" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="app_error">
@@ -1171,6 +1198,30 @@
           <targetInfo name="nrf51422_xxac"/>
         </targetInfos>
       </file>
+      <file attr="config" category="source" name="twi_master\twi_hw_master.c" version="2.0.0">
+        <instance index="0">RTE\nRF_Drivers\nRF51422_xxAC\twi_hw_master.c</instance>
+        <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware"/>
+        <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
+        <targetInfos>
+          <targetInfo name="nrf51422_xxac"/>
+        </targetInfos>
+      </file>
+      <file attr="config" category="header" name="twi_master\twi_master.h" version="2.0.0">
+        <instance index="0">RTE\nRF_Drivers\nRF51422_xxAC\twi_master.h</instance>
+        <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware"/>
+        <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
+        <targetInfos>
+          <targetInfo name="nrf51422_xxac"/>
+        </targetInfos>
+      </file>
+      <file attr="config" category="header" name="twi_master\config\twi_master_config.h" version="2.0.0">
+        <instance index="0">RTE\nRF_Drivers\nRF51422_xxAC\twi_master_config.h</instance>
+        <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware"/>
+        <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
+        <targetInfos>
+          <targetInfo name="nrf51422_xxac"/>
+        </targetInfos>
+      </file>
       <file attr="config" category="header" name="uart\app_uart.h" version="2.0.0">
         <instance index="0">RTE\nRF_Drivers\nRF51822_xxAA\app_uart.h</instance>
         <component Cclass="nRF_Drivers" Cgroup="app_uart" Cvariant="Fifo" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="app_uart_Fifo"/>
@@ -1182,6 +1233,30 @@
       <file attr="config" category="source" name="uart\app_uart_fifo.c" version="2.0.0">
         <instance index="0">RTE\nRF_Drivers\nRF51822_xxAA\app_uart_fifo.c</instance>
         <component Cclass="nRF_Drivers" Cgroup="app_uart" Cvariant="Fifo" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="app_uart_Fifo"/>
+        <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
+        <targetInfos>
+          <targetInfo name="51822"/>
+        </targetInfos>
+      </file>
+      <file attr="config" category="source" name="twi_master\twi_hw_master.c" version="2.0.0">
+        <instance index="0">RTE\nRF_Drivers\nRF51822_xxAA\twi_hw_master.c</instance>
+        <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware"/>
+        <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
+        <targetInfos>
+          <targetInfo name="51822"/>
+        </targetInfos>
+      </file>
+      <file attr="config" category="header" name="twi_master\twi_master.h" version="2.0.0">
+        <instance index="0">RTE\nRF_Drivers\nRF51822_xxAA\twi_master.h</instance>
+        <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware"/>
+        <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
+        <targetInfos>
+          <targetInfo name="51822"/>
+        </targetInfos>
+      </file>
+      <file attr="config" category="header" name="twi_master\config\twi_master_config.h" version="2.0.0">
+        <instance index="0">RTE\nRF_Drivers\nRF51822_xxAA\twi_master_config.h</instance>
+        <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware"/>
         <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
         <targetInfos>
           <targetInfo name="51822"/>
