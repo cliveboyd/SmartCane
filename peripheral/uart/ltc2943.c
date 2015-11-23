@@ -23,13 +23,12 @@ THE SOFTWARE.
  
 #include "ltc2943.h"
 
-
 #ifndef u8
-typedef uint8_t     u8;
-typedef uint16_t    u16;
-typedef uint32_t    u32;
-typedef uint64_t    u64;
-typedef int32_t		s32;
+typedef uint8_t     	u8;
+typedef uint16_t    	u16;
+typedef uint32_t    	u32;
+typedef uint64_t    	u64;
+typedef int32_t			s32;
 typedef volatile u8     vu8;
 typedef volatile u32    vu32;
 typedef volatile u64    vu64;
@@ -76,18 +75,18 @@ typedef volatile u64    vu64;
  * need (one or more of IGNORE_NAK, NO_RD_ACK, NOSTART, and REV_DIR_ADDR).
  */
 struct i2c_msg {
-        u16 addr;     /* slave address                        */
+        u16 addr;     /* slave address  */
         u16 flags;
-#define I2C_M_TEN               0x0010  /* this is a ten bit chip address */
-#define I2C_M_RD                0x0001  /* read data, from slave to master */
-#define I2C_M_STOP              0x8000  /* if I2C_FUNC_PROTOCOL_MANGLING */
-#define I2C_M_NOSTART           0x4000  /* if I2C_FUNC_NOSTART */
-#define I2C_M_REV_DIR_ADDR      0x2000  /* if I2C_FUNC_PROTOCOL_MANGLING */
-#define I2C_M_IGNORE_NAK        0x1000  /* if I2C_FUNC_PROTOCOL_MANGLING */
-#define I2C_M_NO_RD_ACK         0x0800  /* if I2C_FUNC_PROTOCOL_MANGLING */
-#define I2C_M_RECV_LEN          0x0400  /* length will be first received byte */
-        u16 len;              /* msg length                           */
-        u8 *buf;              /* pointer to msg data                  */
+#define I2C_M_TEN               0x0010  /* this is a ten bit chip address 		*/
+#define I2C_M_RD                0x0001  /* read data, from slave to master 		*/
+#define I2C_M_STOP              0x8000  /* if I2C_FUNC_PROTOCOL_MANGLING 		*/
+#define I2C_M_NOSTART           0x4000  /* if I2C_FUNC_NOSTART 					*/
+#define I2C_M_REV_DIR_ADDR      0x2000  /* if I2C_FUNC_PROTOCOL_MANGLING 		*/
+#define I2C_M_IGNORE_NAK        0x1000  /* if I2C_FUNC_PROTOCOL_MANGLING 		*/
+#define I2C_M_NO_RD_ACK         0x0800  /* if I2C_FUNC_PROTOCOL_MANGLING 		*/
+#define I2C_M_RECV_LEN          0x0400  /* length will be first received byte 	*/
+        u16 len;              /* msg length                           			*/
+        u8 *buf;              /* pointer to msg data                  			*/
 };
 
 
@@ -117,9 +116,9 @@ struct i2c_client {
                                         /* _LOWER_ 7 bits               */
 #define I2C_NAME_SIZE   20	
         char name[I2C_NAME_SIZE];
-//        struct i2c_adapter *adapter;    /* the adapter we sit on        */
-//        struct device dev;              /* the device structure         */
-//        int irq;                        /* irq issued by device         */
+//        struct i2c_adapter *adapter;    /* the adapter we sit on      */
+//        struct device dev;              /* the device structure       */
+//        int irq;                        /* irq issued by device       */
 //        struct list_head detected;
 #ifdef  CONFIG_I2C_SLAVE 
         i2c_slave_cb_t slave_cb;        /* callback for slave mode      */
@@ -312,15 +311,15 @@ struct power_supply_desc {
 //#endif
 //};
 
-#define pr_err(format, ...) do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
+#define pr_err(format, ...) 		do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
 #ifdef DEBUG
-#define pr_debug(format, ...) do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
+#define pr_debug(format, ...) 		do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
 #else
-#define pr_debug(format, ...) do {} while (0)
+#define pr_debug(format, ...) 		do {} while (0)
 #endif
-#define dev_err(dev, format, ...) do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
-#define dev_warn(dev, format, ...) do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
-#define dev_dbg(dev, format, ...) do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
+#define dev_err(dev, format, ...) 	do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
+#define dev_warn(dev, format, ...) 	do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
+#define dev_dbg(dev, format, ...) 	do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
 	 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]) )	
 #define I16_MSB(x)                      ((x >> 8) & 0xFF)
@@ -344,48 +343,48 @@ enum ltc294x_reg {
         LTC294X_REG_THRESH_HIGH_LSB     = 0x05,
         LTC294X_REG_THRESH_LOW_MSB      = 0x06,
         LTC294X_REG_THRESH_LOW_LSB      = 0x07,
-        LTC294X_REG_VOLTAGE_MSB = 0x08,
-        LTC294X_REG_VOLTAGE_LSB = 0x09,
-		LTC294X_REG_VOLTAGE_HIGH_MSB = 0x0a,
-		LTC294X_REG_VOLTAGE_HIGH_LSB = 0x0b,
-		LTC294X_REG_VOLTAGE_LOW_MSB = 0x0c,
-		LTC294X_REG_VOLTAGE_LOW_LSB = 0x0d,		
-        LTC294X_REG_CURRENT_MSB = 0x0E,
-        LTC294X_REG_CURRENT_LSB = 0x0F,
-		LTC294X_REG_CURRENT_HIGH_MSB = 0x10,
-		LTC294X_REG_CURRENT_HIGH_LSB = 0x11,
-		LTC294X_REG_CURRENT_LOW_MSB = 0x12,
-		LTC294X_REG_CURRENT_LOW_LSB = 0x13,			
+        LTC294X_REG_VOLTAGE_MSB 		= 0x08,
+        LTC294X_REG_VOLTAGE_LSB 		= 0x09,
+		LTC294X_REG_VOLTAGE_HIGH_MSB 	= 0x0a,
+		LTC294X_REG_VOLTAGE_HIGH_LSB 	= 0x0b,
+		LTC294X_REG_VOLTAGE_LOW_MSB 	= 0x0c,
+		LTC294X_REG_VOLTAGE_LOW_LSB 	= 0x0d,		
+        LTC294X_REG_CURRENT_MSB 		= 0x0e,
+        LTC294X_REG_CURRENT_LSB 		= 0x0f,
+		LTC294X_REG_CURRENT_HIGH_MSB 	= 0x10,
+		LTC294X_REG_CURRENT_HIGH_LSB 	= 0x11,
+		LTC294X_REG_CURRENT_LOW_MSB	 	= 0x12,
+		LTC294X_REG_CURRENT_LOW_LSB 	= 0x13,			
         LTC294X_REG_TEMPERATURE_MSB     = 0x14,
         LTC294X_REG_TEMPERATURE_LSB     = 0x15,
 		LTC294X_REG_TEMPERATURE_HIGH 	= 0x16,
 		LTC294X_REG_TEMPERATURE_LOW 	= 0x17
 };
 
-#define EINVAL          22      /* Invalid argument */
+#define EINVAL         22      /* Invalid argument */
 #define EPERM          23      /* Invalid permission */
 
 #define BIT(nr)                 (1UL << (nr))
-#define LTC2943_REG_CONTROL_MODE_MASK (BIT(7) | BIT(6))
-#define LTC2943_REG_CONTROL_MODE_SCAN (BIT(7))
-#define LTC2943_REG_CONTROL_MODE_MANUAL (BIT(6))
-#define LTC2943_REG_CONTROL_MODE_AUTO (BIT(7) | BIT(6))
+#define LTC2943_REG_CONTROL_MODE_MASK 			(BIT(7) | BIT(6))
+#define LTC2943_REG_CONTROL_MODE_SCAN 			(BIT(7))
+#define LTC2943_REG_CONTROL_MODE_MANUAL 		(BIT(6))
+#define LTC2943_REG_CONTROL_MODE_AUTO 			(BIT(7) | BIT(6))
 #define LTC294X_REG_CONTROL_PRESCALER_MASK      (BIT(5) | BIT(4) | BIT(3))
 #define LTC294X_REG_CONTROL_SHUTDOWN_MASK       (BIT(0))
 #define LTC294X_REG_CONTROL_PRESCALER_SET(x) \
         ((x << 3) & LTC294X_REG_CONTROL_PRESCALER_MASK)
 #define LTC294X_REG_CONTROL_ALCC_CONFIG_DISABLED        0
 #define LTC294X_REG_CONTROL_ALCC_CONFIG_OUTPUT_ALERT        (BIT(2))
-#define LTC294X_REG_CONTROL_ALCC_CONFIG_INPUT_RESET_CHARGE        (BIT(1))
+#define LTC294X_REG_CONTROL_ALCC_CONFIG_INPUT_RESET_CHARGE  (BIT(1))
 
 #define LTC2941_NUM_REGS        0x08
 #define LTC2943_NUM_REGS        0x18
 
 struct ltc294x_info {
         struct i2c_client *client;      /* I2C Client pointer */
-//        struct power_supply *supply;    /* Supply pointer */
+//      struct power_supply *supply;    /* Supply pointer */
         struct power_supply_desc supply_desc;   /* Supply description */
-//        struct delayed_work work;       /* Work scheduler */
+//      struct delayed_work work;       /* Work scheduler */
         int num_regs;   /* Number of registers (chip type) */
         int id;         /* Identifier of ltc294x chip */
         int charge;     /* Last charge register content */
@@ -657,19 +656,6 @@ int ltc294x_get_current( int *val)
     int ret,i;
     u8 datar[2];
     s32 value;
-	
-	// reset will have manual trigger control flag sent
-	// ltc294x_reset(2);
-	
-	for(i=0;i<5;i++)
-	{
-		nrf_delay_ms(40);
-		ret = ltc294x_read_regs(info->client,
-                LTC294X_REG_CONTROL, &datar[0], 1);
-		if((datar[0]&LTC2943_REG_CONTROL_MODE_MASK)==0)
-			break;
-	}
-	if (i>=5) return -1;
 	
 	
 	ret = ltc294x_read_regs(info->client,
