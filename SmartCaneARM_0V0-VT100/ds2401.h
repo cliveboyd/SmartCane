@@ -1,4 +1,11 @@
-/* Copyright (c) <2015> <Shun Bai (wanyancan at gmail)>
+/*******************************************************************************
+ *	@file   ds2401.h
+ *	@device DS2401 1-Wire 48bit Device ID
+ *	@brief  Header file for DS2401 Device Driver.
+ *	@author Shun Bai (wanyancan@gmail.com)
+********************************************************************************
+
+Copyright (c) <2015> <Shun Bai (wanyancan at gmail)>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +27,6 @@ THE SOFTWARE.
 
  */
  
-
 #ifndef DS2401_H
 #define DS2401_H
 

@@ -24,25 +24,26 @@ THE SOFTWARE.
 #include "nrf_delay.h"
 #include "Communication.h"
 
-/**************************************************************************/
+/****************************************************************************************/
 /*!
-    @brief  Setups the HW (reads coefficients values, etc.)
+    @brief  i2C Altimeter-Pressure Sensor Setups the HW (reads coefficients values, etc.)
 */
-/**************************************************************************/
+/****************************************************************************************/
+
 bool MPL3115A2_init(void) {
   uint8_t whoami = MPL3115A2_read8(MPL3115A2_WHOAMI);
   while (whoami != 0xC4) {
     whoami = MPL3115A2_read8(MPL3115A2_WHOAMI);
   }
 
-  MPL3115A2_write8(MPL3115A2_CTRL_REG1, // 0x26
+  MPL3115A2_write8(MPL3115A2_CTRL_REG1, 			// 0x26
 	 MPL3115A2_CTRL_REG1_OS128 |
-	 MPL3115A2_CTRL_REG1_ALT);   // 0xB8
+	 MPL3115A2_CTRL_REG1_ALT);   					// 0xB8
 
-  MPL3115A2_write8(MPL3115A2_PT_DATA_CFG,   // 0x13
+  MPL3115A2_write8(MPL3115A2_PT_DATA_CFG,   		// 0x13
 	 MPL3115A2_PT_DATA_CFG_TDEFE |
 	 MPL3115A2_PT_DATA_CFG_PDEFE |
-	 MPL3115A2_PT_DATA_CFG_DREM);   // 0x07
+	 MPL3115A2_PT_DATA_CFG_DREM);   				// 0x07
   return true;
 }
 
@@ -133,7 +134,7 @@ bool MPL3115A2_write8(uint8_t a, uint8_t d) {
 		}
 		return true;
 	}
-		return true;
+	
 	return false;
 }
 

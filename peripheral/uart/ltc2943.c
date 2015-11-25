@@ -430,13 +430,13 @@ static int i2c_transfer(struct i2c_msg* pMsg, int numOfMsg)
 	}
 	return 0;
 }
-static int i2c_smbus_write_i2c_block_data(struct i2c_client *client, 
-		u8 reg_start, int num_regs, const u8 *buf)
-{
-	if(I2C_Write(client->addr, (unsigned char*)buf, num_regs, true))
-		return 0;
-	return -1;
-}
+//static int i2c_smbus_write_i2c_block_data(struct i2c_client *client, 
+//		u8 reg_start, int num_regs, const u8 *buf)
+//{
+//	if(I2C_Write(client->addr, (unsigned char*)buf, num_regs, true))
+//		return 0;
+//	return -1;
+//}
 
 static int ltc294x_read_regs(struct i2c_client *client,
         enum ltc294x_reg reg, u8 *buf, int num_regs)
@@ -488,7 +488,7 @@ static int ltc294x_write_regs(struct i2c_client *client,
 		localbuf[0] = reg;
 		
 		memcpy(&localbuf[1],buf,num_regs);
-        u8 reg_start = reg;
+//        u8 reg_start = reg;
 
         msgs[0].addr    = client->addr;
         msgs[0].len     = num_regs+1;
@@ -653,7 +653,7 @@ int ltc294x_get_voltage(int *val)
 int ltc294x_get_current( int *val)
 {
 	struct ltc294x_info *info = &ltc2943_info;
-    int ret,i;
+    int ret;
     u8 datar[2];
     s32 value;
 	

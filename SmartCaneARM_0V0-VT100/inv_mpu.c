@@ -1970,6 +1970,7 @@ int mpu_set_bypass(unsigned char bypass_on)
 		}
 		delay_ms(2000);
 		st.chip_cfg.bypass_mode = bypass_on;
+		
 		return 0;
 		
         if (i2c_read(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
@@ -1999,7 +2000,8 @@ int mpu_set_bypass(unsigned char bypass_on)
 		}
 		delay_ms(2000);
 		st.chip_cfg.bypass_mode = bypass_on;
-		return 0;
+		
+		return 0;			//Exiting here Pending Compass ???? ToDo
 		
         /* Enable I2C master mode if compass is being used. */
         if (i2c_read(st.hw->addr, st.reg->user_ctrl, 1, &tmp))

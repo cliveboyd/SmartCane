@@ -489,7 +489,7 @@ static int ltc294x_write_regs(struct i2c_client *client,
 		localbuf[0] = reg;
 		
 		memcpy(&localbuf[1],buf,num_regs);
-        u8 reg_start = reg;
+//		u8 reg_start = reg;
 
         msgs[0].addr    = client->addr;
         msgs[0].len     = num_regs+1;

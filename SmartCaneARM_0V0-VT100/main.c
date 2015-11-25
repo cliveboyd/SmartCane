@@ -20,35 +20,46 @@ THE SOFTWARE.
 
  */
  
+
 #include <stdbool.h> 
 #include <stdint.h>  					// for uint32_t etc.
-#include <string.h>  					// for memset()
 #include <stdio.h>
 
-#include "softdevice_handler.h"
+#include "app_uart.h"
+#include "app_error.h"
+#include "app_button.h"
+#include "app_timer.h"  				// for APP_TIMER_TICKS
+#include "app_gpiote.h" 				// for APP_GPIOTE_INIT
+
+#include "bsp.h"
+
+#include "nrf_delay.h"
+#include "nrf.h"
+#include "nrf_temp.h"
+
+#include <string.h>  					// for memset()
+#include "softdevice_handler.h"			// BlueTooth
 #include "pstorage.h"
 #include "ble_advertising.h"			// BlueTooth
 #include "device_manager.h"
 #include "ble_hci.h"  					// BlueTooth for set hci_status_code to sd_ble_gap_disconnect
 #include "ble_conn_params.h"			// BlueTooth
-#include "bsp.h" 						// for bsp_indication_set
+ 						// for bsp_indication_set
 #include "app_scheduler.h"  			// for scheduler APP_SCHED_INIT
 #include "app_timer_appsh.h"  			// for app_timer_event_t
 
 #include "nordic_common.h"  			// for UNUSED_PARAMETER
 
-#include "app_button.h"
-#include "app_timer.h"  				// for APP_TIMER_TICKS
-#include "app_gpiote.h" 				// for APP_GPIOTE_INIT
-#include "app_uart.h"
-#include "app_error.h"
+
+
+
 #include "nrf_assert.h" 				// for ASSERT
 
 
 #include "ble_ad7746.h"
 #include "AD7746.h"
 
-#include "nrf_temp.h"
+
 #include "sensorADC.h"
 
 #include "ds2401.h"
@@ -62,12 +73,10 @@ THE SOFTWARE.
 #include "MPL3115.h"
 #include "ltc2943.h"
 
-
 #define IS_SRVC_CHANGED_CHARACT_PRESENT  0                                          /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
-
-#define DEVICE_NAME                      "SmartCane 1V0"                                /**< Name of device. Will be included in the advertising data. */
-#define DEVICE_APPEARANCE				BLE_APPEARANCE_UNKNOWN						/**< Device appearance **/
+#define DEVICE_NAME                      "SmartCane 1V0"							/**< Name of device. Will be included in the advertising data. */
+#define DEVICE_APPEARANCE				 BLE_APPEARANCE_UNKNOWN						/**< Device appearance **/
 // for ble_conn_param_init param
 #define APP_TIMER_PRESCALER              0                                          /**< Value of the RTC1 PRESCALER register. */
 #define APP_TIMER_MAX_TIMERS             (6+BSP_APP_TIMERS_NUMBER)                  /**< Maximum number of simultaneously created timers. */
@@ -86,7 +95,7 @@ THE SOFTWARE.
 #define MAX_CONN_INTERVAL                MSEC_TO_UNITS(300, UNIT_1_25_MS)           /**< Maximum acceptable connection interval (0.65 second). */
 #define SLAVE_LATENCY                    0                                          /**< Slave latency. */
 #define CONN_SUP_TIMEOUT                 MSEC_TO_UNITS(4000, UNIT_10_MS)            /**< Connection supervisory timeout (4 seconds). */
-#define TX_POWER_LEVEL                    (0)                                              /**< TX Power Level value. This will be set both in the TX Power service, in the advertising data, and also used to set the radio transmit power. */
+#define TX_POWER_LEVEL                   (0) 										/**< TX Power Level value. This will be set both in the TX Power service, in the advertising data, and also used to set the radio transmit power. */
 
 
 
@@ -118,20 +127,40 @@ THE SOFTWARE.
 
 //static ble_uuid_t m_adv_uuids[1] = {{AD7746_UUID_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN}}; /**< Universally unique service identifiers. */
 
-#define PSHOLD_PIN_NUMBER  (28U)	
-#define MOTOR_PIN_NUMBER (7U)
-																	 
-static uint16_t m_conn_handle = 		BLE_CONN_HANDLE_INVALID;   /**< Handle of the current connection. */
-static dm_application_instance_t        m_app_handle;         						/**< Application identifier allocated by device manager */
-static app_timer_id_t                   m_cap_timer_id;                        		/**<  timer. */
-static app_timer_id_t					m_temp_timer_id;  							/**<  timer. */
-//static app_timer_id_t 				m_config_timer_id;							/**<  timer. */
+
+
+//	*******************************************
+//
+//		NRF51822 Port P0.xx IO Assignments
+//
+//	*******************************************
+#define PSHOLD_PIN_NUMBER		(28U)		//Assert High to Hold 3V3 Power ---> Upon SW1 Long Push
+#define SMART_RST_PIN_NUMBER	(01U)		//Assert HIGH to Force a 3V3 Rail Shutdown of STM6601 (Requires Physical Button Push to Iniatiate Power-Up)
+
+#define PB_SW1_PIN_NUMBER		(06U)		//INPUT PBOUT Image of Push Button SW1 State (Normally High)
+#define PB_SW2_PIN_NUMBER		(11U)		//INPUT Push Button SW2 (Normally High via 3V3 Pull-up) Active Low
+
+#define MOTOR_PIN_NUMBER		(07U)		//Assert HIGH enables 1V2 Linear Regulator to Drive Onboard 9000RPM Haptic Vibration Motor
+#define AUX_MOTOR_PIN_NUMBER	(25U)		//Assert HIGH Provides Switched Ground Sink Path for 3V3 Rail via 33R Series Resistance
+
+#define AUDIO_CNTRL_PIN_NUMBER	(23U)		//Assert LOW To ENABLE onboard Audio Amplifier used to Drive Off Board Speaker.
+#define AUDIO_SOURCE_PIN_NUMBER	(00U)		//AC Coupled Square Wave providing signal to Speaker Audio Amp
+
+#define LED_RED_PIN_NUMBER		(30U)		//Assert LOW To Enable LED1 RED Diagnostic LED
+
+#define GAUGE_NALCC_PIN_NUMBER	(12U)		//INPUT (INT) to signall Pre-Programmed Alarm States of Gas Gauge LTC2943
+
+
+static uint16_t m_conn_handle = 		BLE_CONN_HANDLE_INVALID;	/**< Handle of the current connection. */
+static dm_application_instance_t        m_app_handle;				/**< Application identifier allocated by device manager */
+static app_timer_id_t                   m_cap_timer_id;				/**<  timer. */
+static app_timer_id_t					m_temp_timer_id;			/**<  timer. */
+//static app_timer_id_t 				m_config_timer_id;			/**<  timer. */
 								
 
 static bool finishedADC;
 
-
-// this callback will be called when write requrest is received by BLE softdevice 
+// this callback will be active upon write request by BLE softdevice 
 // to write config data to CONFIG_CHARacteristic
 void ad7746_on_write_config_callback (ble_AD7746_t *p_ad7746, 
 	CONFIG_bytes_t *p_config, uint8_t len)
@@ -162,11 +191,11 @@ static void button_event_handler(bsp_event_t event)
 #include "Communication.h"
 
 
-#define MAX_TEST_DATA_BYTES     (55U)               /**< max number of test bytes per TX Burst to be used for tx and rx. */
-#define UART_TX_BUF_SIZE 512                        /**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE 1                          /**< UART RX buffer size. */
+#define MAX_TEST_DATA_BYTES (128U)			/**< max number of test bytes per TX Burst to be used for tx and rx. */
+#define UART_TX_BUF_SIZE 	512				/**< UART TX buffer size. */
+#define UART_RX_BUF_SIZE 	1				/**< UART RX buffer size. */
 
-uint8_t MenuLevel=0;								//Initalise Default Menu Level to 00 --> Main Menu
+uint8_t MenuLevel=0;						//Initalise Default Menu Level to 00 --> Main Menu
 
 void uart_error_handle(app_uart_evt_t * p_event)
 {
@@ -180,20 +209,16 @@ void uart_error_handle(app_uart_evt_t * p_event)
     }
 }
 
-
-
 /** @brief 		Function to load a single top level VT100 Terminal Menu. 
  *  @details 	Transmitts VT100 ESC Sequenceone character to clear screen and load menu data.
  *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
- *  @ref 		TX_PIN_NUMBER must be connected to @ref RX_PIN_NUMBER)
+ *  @ref 		
  */
 static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
 {
-	
-//  Static menu loaded once and refreshed with menu level values elswhere.
 		MenuLevel=00;
 
-		printf("\x1B[2J");		//VT100 CLR SCREEN
+		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
 		printf("\x1B[01;10H  GDV-UoM SMARTCANE MAIN MENU");
 		printf("\x1B[01;50HDEVICE ID = ");
@@ -206,8 +231,9 @@ static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
 		printf("\x1B[12;10H  5... Memory Functions");
 		printf("\x1B[14;10H  6... Power Management");
 		printf("\x1B[16;10H  7... Cane Diagnostics");
+		printf("\x1B[17;10H  7... System Diagnostics");
 
-		printf("\x1B[18;10H  9... Shutdown");
+		printf("\x1B[19;10H  9... Shutdown");
 
 		printf("\x1B[24;10H  ?... Help");
 }
@@ -481,6 +507,43 @@ static void UART_VT100_Menu_7()		    				// $$$$$$  CANE DIAGNOSTIC MENU $$$$$$
 		printf("\x1B[24;05H  X... exit    ?...Help");
 }	
 
+/** @brief 		Function to load SYSTEM DIAGNOSTIC MENU to VT100 Terminal Screen. 
+ *  @details 	Loads VT100 ESC Sequenceone character to clear screen and load menu data.
+ *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
+ *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
+ */
+static void UART_VT100_Menu_8()		    				// $$$$$$  SYSTEM DIAGNOSTIC MENU $$$$$$
+{
+		MenuLevel=80;
+	
+		printf("\x1B[2J");			//VT100 CLR SCREEN
+		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-8 SYSTEM DIAGNOSTIC MENU");
+		 
+		printf("\x1B[05;05H ErrorCount 01=");
+		printf("\x1B[06;05H ErrorCount 02=");
+		printf("\x1B[07;05H ErrorCount 03= ");
+		printf("\x1B[08;05H ErrorCount 04= ");
+
+		nrf_delay_ms(5);
+		 
+		printf("\x1B[05;30H SPARE");
+		printf("\x1B[06;30H Spare = ");
+		printf("\x1B[07;30H Spare = ");
+		printf("\x1B[08;30H Spare = ");
+
+		nrf_delay_ms(5);
+
+		printf("\x1B[05;55H SPARE");
+		printf("\x1B[06;55H Spare = ");
+		printf("\x1B[07;55H Spare = ");
+		printf("\x1B[08;55H Spare = ");
+
+		nrf_delay_ms(5);		
+
+		printf("\x1B[24;05H  X... exit    ?...Help");
+}	
+
 /** @brief 		Function to load Screen Help MENU to VT100 Terminal Screen. 
  *  @details 	Loads VT100 ESC Sequenceone character to clear screen and load menu data.
  *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
@@ -518,8 +581,7 @@ static void UART_VT100_Help_Menu()						// $$$$$$  SCREEN HELP MENU  $$$$$$
 		printf("\x1B[24;05H  X... exit    ?...Help");
 }	
 
-/** @brief 		Function to load MAIN MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load MAIN MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Main_Menu()			// $$$$$$  MAIN MENU DATA REFRESH  $$$$$$
 {
 	    printf("\x1B[1;60H 00000000");					//Device ID ToDo
@@ -528,8 +590,7 @@ static void UART_VT100_Display_Data_Main_Menu()			// $$$$$$  MAIN MENU DATA REFR
 		printf("\x1B[01;75H");							//Park VT100 cursor at row 01 column 75
 }	
 
-/** @brief 		Function to load ALL SENSOR Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load ALL SENSOR Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU DATA REFRESH  $$$$$$
 {
 	int value;
@@ -558,8 +619,7 @@ static void UART_VT100_Display_Data_GPS()				// $$$$$$ GPS MENU DATA REFRESH  $$
 		printf("\x1B[10;19H%10d",value);
 }	
 
-/** @brief 		Function to load INERTIAL MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load INERTIAL MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MENU DATA REFRESH  $$$$$$
 {
 	int value;
@@ -573,8 +633,7 @@ static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MENU DATA R
 }	
 
 
-/** @brief 		Function to load ALTITUDE MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load ALTITUDE MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Altitude()			// $$$$$$  ALTITUDE MENU DATA REFRESH  $$$$$$
 {
 	int value;
@@ -588,8 +647,7 @@ static void UART_VT100_Display_Data_Altitude()			// $$$$$$  ALTITUDE MENU DATA R
 }	
 
 
-/** @brief 		Function to load MEMORY MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load MEMORY MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Memory()			// $$$$$$  Memory MENU DATA REFRESH  $$$$$$
 {
 	int value;
@@ -604,8 +662,7 @@ static void UART_VT100_Display_Data_Memory()			// $$$$$$  Memory MENU DATA REFRE
 
 
 
-/** @brief 		Function to load POWER MANAGEMENT MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load POWER MANAGEMENT MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Power()		    	// $$$$$$  POWER MANAGEMENT MENU DATA REFRESH  $$$$$$
 {
 	int value;
@@ -635,8 +692,7 @@ static void UART_VT100_Display_Data_Power()		    	// $$$$$$  POWER MANAGEMENT ME
 }	
 
 
-/** @brief 		Function to load CANE DIAGNOSTICS MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load CANE DIAGNOSTICS MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Cane()				// $$$$$$  CANE DIAGNOSTICS MENU DATA REFRESH  $$$$$$
 {
 	int value;
@@ -649,8 +705,7 @@ static void UART_VT100_Display_Data_Cane()				// $$$$$$  CANE DIAGNOSTICS MENU D
 		printf("\x1B[10;19H%10d",value);
 }	
 
-/** @brief 		Function to load ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs to UART Terminal Screen.  
-*/
+/** @brief 		Function to load ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs to UART Terminal Screen.  */
 static void Load_VT100_All_Menues()		    	// $$$$$$  LOAD ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs  $$$$$$
 	{
 	printf("\x1B[01;75H");						//Park VT100 cursor at row 01 column 75
@@ -688,6 +743,10 @@ static void Load_VT100_All_Menues()		    	// $$$$$$  LOAD ALL VT100 IMMEDIATE AN
 		
 		case '7':
 			 UART_VT100_Menu_7();							
+		break;
+		
+		case '8':
+			 UART_VT100_Menu_8();							
 		break;
 		
 		case 'x':
@@ -748,7 +807,6 @@ static void Load_VT100_All_Menues()		    	// $$$$$$  LOAD ALL VT100 IMMEDIATE AN
 		nrf_delay_ms(5);
 	}
 	}
-
 
 void someother_module_init()
 {
@@ -829,7 +887,7 @@ static void capmeasure_timer_handler(void * p_context)
 }
 
 int32_t readNRF_TEMP() {
-		int32_t ret = 0;
+	int32_t ret = 0;
     while (true)
     {
         NRF_TEMP->TASKS_START = 1; /** Start the temperature measurement. */
@@ -853,7 +911,9 @@ int32_t readNRF_TEMP() {
 }
 
 #define MEASURESIZE 128
+
 static float dataToSend[MEASURESIZE];
+
 // TODO: why can't send bluetooth notify in this callback? 
 //static void blockSend(float *Data, unsigned int len) { 
 //	if (m_AD7746.conn_handle != BLE_CONN_HANDLE_INVALID) {
@@ -866,7 +926,7 @@ static float dataToSend[MEASURESIZE];
 typedef enum  {
 	DataTypeNone = 0,
 	DataTypeTEMP = 1,
-}SendDataType;
+}	SendDataType;
 
 static SendDataType resumetype;
 unsigned int lastSendIndex;
@@ -1032,8 +1092,7 @@ static void timers_init(void)
 
 }
 
-/**@brief Function for starting application timers.
- */
+/**@brief Function for starting application timers*/
 static void application_timers_start(void)
 {
     uint32_t err_code;
@@ -1185,11 +1244,11 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
  */
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
-    dm_ble_evt_handler(p_ble_evt);  // manages Active and Bonded Peers
+    dm_ble_evt_handler(p_ble_evt);  				// manages Active and Bonded Peers
     ble_conn_params_on_ble_evt(p_ble_evt);
 	ble_AD7746_on_ble_evt(&m_AD7746, p_ble_evt);    // TODO: customized service handler
-	on_ble_evt(p_ble_evt);  											 	// TODO: common application hander for ble event
-		ble_advertising_on_ble_evt(p_ble_evt);   // it will monitor and restart advertising on Disconnection
+	on_ble_evt(p_ble_evt); 							// TODO: common application hander for ble event
+		ble_advertising_on_ble_evt(p_ble_evt);   	// it will monitor and restart advertising on Disconnection
 }
 
 /**@brief Function for dispatching a system event to interested modules.
@@ -1201,7 +1260,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
  */
 static void sys_evt_dispatch(uint32_t sys_evt)
 {
-	  pstorage_sys_event_handler(sys_evt);
+	pstorage_sys_event_handler(sys_evt);
     ble_advertising_on_sys_evt(sys_evt);
 }
 
@@ -1261,6 +1320,7 @@ static void DeviceNameFromID(char* name, int len)
  * @details This function sets up all the necessary GAP (Generic Access Profile) parameters of the
  *          device including the device name, appearance, and the preferred connection parameters.
  */
+
 static void gap_params_init(void)
 {
     uint32_t                err_code;
@@ -1299,7 +1359,7 @@ static void gap_params_init(void)
  */
 static void services_init(void)
 {
-    uint32_t       err_code;
+	uint32_t       err_code;
     ble_AD7746_init_t ad7746_init;
 	memset(&ad7746_init, 0, sizeof(ad7746_init));
 	
@@ -1428,8 +1488,9 @@ static void scheduler_init(void)
 static uint32_t device_manager_evt_handler(dm_handle_t const * p_handle,
                                            dm_event_t const  * p_event,
                                            ret_code_t        event_result)
-{
-    APP_ERROR_CHECK(event_result);
+{		
+    
+	APP_ERROR_CHECK(event_result);
 
 #ifdef BLE_DFU_APP_SUPPORT
     if (p_event->event_id == DM_EVT_LINK_SECURED)
@@ -1483,15 +1544,16 @@ static void device_manager_init(void)
  * @param[in] p_data   Data to be send to UART module.
  * @param[in] length   Length of the data.
  */
+
 /**@snippet [Handling the data received over BLE] */
-//static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
-//{
-//    for (uint32_t i = 0; i < length; i++)
-//    {
-//        while(app_uart_put(p_data[i]) != NRF_SUCCESS);
-//    }
-//    while(app_uart_put('\n') != NRF_SUCCESS);
-//}
+static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
+{
+    for (uint32_t i = 0; i < length; i++)
+    {
+        while(app_uart_put(p_data[i]) != NRF_SUCCESS);
+    }
+    while(app_uart_put('\n') != NRF_SUCCESS);
+}
 /**@snippet [Handling the data received over BLE] */
 
 /**@brief Callback function for asserts in the SoftDevice.
@@ -1518,7 +1580,8 @@ static void device_manager_init(void)
  #include "ble_debug_assert_handler.h"
  
 void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name)
-{
+{	return;		/////
+	
     // This call can be used for debug purposes during application development.
     // @note CAUTION: Activating this code will write the stack to flash on an error.
     //                This function should NOT be used in a final product.
@@ -1532,7 +1595,7 @@ void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p
     //NVIC_SystemReset();
 }
 void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
-{
+{		return;		/////
 		if (line_num == 1371) {
 				return;
 		}
@@ -1552,36 +1615,17 @@ int main(void)
 {
     uint32_t err_code;
 
-	//Load UART Parameters ... USB UART Virtual COM port
-	const app_uart_comm_params_t comm_params =
-      {
-          RX_PIN_NUMBER,
-          TX_PIN_NUMBER,
-          RTS_PIN_NUMBER,
-          CTS_PIN_NUMBER,
-          APP_UART_FLOW_CONTROL_DISABLED,
-          false,
-          UART_BAUDRATE_BAUDRATE_Baud38400
-      };
-
-    APP_UART_FIFO_INIT(&comm_params,
-                         UART_RX_BUF_SIZE,
-                         UART_TX_BUF_SIZE,
-                         uart_error_handle,
-                         APP_IRQ_PRIORITY_LOW,
-                         err_code);
-    APP_ERROR_CHECK(err_code);
-	
+		  
     // Initialize softdevice stack.
     ble_stack_init();
 	
 	// ps hold
 		    NRF_GPIO->PIN_CNF[PSHOLD_PIN_NUMBER] =     \
-        (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos) \
-      | (GPIO_PIN_CNF_DRIVE_S0S1     << GPIO_PIN_CNF_DRIVE_Pos) \
-      | (GPIO_PIN_CNF_PULL_Pullup    << GPIO_PIN_CNF_PULL_Pos)  \
+        (GPIO_PIN_CNF_SENSE_Disabled 	<< GPIO_PIN_CNF_SENSE_Pos) \
+      | (GPIO_PIN_CNF_DRIVE_S0S1     	<< GPIO_PIN_CNF_DRIVE_Pos) \
+      | (GPIO_PIN_CNF_PULL_Pullup    	<< GPIO_PIN_CNF_PULL_Pos)  \
       | (GPIO_PIN_CNF_INPUT_Disconnect  << GPIO_PIN_CNF_INPUT_Pos) \
-      | (GPIO_PIN_CNF_DIR_Output      << GPIO_PIN_CNF_DIR_Pos);	
+      | (GPIO_PIN_CNF_DIR_Output      	<< GPIO_PIN_CNF_DIR_Pos);	
 	
 	NRF_GPIO->DIRSET = (1UL << PSHOLD_PIN_NUMBER); 
 	NRF_GPIO->OUTSET = (1UL << PSHOLD_PIN_NUMBER); 
@@ -1611,10 +1655,30 @@ int main(void)
 
 
 		// INIT Battery Gauge via I2C
-//		uint8_t status = 0;	  
-//		while(!status)  status = I2C_Init();
+		uint8_t status = 0;	  
+		while(!status)  status = I2C_Init();
 		ltc294x_init();
 
+		//Load UART Parameters ... USB UART Virtual COM port
+	const app_uart_comm_params_t comm_params =
+      {
+          RX_PIN_NUMBER,
+          TX_PIN_NUMBER,
+          RTS_PIN_NUMBER,
+          CTS_PIN_NUMBER,
+          APP_UART_FLOW_CONTROL_DISABLED,
+          false,
+          UART_BAUDRATE_BAUDRATE_Baud38400
+      };
+
+		APP_UART_FIFO_INIT(&comm_params,
+							 UART_RX_BUF_SIZE,
+							 UART_TX_BUF_SIZE,
+							 uart_error_handle,
+							 APP_IRQ_PRIORITY_LOW,
+							 err_code);
+		APP_ERROR_CHECK(err_code);
+	
 		UART_VT100_Main_Menu();					//Initialise Default UART VT100 Menu
 
 	  
@@ -1632,7 +1696,9 @@ int main(void)
 //			err_code = sd_app_evt_wait();		// BYPASS Menu not working possible TRAP pending unkknowns !!!!!!!
 //			APP_ERROR_CHECK(err_code);			// BYPASS
 			
-			TLA_Count=TLA_Count++;
+			Load_VT100_All_Menues();		//Loads VT
+			
+			TLA_Count=TLA_Count+1;
 			if (TLA_Count>=25) TLA_Count=0;
 		
 			switch (TLA_Count)
@@ -1656,8 +1722,9 @@ int main(void)
 			case 25:
 				//Load_VT100_All_Menues();
 				break;
+
 			}	//end switch		
 			
 		}	// end while
 		
-}	//end main
+}	// end main

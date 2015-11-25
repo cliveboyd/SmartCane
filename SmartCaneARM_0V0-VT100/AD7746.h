@@ -1,8 +1,10 @@
-/***************************************************************************//**
- *   @file   AD7746.h
- *   @brief  Header file of AD7746 Driver.
- *   @author DBogdan (dragos.bogdan@analog.com)
+/*******************************************************************************
+ *	@file   AD7746.h
+ *	@device AD7746 I2C Quad or (Dual Differential) Capacitor Sensor
+ *	@brief  Header file of AD7746 Driver.
+ *	@author DBogdan (dragos.bogdan@analog.com)
 ********************************************************************************
+
  * Copyright 2012(c) Analog Devices, Inc.
  *
  * All rights reserved.

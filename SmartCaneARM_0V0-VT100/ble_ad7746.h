@@ -1,4 +1,11 @@
-/* Copyright (c) <2015> <Shun Bai (wanyancan at gmail)>
+/***************************************************************************//**
+ *	@file   ble_AD7746.h
+ *	@device AD7746 I2C Quad (Dual Differential) Capacitor Sensor
+ *	@brief  Header file of Blue tooth AD7746 Capacitor Sensor Interface Driver.
+ *	@author Shun Bai (wanyancan@gmail.com)
+********************************************************************************
+
+Copyright (c) <2015> <Shun Bai (wanyancan at gmail)>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

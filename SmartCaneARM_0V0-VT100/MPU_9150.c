@@ -294,21 +294,20 @@ int16_t readTempData()
 }
  
 void resetMPU9150() {
-  // reset device
-	// search for the correct address
+// reset device
+// search for the correct address
 //	while(1)
 //	for(int i=0;i<=0xff;i++)
 //	{
 //		MPU9150_writeByte_(i, PWR_MGMT_1, 0x80, false);
-//		
 //	}
+	
   MPU9150_writeByte(MPU9150_ADDRESS, PWR_MGMT_1, 0x80); // Write a one to bit 7 reset bit; toggle reset device
   wait(0.1);
 	
   }
-  
-  
-void initMPU9150()
+    
+void initMPU9150()		//Inertial Sensor
 {  
 	unsigned char status = 0;
     uint8_t c, temp;

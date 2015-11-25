@@ -10,7 +10,7 @@
  *
  */
 
-/** @file
+/* @file
  * @defgroup uart_example_main main.c
  * @{
  * @ingroup uart_example
@@ -33,8 +33,8 @@
 
 
 #define MAX_TEST_DATA_BYTES     (55U)               /**< max number of test bytes per TX Burst to be used for tx and rx. */
-#define UART_TX_BUF_SIZE 512                        /**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE 1                          /**< UART RX buffer size. */
+#define UART_TX_BUF_SIZE 		512                 /**< UART TX buffer size. */
+#define UART_RX_BUF_SIZE 		1                   /**< UART RX buffer size. */
 
 uint8_t MenuLevel=0;								//Initalise Default Menu Level to 00 --> Main Menu
 
@@ -49,8 +49,6 @@ void uart_error_handle(app_uart_evt_t * p_event)
         APP_ERROR_HANDLER(p_event->data.error_code);
     }
 }
-
-
 
 /** @brief 		Function to load a single top level VT100 Terminal Menu. 
  *  @details 	Transmitts VT100 ESC Sequenceone character to clear screen and load menu data.
@@ -147,7 +145,7 @@ static void UART_VT100_Menu_2()							// $$$$$$  GPS GLOBAL POSITION MENU  $$$$$
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
 		MenuLevel=20;
 	
-		printf("\x1B[2J");		//VT100 CLR SCREEN
+		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-2  GPS GLOBAL POSITION SENSOR");
 		 
@@ -180,7 +178,7 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
 		MenuLevel=30;
 	
-		printf("\x1B[2J");		//VT100 CLR SCREEN
+		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-3  INERTIAL SENSOR MENU");
 		 
@@ -221,7 +219,7 @@ static void UART_VT100_Menu_4()							// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$
 //  Static menu loaded once and refreshed with MenuLevel values elswhere.
 		MenuLevel=40;
 	
-		printf("\x1B[2J");		//VT100 CLR SCREEN
+		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-4  PRESSURE and ALTITUDE SENSOR");
 		 
@@ -252,7 +250,7 @@ static void UART_VT100_Menu_5()							// $$$$$$  SFLASH EEPROM SoC_FLASH MEMORY 
 {
 		MenuLevel=50;
 	
-		printf("\x1B[2J");		//VT100 CLR SCREEN
+		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-5 SFLASH EEPROM SoC_FLASH MEMORY MANAGEMENT MENU");
 		 
@@ -442,7 +440,6 @@ static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MENU DATA R
 		printf("\x1B[10;19H%10d",value);
 }	
 
-
 /** @brief 		Function to load ALTITUDE MENU Refresh Data to VT100 Terminal Screen.  
 */
 static void UART_VT100_Display_Data_Altitude()			// $$$$$$  ALTITUDE MENU DATA REFRESH  $$$$$$
@@ -521,16 +518,16 @@ static void UART_VT100_Display_Data_Cane()				// $$$$$$  CANE DIAGNOSTICS MENU D
 
 /** @brief 		Function to load ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs to UART Terminal Screen.  
 */
-static void Load_VT100_All_Menues()		    	// $$$$$$  LOAD ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs  $$$$$$
+static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs  $$$$$$
 	{
-	printf("\x1B[01;75H");						//Park VT100 cursor at row 01 column 75
+	printf("\x1B[01;75H");								//Park VT100 cursor at row 01 column 75
 	
 	nrf_delay_ms(5);
 	
-	uint8_t cr;
-	if(app_uart_get(&cr) == NRF_SUCCESS) 
+	uint8_t ch;
+	if(app_uart_get(&ch) == NRF_SUCCESS) 
 	{
-		switch (cr) 
+		switch (ch) 
 		{
 		case '1':
 			UART_VT100_Menu_1();

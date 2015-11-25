@@ -1,4 +1,12 @@
-/* Copyright (c) <2015> <Shun Bai (wanyancan at gmail)>
+/***************************************************************************//**
+ *	@file   A2035H.h
+ *	@device GPS Multi Sateliite Hybrid RF Receiver UART-I2C-SPI
+ *	@brief  Header file of A2035H Driver.
+ *	@author Shun Bai (wanyancan@gmail.com)
+********************************************************************************
+
+
+Copyright (c) <2015> <Shun Bai (wanyancan at gmail)>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

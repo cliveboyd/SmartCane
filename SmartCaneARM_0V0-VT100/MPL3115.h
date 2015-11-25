@@ -1,4 +1,11 @@
-/* Copyright (c) <2015> <Shun Bai (wanyancan at gmail)>
+/*******************************************************************************
+ *	@file   MPL3115.h
+ *	@device MPU-9250 I2C 9-Axis Inertial Sensor
+ *	@brief  Header file for MPL3115 Device Driver.
+ *	@author Shun Bai (wanyancan@gmail.com)
+********************************************************************************
+
+Copyright (c) <2015> <Shun Bai (wanyancan at gmail)>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

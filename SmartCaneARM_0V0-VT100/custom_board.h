@@ -73,11 +73,11 @@ THE SOFTWARE.
 #define BUTTONS_LIST {BUTTON_0,BUTTON_1}
 #define BUTTONS_MASK   0x000000FF
 
-// UART connection with J-Link
-#define RX_PIN_NUMBER  26
-#define TX_PIN_NUMBER  27
-#define CTS_PIN_NUMBER 10
-#define RTS_PIN_NUMBER 8
+// UART connection 
+#define RX_PIN_NUMBER  26		//UART via USB CP2103
+#define TX_PIN_NUMBER  27		//UART via USB CP2130
+#define CTS_PIN_NUMBER 22		//Spare IO Pin
+#define RTS_PIN_NUMBER 22		//Spare IO Pin
 #define HWFC           true
 
 #endif
