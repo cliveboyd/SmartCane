@@ -43,13 +43,58 @@
 
 #include "ltc2943.h"
 
-
+#define DEVICE_NAME				"SCANE1V0"			//Keep under 8 characters to allow 8 char DS2401 ID to be pre appended (Max --> 16)
 
 #define MAX_TEST_DATA_BYTES     (55U)               /**< max number of test bytes per TX Burst to be used for tx and rx. */
 #define UART_TX_BUF_SIZE 		512                 /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE 		1                   /**< UART RX buffer size. */
 
-uint8_t MenuLevel=0;								//Initalise Default Menu Level to 00 --> Main Menu
+
+
+//	*******************************************
+//
+//		NRF51822 Port P0.xx IO Assignments
+//
+//	*******************************************
+#define PSHOLD_PIN_NUMBER		(28U)				//Assert High to Hold 3V3 Power ---> Upon SW1 Long Push
+
+
+
+//	************************************************************
+//
+//		NRF51822 Port P0.xx IO Assignments SMARTCANE PCB 1V0
+//
+//	************************************************************
+
+#define PSHOLD_PIN_NUMBER		(28U)				//Assert High 3V3 Power ---> Upon SW1 Long Push STM6601.pin4
+#define SMART_RST_PIN_NUMBER	(01U)				//Assert HIGH Force a 3V3 Rail Shutdown of STM6601.pin2 via FET (Requires Physical Button Push to Iniatiate Power-Up)
+
+#define PB_SW1_PIN_NUMBER		(06U)				//INPUT PBOUT SW1 Image of Push Button State (Normally High) STM6601.pin8
+#define PB_SW2_PIN_NUMBER		(11U)				//INPUT SW2 Push Button (Normally High via 3V3 Pull-up) Active Low
+
+#define MOTOR_PIN_NUMBER		(07U)				//Assert HIGH Enables 1V2 Linear Regulator to Drive Onboard 9000RPM Haptic Vibration Motor RT9030.pin3
+#define AUX_MOTOR_PIN_NUMBER	(25U)				//Assert HIGH Provides Switched Ground Sink Path for 3V3 Rail via 33R Series Resistance
+
+#define AUDIO_CNTRL_PIN_NUMBER	(23U)				//Assert LOW To ENABLE onboard Audio Amplifier used to Drive Off Board Speaker LM4800.pin5
+#define AUDIO_SOURCE_PIN_NUMBER	(00U)				//Analog OUTPUT - AC Coupled Square Wave providing signal to Speaker Audio Amp LM4880.pin2
+
+#define LED_RED_PIN_NUMBER		(30U)				//Assert LOW To Enable LED1 RED Diagnostic LED
+
+#define GPS_NEN_PIN_NUMBER		(04U)				//Assert LOW GPS Not Enable - Disables Secondary Linear 3V3 Regulator running directly off VBAT
+#define GPS_ONOFF_PIN_NUMBER	(13U)				//Assert HIGH-LOW-HIGH GPS Power Up-Down On-Off Sequencer A2035-H.pin18
+#define GPS_NRST_PIN_NUMBER		(10U)				//Assert LOW  GPS Reset A2035-H.pin1
+
+#define ADC_VBAT_PIN_NUMBER		(05U)				//Analog Signal tied to 150k//680k Voltage Divider Measuring VBAT ratio
+
+#define GAUGE_NALCC_PIN_NUMBER	(12U)				//INPUT (INT) Gas Gauge Interupt I2C Programmable Alarm States LTC2943.pin6.
+#define INERTIAL_INT_PIN_NUMBER	(03U)				//INPUT (INT) Inertial Sensor Interupt MPU9250.pin12
+#define PRESS1_PIN_NUMBER		(29U)				//INPUT (INT) Pressure Sensor PRESS1 Interupt MPL3115.pin6
+#define PRESS2_PIN_NUMBER		(02U)				//INPUT (INT) Pressure Sensor PRESS2 Interupt MPL3115.pin5
+#define GPS_INT_PIN_NUMBER		(14U)				//INPUT (INT) GPS External Interupt A2035-H.pin19
+
+
+char DS2401_ID[16];									// String to hold ---> DS2401 (4bits) + Device_ID
+uint8_t MenuLevel=0;								// Initalise Default Menu Level to 00 --> Main Menu
 
 void uart_error_handle(app_uart_evt_t * p_event)
 {
@@ -63,6 +108,49 @@ void uart_error_handle(app_uart_evt_t * p_event)
     }
 }
 
+static void DeviceNameFromID(char* name, int len)	//Redefine Device name with Device ID + Device Name
+{
+	if(len<16) {
+		strncpy(name, DEVICE_NAME, len);
+	} else {
+		while(!ds2401_initAndRead()) ;
+		int j = 0;
+		bool skipLeading = true;
+		for(int i=0;i<8;i++)
+		{
+			if(ds2401_id[i]==0 && skipLeading) continue;
+			else skipLeading = false;
+			sprintf(name+j*2, "%02X", ds2401_id[i]);
+			j++;
+		}
+		if (j*2<len) {
+			strncpy(name+j*2, DEVICE_NAME, len-j*2);
+		}
+	}
+	return;
+}
+
+static void GrabDeviceID(char* name, int len)		//DS2401 xxxxxxxx
+{
+	if(len<16) {
+		strncpy(name, DEVICE_NAME, len);
+	} else {
+		while(!ds2401_initAndRead()) ;
+		int j = 0;
+		bool skipLeading = true;
+		for(int i=0;i<8;i++)
+		{
+			if(ds2401_id[i]==0 && skipLeading) continue;
+			else skipLeading = false;
+			sprintf(name+j*2, "%02X", ds2401_id[i]);
+			j++;
+		}
+		if (j*2<len) {
+			strncpy(name+j*2, "", len-j*2);
+		}
+	}
+	return;
+}
 /** @brief 		Function to load a single top level VT100 Terminal Menu. 
  *  @details 	Transmitts VT100 ESC Sequenceone character to clear screen and load menu data.
  *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
@@ -77,8 +165,8 @@ static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
 		printf("\x1B[2J");								//VT100 CLR SCREEN
 		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;10H  GDV-UoM SMARTCANE MAIN MENU");
-		printf("\x1B[01;50HDEVICE ID = ");
-		printf("\x1B[02;50H   STATUS = ");
+		printf("\x1B[01;45HDEVICE ID = ");
+		printf("\x1B[02;45H   STATUS = ");
 
 		printf("\x1B[04;10H  1... All Sensors");
 		printf("\x1B[06;10H  2... GPS Global Position");
@@ -425,18 +513,14 @@ static void UART_VT100_Help_Menu()						// $$$$$$  SCREEN HELP MENU  $$$$$$
 /** @brief		Function to load MAIN MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Main_Menu()			// $$$$$$  MAIN MENU DATA REFRESH  $$$$$$
 {
-//		char *ID;
-//		int *len;
-//		DeviceNameFromID(ID, len);
+		printf("\x1B[01;55H %s %s", DEVICE_NAME, DS2401_ID);			//Device Name + Device ID
 
-//		printf("\x1B[01;60H name");						//Device ID
-
-		printf("\x1B[02;60H READY");					//Self Test Status ToDo
+		printf("\x1B[02;55H READY");					//Self Test Status ToDo
 	
 //		tempf = readNRF_TEMP();
-//		printf("\x1B[03;60H%10d ", (int) tempf);		//SoC nrf51822 Internal Temperature
+//		printf("\x1B[03;55H%10d ", (int) tempf);		//SoC nrf51822 Internal Temperature
 
-		printf("\x1B[01;75H");							//Park VT100 cursor at row 01 column 75	//Park VT100 cursor at row 01 column 75
+		printf("\x1B[01;78H");							//Park VT100 cursor at row 01 column 75	//Park VT100 cursor at row 01 column 78
 }	
 
 /** @brief 		Function to load ALL SENSOR Refresh Data to VT100 Terminal Screen.  */
@@ -599,7 +683,7 @@ static void UART_VT100_Display_Data_System()			// $$$$$$  SYSTEM DIAGNOSTICS MEN
 */
 static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs  $$$$$$
 	{
-	printf("\x1B[01;75H");								//Park VT100 cursor at row 01 column 75
+	printf("\x1B[01;78H");								//Park VT100 cursor at row 01 column 75
 	
 	nrf_delay_ms(5);
 	
@@ -701,7 +785,7 @@ static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE 
 			UART_VT100_Display_Data_System();
 		break;				
 		}	
-		printf("\x1B[01;75H");			//Park VT100 cursor at row 01 column 75
+		printf("\x1B[01;78H");			//Park VT100 cursor at row 01 column 75
 		nrf_delay_ms(5);
 	}
 	}
@@ -717,6 +801,8 @@ int main(void)
 {
     LEDS_CONFIGURE(LEDS_MASK);
     LEDS_OFF(LEDS_MASK);
+	
+	GrabDeviceID(DS2401_ID,16);
 	
     uint32_t err_code;
     const app_uart_comm_params_t comm_params =
