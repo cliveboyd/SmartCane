@@ -131,19 +131,19 @@ typedef void (* app_uart_event_handler_t) (app_uart_evt_t * p_app_uart_event);
  * @note Since this macro allocates a buffer and registers the module as a GPIOTE user when flow
  *       control is enabled, it must only be called once.
  */
-#define APP_UART_FIFO_INIT(P_COMM_PARAMS, RX_BUF_SIZE, TX_BUF_SIZE, EVT_HANDLER, IRQ_PRIO, ERR_CODE) \
-    do                                                                                             \
-    {                                                                                              \
-        uint16_t           APP_UART_UID = 0;                                                       \
-        app_uart_buffers_t buffers;                                                                \
-        static uint8_t     rx_buf[RX_BUF_SIZE];                                                    \
-        static uint8_t     tx_buf[TX_BUF_SIZE];                                                    \
-                                                                                                   \
-        buffers.rx_buf      = rx_buf;                                                              \
-        buffers.rx_buf_size = sizeof (rx_buf);                                                     \
-        buffers.tx_buf      = tx_buf;                                                              \
-        buffers.tx_buf_size = sizeof (tx_buf);                                                     \
-        ERR_CODE = app_uart_init(P_COMM_PARAMS, &buffers, EVT_HANDLER, IRQ_PRIO, &APP_UART_UID);   \
+#define APP_UART_FIFO_INIT(P_COMM_PARAMS, RX_BUF_SIZE, TX_BUF_SIZE, EVT_HANDLER, IRQ_PRIO, ERR_CODE)	\
+    do                                                                                             		\
+    {                                                                                              		\
+        uint16_t           APP_UART_UID = 0;                                                       		\
+        app_uart_buffers_t buffers;                                                              		\
+        static uint8_t     rx_buf[RX_BUF_SIZE];                                                    		\
+        static uint8_t     tx_buf[TX_BUF_SIZE];                                                    		\
+																										\
+        buffers.rx_buf      = rx_buf;                                                              		\
+        buffers.rx_buf_size = sizeof (rx_buf);                                                     		\
+        buffers.tx_buf      = tx_buf;                                                              		\
+        buffers.tx_buf_size = sizeof (tx_buf);                                                     		\
+        ERR_CODE = app_uart_init(P_COMM_PARAMS, &buffers, EVT_HANDLER, IRQ_PRIO, &APP_UART_UID);   		\
     } while (0)
 
 /**@brief Macro for safe initialization of the UART module in a single user instance.
@@ -173,8 +173,7 @@ typedef void (* app_uart_event_handler_t) (app_uart_evt_t * p_app_uart_event);
  *          If single instance usage is needed, the APP_UART_INIT() macro should be used instead.
  *
  * @note Normally single instance initialization should be done using the APP_UART_INIT() or
- *       APP_UART_INIT_FIFO() macro depending on whether the FIFO should be used by the UART, as
- *       that will allocate the buffers needed by the UART module (including aligning the buffer
+ *       APP_UART_INIT_FIFO() macro depending on whether the FIFO should be used by the UART, as *       that will allocate the buffers needed by the UART module (including aligning the buffer
  *       correctly).
 
  * @param[in]     p_comm_params     Pin and communication parameters.

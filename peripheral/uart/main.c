@@ -23,13 +23,26 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "app_uart.h"
 #include "app_error.h"
 #include "nrf_delay.h"
 #include "nrf.h"
 #include "bsp.h"
-#include "ltc2943.h"
+
 #include "Communication.h"
+
+#include "ds2401.h"
+
+//#include "MPU_9150.h"  
+//#include "inv_mpu.h"
+
+#include "MPL3115.h"
+
+#include "ltc2943.h"
+
 
 
 #define MAX_TEST_DATA_BYTES     (55U)               /**< max number of test bytes per TX Burst to be used for tx and rx. */
@@ -61,8 +74,8 @@ static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
 //  Static menu loaded once and refreshed with menu level values elswhere.
 		MenuLevel=00;
 
-		printf("\x1B[2J");		//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;10H  GDV-UoM SMARTCANE MAIN MENU");
 		printf("\x1B[01;50HDEVICE ID = ");
 		printf("\x1B[02;50H   STATUS = ");
@@ -74,8 +87,9 @@ static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
 		printf("\x1B[12;10H  5... Memory Functions");
 		printf("\x1B[14;10H  6... Power Management");
 		printf("\x1B[16;10H  7... Cane Diagnostics");
+		printf("\x1B[18;10H  8... System Diagnostics");
 
-		printf("\x1B[18;10H  9... Shutdown");
+		printf("\x1B[22;10H  9... Shutdown");
 
 		printf("\x1B[24;10H  ?... Help");
 }
@@ -86,12 +100,10 @@ static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_1()							// $$$$$$  ALL SENSORS  $$$$$$
-{
-//  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		MenuLevel=10;
+{		MenuLevel=10;
 
-		printf("\x1B[2J");		//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-1  ALL SENSORS and SYSTEMS");
 		printf("\x1B[04;05H Gravity");
 		printf("\x1B[05;05H ACC-X = ");
@@ -141,9 +153,7 @@ static void UART_VT100_Menu_1()							// $$$$$$  ALL SENSORS  $$$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_2()							// $$$$$$  GPS GLOBAL POSITION MENU  $$$$$$
-{
-//  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		MenuLevel=20;
+{		MenuLevel=20;
 	
 		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
@@ -174,9 +184,7 @@ static void UART_VT100_Menu_2()							// $$$$$$  GPS GLOBAL POSITION MENU  $$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
-{
-//  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		MenuLevel=30;
+{		MenuLevel=30;
 	
 		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
@@ -215,13 +223,11 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_4()							// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$$$$
-{
-//  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		MenuLevel=40;
+{		MenuLevel=40;
 	
 		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
-		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-4  PRESSURE and ALTITUDE SENSOR");
+		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-4  PRESSURE, ALTITUDE & TEMPERATURE");
 		 
 		printf("\x1B[05;05H Pressure");
 		printf("\x1B[06;05H Abs Pressure = ");
@@ -230,11 +236,10 @@ static void UART_VT100_Menu_4()							// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$
 
 		nrf_delay_ms(5);
 		 
-		printf("\x1B[05;30H Altitude");
-		printf("\x1B[06;30H Altitude     = ");
-		printf("\x1B[07;30H ZeroRef      = ");
-		printf("\x1B[08;30H 1HrRelative  = ");
-
+		printf("\x1B[05;40H Altitude");
+		printf("\x1B[06;40H Altitude    = ");
+		printf("\x1B[07;40H ZeroRef     = ");
+		printf("\x1B[08;40H 1HrRelative = ");
 		
 		nrf_delay_ms(5);
     	    
@@ -247,8 +252,7 @@ static void UART_VT100_Menu_4()							// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_5()							// $$$$$$  SFLASH EEPROM SoC_FLASH MEMORY MANAGEMENT MENU  $$$$$$
-{
-		MenuLevel=50;
+{		MenuLevel=50;
 	
 		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
@@ -285,8 +289,7 @@ static void UART_VT100_Menu_5()							// $$$$$$  SFLASH EEPROM SoC_FLASH MEMORY 
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_6()		    				// $$$$$$  POWER MANAGEMENT MENU  $$$$$$
-{
-		MenuLevel=60;
+{		MenuLevel=60;
 	
 		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
@@ -318,8 +321,7 @@ static void UART_VT100_Menu_6()		    				// $$$$$$  POWER MANAGEMENT MENU  $$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_7()		    				// $$$$$$  CANE DIAGNOSTIC MENU $$$$$$
-{
-		MenuLevel=70;
+{		MenuLevel=70;
 	
 		printf("\x1B[2J");			//VT100 CLR SCREEN
 		printf("\x1B[H");			//VT100 CURSOR HOME
@@ -349,14 +351,48 @@ static void UART_VT100_Menu_7()		    				// $$$$$$  CANE DIAGNOSTIC MENU $$$$$$
 		printf("\x1B[24;05H  X... exit    ?...Help");
 }	
 
+/** @brief 		Function to load SYSTEM DIAGNOSTIC MENU to VT100 Terminal Screen. 
+ *  @details 	Loads VT100 ESC Sequenceone character to clear screen and load menu data.
+ *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
+ *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
+ */
+static void UART_VT100_Menu_8()		    				// $$$$$$  SYSTEM DIAGNOSTIC MENU $$$$$$
+{		MenuLevel=80;
+	
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
+		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-8 SYSTEM DIAGNOSTIC MENU");
+		 
+		printf("\x1B[05;05H ErrorCount 01=");
+		printf("\x1B[06;05H ErrorCount 02=");
+		printf("\x1B[07;05H ErrorCount 03= ");
+		printf("\x1B[08;05H ErrorCount 04= ");
+
+		nrf_delay_ms(5);
+		 
+		printf("\x1B[05;30H SPARE");
+		printf("\x1B[06;30H Spare = ");
+		printf("\x1B[07;30H Spare = ");
+		printf("\x1B[08;30H Spare = ");
+
+		nrf_delay_ms(5);
+
+		printf("\x1B[05;55H SPARE");
+		printf("\x1B[06;55H Spare = ");
+		printf("\x1B[07;55H Spare = ");
+		printf("\x1B[08;55H Spare = ");
+
+		nrf_delay_ms(5);		
+
+		printf("\x1B[24;05H  X... exit    ?...Help");
+}	
 /** @brief 		Function to load Screen Help MENU to VT100 Terminal Screen. 
  *  @details 	Loads VT100 ESC Sequenceone character to clear screen and load menu data.
  *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
  *  @ref 			VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Help_Menu()						// $$$$$$  SCREEN HELP MENU  $$$$$$
-{
-		MenuLevel=100;
+{		MenuLevel=100;
 
 		printf("\x1B[2J");					//VT100 CLR SCREEN
 		printf("\x1B[H");					//VT100 CURSOR HOME
@@ -386,18 +422,24 @@ static void UART_VT100_Help_Menu()						// $$$$$$  SCREEN HELP MENU  $$$$$$
 		printf("\x1B[24;05H  X... exit    ?...Help");
 }	
 
-/** @brief 		Function to load MAIN MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief		Function to load MAIN MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Main_Menu()			// $$$$$$  MAIN MENU DATA REFRESH  $$$$$$
 {
-	    printf("\x1B[1;60H 00000000");					//Device ID ToDo
-		printf("\x1B[2;60H READY");						//Self Test Status ToDo
-		
-		printf("\x1B[01;75H");							//Park VT100 cursor at row 01 column 75
+//		char *ID;
+//		int *len;
+//		DeviceNameFromID(ID, len);
+
+//		printf("\x1B[01;60H name");						//Device ID
+
+		printf("\x1B[02;60H READY");					//Self Test Status ToDo
+	
+//		tempf = readNRF_TEMP();
+//		printf("\x1B[03;60H%10d ", (int) tempf);		//SoC nrf51822 Internal Temperature
+
+		printf("\x1B[01;75H");							//Park VT100 cursor at row 01 column 75	//Park VT100 cursor at row 01 column 75
 }	
 
-/** @brief 		Function to load ALL SENSOR Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load ALL SENSOR Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU DATA REFRESH  $$$$$$
 {
 	int value;
@@ -426,37 +468,63 @@ static void UART_VT100_Display_Data_GPS()				// $$$$$$ GPS MENU DATA REFRESH  $$
 		printf("\x1B[10;19H%10d",value);
 }	
 
-/** @brief 		Function to load INERTIAL MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load INERTIAL MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MENU DATA REFRESH  $$$$$$
 {
 	int value;
-		
-	if (!ltc294x_get_voltage(&value))
-		printf("\x1B[06;19H%10d ",value);
-
 	
-	 if (!ltc294x_get_temperature(&value))
-		printf("\x1B[10;19H%10d",value);
+	float Acc[3];
+	double Calc;
+		
+	short data[3];
+	
+	unsigned long timestamp;
+	
+	int16_t temp; 
+
+//	readAccelFloatMG(Acc);
+
+//	printf("\x1B[06;44H%10d ",(int)Acc[0]);			/// WARNING Need to check format errors re loss of decimal points ---> Float to Int ???
+//	printf("\x1B[07;44H%10d ",(int)Acc[1]);
+//	printf("\x1B[08;44H%10d ",(int)Acc[2]);
+//	
+//	Calc = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
+//	printf("\x1B[09;44H%10d ",(int)Calc);
+
+//	readGyroFloatDeg(Acc);
+//	printf("\x1B[06;69H%10d ",(int)Acc[0]);
+//	printf("\x1B[07;69H%10d ",(int)Acc[1]);
+//	printf("\x1B[08;69H%10d ",(int)Acc[2]);
+//	
+//	Calc = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
+//	printf("\x1B[09;69H%10d ",(int)Calc);
+//	
+//	mpu_get_compass_reg(data, &timestamp);
+//	printf("\x1B[06;19H%10d ",(int)data[0]);
+//	printf("\x1B[07;19H%10d ",(int)data[1]);
+//	printf("\x1B[08;19H%10d ",(int)data[2]);
+//	
+//	Calc = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);   //Total Magnetic Field Exposure ---> Earth + Other ????
+//	printf("\x1B[09;19H%10d ",(int)Calc);
+//	
+//	printf("\x1B[10;19H%10d ",(int)timestamp);
 }	
 
-/** @brief 		Function to load ALTITUDE MENU Refresh Data to VT100 Terminal Screen.  
-*/
+
+/** @brief 		Function to load ALTITUDE MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Altitude()			// $$$$$$  ALTITUDE MENU DATA REFRESH  $$$$$$
 {
-	int value;
-		
-	if (!ltc294x_get_voltage(&value))
-		printf("\x1B[06;19H%10d ",value);
+		// Note MPL3115A returns float ---> cast as int 
 
-	
-	 if (!ltc294x_get_temperature(&value))
-		printf("\x1B[10;19H%10d",value);
+		printf("\x1B[06;21H%10d", (int)MPL3115A2_getPressure());
+
+		printf("\x1B[08;21H%10d", (int)MPL3115A2_getTemperature());
+
+		printf("\x1B[06;55H%10d", (int)MPL3115A2_getAltitude());
 }	
 
 
-/** @brief 		Function to load MEMORY MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load MEMORY MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Memory()			// $$$$$$  Memory MENU DATA REFRESH  $$$$$$
 {
 	int value;
@@ -471,8 +539,7 @@ static void UART_VT100_Display_Data_Memory()			// $$$$$$  Memory MENU DATA REFRE
 
 
 
-/** @brief 		Function to load POWER MANAGEMENT MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load POWER MANAGEMENT MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Power()		    	// $$$$$$  POWER MANAGEMENT MENU DATA REFRESH  $$$$$$
 {
 	int value;
@@ -502,8 +569,7 @@ static void UART_VT100_Display_Data_Power()		    	// $$$$$$  POWER MANAGEMENT ME
 }	
 
 
-/** @brief 		Function to load CANE DIAGNOSTICS MENU Refresh Data to VT100 Terminal Screen.  
-*/
+/** @brief 		Function to load CANE DIAGNOSTICS MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Cane()				// $$$$$$  CANE DIAGNOSTICS MENU DATA REFRESH  $$$$$$
 {
 	int value;
@@ -516,7 +582,20 @@ static void UART_VT100_Display_Data_Cane()				// $$$$$$  CANE DIAGNOSTICS MENU D
 		printf("\x1B[10;19H%10d",value);
 }	
 
-/** @brief 		Function to load ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs to UART Terminal Screen.  
+/** @brief 		Function to load SYSTEM DIAGNOSTICS MENU Refresh Data to VT100 Terminal Screen.  */
+static void UART_VT100_Display_Data_System()			// $$$$$$  SYSTEM DIAGNOSTICS MENU DATA REFRESH  $$$$$$
+{
+	int value;
+		
+	if (!ltc294x_get_voltage(&value))
+		printf("\x1B[06;19H%10d ",value);
+
+	
+	 if (!ltc294x_get_temperature(&value))
+		printf("\x1B[10;19H%10d",value);
+}	
+
+/** @brief		Function to load ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs to UART Terminal Screen.  
 */
 static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs  $$$$$$
 	{
@@ -530,43 +609,51 @@ static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE 
 		switch (ch) 
 		{
 		case '1':
-			UART_VT100_Menu_1();
+		UART_VT100_Menu_1();			//	1... All Sensors
 		break;
 		
 		case '2':
-			UART_VT100_Menu_2();
+			UART_VT100_Menu_2();		//	2... GPS Global Position
 		break;
 		
 		case '3':
-			UART_VT100_Menu_3();
+			UART_VT100_Menu_3();		//	3... Inertial Sensors
 		break;
 		
 		case '4':
-			UART_VT100_Menu_4();							
+			UART_VT100_Menu_4();		//	4... Altitude and Temperature							
 		break;
 		
 		case '5':
-			 UART_VT100_Menu_5();							
+			 UART_VT100_Menu_5();		//	5... Memory Functions						
 		break;
 		
 		case '6':
-			 UART_VT100_Menu_6();							
+			 UART_VT100_Menu_6();		//	6... Power Management						
 		break;
 		
 		case '7':
-			 UART_VT100_Menu_7();							
+			 UART_VT100_Menu_7();		//	7... Cane Diagnostics					
+		break;
+		
+		case '8':
+			 UART_VT100_Menu_8();		//	8... System Diagnostics						
 		break;
 		
 		case 'x':
-			UART_VT100_Main_Menu();
+			UART_VT100_Main_Menu();		//	0... Main Menue
 		break;
 		
 		case 'X':
 			UART_VT100_Main_Menu();
 		break;
 		
+		case 't':
+			printf ("BCD");				//	$$$$$ printf Diagnostic Test
+		break;
+		
 		case '?':
-			UART_VT100_Help_Menu();
+			UART_VT100_Help_Menu();		//	Help Menu
 		break;
 		} 
 	}		
@@ -609,7 +696,10 @@ static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE 
 		case 70:		//Cane Diagnostcs
 			UART_VT100_Display_Data_Cane();
 		break;		
-			
+		
+		case 80:		//System Diagnostcs - Including Error Counters
+			UART_VT100_Display_Data_System();
+		break;				
 		}	
 		printf("\x1B[01;75H");			//Park VT100 cursor at row 01 column 75
 		nrf_delay_ms(5);
@@ -657,42 +747,85 @@ int main(void)
 
 	  
 /** @brief 		MASTER TIME SLOT ASSIGNER.  
- *  @details 	This routine operates as a never ending loop within main() and managers foreground tasks based on a rotating counter MainCount
- *  @note  		This While Loop Operates as a Background Task Manager
+ *  @details 	This routine operates as a never ending loop within main() and managers background tasks based on a rotating counter MainCount
+ *  @note  		This while Loop Operates as a Background Task Manager
  *  @ref 
  *  @todo
  */
-	int MainCount=0;
-	while (true) 
-	{
-		MainCount=MainCount++;
-		if (MainCount>=25) MainCount=0;
+	int TLA_Count=0;						//Base Start Counter TLA 0..25
 
-		switch (MainCount)
+	while (true)
+	{
+//			app_sched_execute();
+//			err_code = sd_app_evt_wait();	// BYPASS Menu not working possible TRAP pending unknowns !!!!!!!
+//			APP_ERROR_CHECK(err_code);		// BYPASS
+	
+		Load_VT100_All_Menues();			//Loads VT100 Default Power Up Menu
+		
+		TLA_Count=TLA_Count+1;
+		if (TLA_Count>=25) TLA_Count=0;
+	
+		switch (TLA_Count)
 		{
-		case 0:
-			Load_VT100_All_Menues();		//Loads VT100 Static and Rehresh UART Menues (NOTE: msec Time Delays operate within this function)
+		case 0:								//Loads VT100 Static and Rehresh UART Menues (NOTE: msec Time Delays operate within this function)
+			Load_VT100_All_Menues();		
 			break;
 		
-		case 1:
-			//Load_VT100_All_Menues();
+		case 1:								//Collect GPS Navigation Data and Load Bearing to Next Weighpoint
+			
 			break;
 		
-		case 2:
-			//Load_VT100_All_Menues();
+		case 2:								//Upon Active GPS Weighpoint Zone - Use Inertial/Compass Data to Signal Correct Bearing
+			
 			break;
 		
-		case 3:
-			//Load_VT100_All_Menues();
+		case 3:								//During Active Movement Collect User Parametrics. Walking Pace, Stick Movement, Gestures
+			
+			break;
+		
+		case 4:								//To Be Assigned 
+			
 			break;
 			
-		
-		case 25:
-			//Load_VT100_All_Menues();
+		case 5:								//To Be Assigned 
+			
 			break;
-		}
-	}; // while loop
+			
+		case 6:								//To Be Assigned 
+			
+			break;
+		
 
+		case 19:							//System Monitoring and Health Checking
+			
+			break;
+		
+		case 20:							//State Machine to Control Haptic Transducer Vibration States and On-Off Sequences
+			
+			break;
+			
+		case 21:							//State machine to Signal Audio Tone Sequences at Various Output Frequencies
+			
+			break;
+		
+		case 22:							//State machine to start Audio Tone Sequence at Various Output Frequencies
+			
+			break;
+			
+		case 23:							//Monitor for physical movement and/or physical activity 
+			
+			break;
+			
+		case 24:							//Monitor Battery State and System Temperatures
+			
+			break;
+			
+		case 25:							//End of background tasker ---> delay if necessary
+			
+			break;
+		};	//end switch
+		
+	}; // while loop
 
 /** end main **/
 }

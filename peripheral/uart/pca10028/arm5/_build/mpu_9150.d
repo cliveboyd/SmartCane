@@ -1,0 +1,16 @@
+.\_build\mpu_9150.o: ..\..\MPU_9150.c
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\hal\nrf_delay.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\8.0.3\Device\Include\nrf.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\8.0.3\Device\Include\nrf51.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include\core_cm0.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include\core_cmInstr.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Include\core_cmFunc.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\8.0.3\Device\Include\system_nrf51.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\8.0.3\Device\Include\nrf51_bitfields.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\8.0.3\Device\Include\nrf51_deprecated.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\8.0.3\Device\Include\compiler_abstraction.h
+.\_build\mpu_9150.o: ..\..\MPU_9150.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\_build\mpu_9150.o: ..\..\Communication.h
+.\_build\mpu_9150.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h

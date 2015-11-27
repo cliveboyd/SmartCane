@@ -22,28 +22,29 @@ Dialog DLL:      TARMCM1.DLL V1.9.0.0
  
 <h2>Project:</h2>
 C:\Users\boydc\Documents\_SmartCaneARM\_SmartCane\peripheral\uart\pca10028\arm5\uart_pca10028.uvprojx
-Project File Date:  11/24/2015
+Project File Date:  11/27/2015
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 (build 20)', folder: 'c:\Keil_v5\ARM\ARMCC\Bin'
-Rebuild target '51822'
-assembling arm_startup_nrf51.s...
-compiling Communication.c...
+Build target '51822'
 compiling main.c...
-compiling ltc2943.c...
-compiling app_uart_fifo.c...
-compiling nrf_delay.c...
-compiling system_nrf51.c...
-compiling twi_hw_master.c...
-compiling app_fifo.c...
-compiling retarget.c...
-compiling app_util_platform.c...
-compiling app_gpiote.c...
-compiling app_error.c...
+..\..\main.c(475): warning:  #177-D: variable "value" was declared but never referenced
+  	int value;
+..\..\main.c(477): warning:  #177-D: variable "Acc" was declared but never referenced
+  	float Acc[3];
+..\..\main.c(478): warning:  #177-D: variable "Calc" was declared but never referenced
+  	double Calc;
+..\..\main.c(480): warning:  #177-D: variable "data" was declared but never referenced
+  	short data[3];
+..\..\main.c(482): warning:  #177-D: variable "timestamp" was declared but never referenced
+  	unsigned long timestamp;
+..\..\main.c(484): warning:  #177-D: variable "temp" was declared but never referenced
+  	int16_t temp; 
+..\..\main.c: 6 warnings, 0 errors
 linking...
-Program Size: Code=12124 RO-data=320 RW-data=48 ZI-data=2656  
+Program Size: Code=14240 RO-data=388 RW-data=48 ZI-data=2656  
 FromELF: creating hex file...
-".\_build\nrf51822_xxaa.axf" - 0 Error(s), 0 Warning(s).
+".\_build\nrf51822_xxaa.axf" - 0 Error(s), 6 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -147,7 +148,7 @@ Package Vendor: NordicSemiconductor
 
    * Component: NordicSemiconductor::nRF_Libraries:app_util:No_softdevice:2.0.0
       Source file:   util\app_util_platform.c
-Build Time Elapsed:  00:00:08
+Build Time Elapsed:  00:00:00
 </pre>
 </body>
 </html>

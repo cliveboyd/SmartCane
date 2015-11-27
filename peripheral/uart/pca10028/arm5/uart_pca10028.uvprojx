@@ -478,6 +478,16 @@
               <FileType>1</FileType>
               <FilePath>..\..\Communication.c</FilePath>
             </File>
+            <File>
+              <FileName>ds2401.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\ds2401.c</FilePath>
+            </File>
+            <File>
+              <FileName>MPL3115.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\MPL3115.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -983,6 +993,16 @@
               <FileName>Communication.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\Communication.c</FilePath>
+            </File>
+            <File>
+              <FileName>ds2401.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\ds2401.c</FilePath>
+            </File>
+            <File>
+              <FileName>MPL3115.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\MPL3115.c</FilePath>
             </File>
           </Files>
         </Group>

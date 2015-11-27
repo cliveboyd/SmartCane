@@ -44,21 +44,18 @@ THE SOFTWARE.
 #include "device_manager.h"
 #include "ble_hci.h"  					// BlueTooth for set hci_status_code to sd_ble_gap_disconnect
 #include "ble_conn_params.h"			// BlueTooth
- 						// for bsp_indication_set
+
+										// for bsp_indication_set
+
 #include "app_scheduler.h"  			// for scheduler APP_SCHED_INIT
 #include "app_timer_appsh.h"  			// for app_timer_event_t
 
 #include "nordic_common.h"  			// for UNUSED_PARAMETER
 
-
-
-
 #include "nrf_assert.h" 				// for ASSERT
-
 
 #include "ble_ad7746.h"
 #include "AD7746.h"
-
 
 #include "sensorADC.h"
 
@@ -77,6 +74,7 @@ THE SOFTWARE.
 
 #define DEVICE_NAME                      "SmartCane 1V0"							/**< Name of device. Will be included in the advertising data. */
 #define DEVICE_APPEARANCE				 BLE_APPEARANCE_UNKNOWN						/**< Device appearance **/
+
 // for ble_conn_param_init param
 #define APP_TIMER_PRESCALER              0                                          /**< Value of the RTC1 PRESCALER register. */
 #define APP_TIMER_MAX_TIMERS             (6+BSP_APP_TIMERS_NUMBER)                  /**< Maximum number of simultaneously created timers. */
@@ -97,24 +95,19 @@ THE SOFTWARE.
 #define CONN_SUP_TIMEOUT                 MSEC_TO_UNITS(4000, UNIT_10_MS)            /**< Connection supervisory timeout (4 seconds). */
 #define TX_POWER_LEVEL                   (0) 										/**< TX Power Level value. This will be set both in the TX Power service, in the advertising data, and also used to set the radio transmit power. */
 
-
-
 // for on_adv_evt
 // to use button, define BUTTONS_NUMBER in custom_board.h
 #define WAKEUP_BUTTON_ID                 0                                          /**< Button used to wake up the application. */
 #define BOND_DELETE_ALL_BUTTON_ID        1                                          /**< Button used for deleting all bonded centrals during startup. */
-
 
 // for ble_advertising_init param
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 #define APP_ADV_GAP_FLAG				BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE  
 
-
-
 // for app scheduler module
 #define SCHED_MAX_EVENT_DATA_SIZE       sizeof(app_timer_event_t)                   /**< Maximum size of scheduler events. Note that scheduler BLE stack events do not contain any data, as the events are being pulled from the stack in the event handler. */
-#define SCHED_QUEUE_SIZE                10                                          /**< Maximum number of events in the scheduler queue. */
+#define SCHED_QUEUE_SIZE                10  										/**< Maximum number of events in the scheduler queue. */
 
 // for device manager module
 #define SEC_PARAM_BOND                   1                                          /**< Perform bonding. */
@@ -124,9 +117,11 @@ THE SOFTWARE.
 #define SEC_PARAM_MIN_KEY_SIZE           7                                          /**< Minimum encryption key size. */
 #define SEC_PARAM_MAX_KEY_SIZE           16                                         /**< Maximum encryption key size. */
 
-
 //static ble_uuid_t m_adv_uuids[1] = {{AD7746_UUID_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN}}; /**< Universally unique service identifiers. */
 
+
+
+//#define ENABLE_DEBUG_LOG_SUPPORT			//Suggested on Web to provide correct printf operation within main() ????
 
 
 //	*******************************************
@@ -191,8 +186,8 @@ static void button_event_handler(bsp_event_t event)
 #include "Communication.h"
 
 
-#define MAX_TEST_DATA_BYTES (128U)			/**< max number of test bytes per TX Burst to be used for tx and rx. */
-#define UART_TX_BUF_SIZE 	512				/**< UART TX buffer size. */
+#define MAX_TEST_DATA_BYTES (4U)			/**< max number of test bytes per TX Burst to be used for tx and rx. was 55 */
+#define UART_TX_BUF_SIZE 	128				/**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE 	1				/**< UART RX buffer size. */
 
 uint8_t MenuLevel=0;						//Initalise Default Menu Level to 00 --> Main Menu
@@ -215,11 +210,10 @@ void uart_error_handle(app_uart_evt_t * p_event)
  *  @ref 		
  */
 static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
-{
-		MenuLevel=00;
+{		MenuLevel=00;
 
-		printf("\x1B[2J");			//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;10H  GDV-UoM SMARTCANE MAIN MENU");
 		printf("\x1B[01;50HDEVICE ID = ");
 		printf("\x1B[02;50H   STATUS = ");
@@ -231,9 +225,9 @@ static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
 		printf("\x1B[12;10H  5... Memory Functions");
 		printf("\x1B[14;10H  6... Power Management");
 		printf("\x1B[16;10H  7... Cane Diagnostics");
-		printf("\x1B[17;10H  7... System Diagnostics");
+		printf("\x1B[18;10H  8... System Diagnostics");
 
-		printf("\x1B[19;10H  9... Shutdown");
+		printf("\x1B[12;10H  9... Shutdown");
 
 		printf("\x1B[24;10H  ?... Help");
 }
@@ -244,12 +238,10 @@ static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_1()							// $$$$$$  ALL SENSORS  $$$$$$
-{
-//  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		MenuLevel=10;
+{		MenuLevel=10;
 
-		printf("\x1B[2J");		//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-1  ALL SENSORS and SYSTEMS");
 		printf("\x1B[04;05H Gravity");
 		printf("\x1B[05;05H ACC-X = ");
@@ -299,12 +291,10 @@ static void UART_VT100_Menu_1()							// $$$$$$  ALL SENSORS  $$$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_2()							// $$$$$$  GPS GLOBAL POSITION MENU  $$$$$$
-{
-//  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		MenuLevel=20;
+{		MenuLevel=20;
 	
-		printf("\x1B[2J");		//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-2  GPS GLOBAL POSITION SENSOR");
 		 
 		printf("\x1B[04;05H GPS");
@@ -332,12 +322,10 @@ static void UART_VT100_Menu_2()							// $$$$$$  GPS GLOBAL POSITION MENU  $$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
-{
-//  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		MenuLevel=30;
+{		MenuLevel=30;
 	
-		printf("\x1B[2J");		//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-3  INERTIAL SENSOR MENU");
 		 
 		printf("\x1B[05;05H Magnetometer");
@@ -345,6 +333,7 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 		printf("\x1B[07;05H Mag-Y     = ");
 		printf("\x1B[08;05H Mag-Z     = ");
 		printf("\x1B[09;05H Mag-M     = ");
+		printf("\x1B[10;05H TimeStamp = ");
 
 		nrf_delay_ms(5);
 		 
@@ -373,12 +362,10 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_4()							// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$$$$
-{
-//  Static menu loaded once and refreshed with MenuLevel values elswhere.
-		MenuLevel=40;
-	
-		printf("\x1B[2J");		//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+{		MenuLevel=40;
+		
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-4  PRESSURE and ALTITUDE SENSOR");
 		 
 		printf("\x1B[05;05H Pressure");
@@ -405,11 +392,10 @@ static void UART_VT100_Menu_4()							// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_5()							// $$$$$$  SFLASH EEPROM SoC_FLASH MEMORY MANAGEMENT MENU  $$$$$$
-{
-		MenuLevel=50;
+{		MenuLevel=50;
 	
-		printf("\x1B[2J");		//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-5 SFLASH EEPROM SoC_FLASH MEMORY MANAGEMENT MENU");
 		 
 		printf("\x1B[05;05H SFLASH");
@@ -443,11 +429,10 @@ static void UART_VT100_Menu_5()							// $$$$$$  SFLASH EEPROM SoC_FLASH MEMORY 
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_6()		    				// $$$$$$  POWER MANAGEMENT MENU  $$$$$$
-{
-		MenuLevel=60;
+{		MenuLevel=60;
 	
-		printf("\x1B[2J");			//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-6 POWER MANAGEMENT MENU");
 		 
 		printf("\x1B[05;05H Gauge Measurements");
@@ -476,11 +461,10 @@ static void UART_VT100_Menu_6()		    				// $$$$$$  POWER MANAGEMENT MENU  $$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_7()		    				// $$$$$$  CANE DIAGNOSTIC MENU $$$$$$
-{
-		MenuLevel=70;
+{		MenuLevel=70;
 	
-		printf("\x1B[2J");			//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-7 CANE DIAGNOSTIC MENU");
 		 
 		printf("\x1B[05;05H Configurations");
@@ -513,11 +497,10 @@ static void UART_VT100_Menu_7()		    				// $$$$$$  CANE DIAGNOSTIC MENU $$$$$$
  *  @ref 		VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Menu_8()		    				// $$$$$$  SYSTEM DIAGNOSTIC MENU $$$$$$
-{
-		MenuLevel=80;
+{		MenuLevel=80;
 	
-		printf("\x1B[2J");			//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-8 SYSTEM DIAGNOSTIC MENU");
 		 
 		printf("\x1B[05;05H ErrorCount 01=");
@@ -550,11 +533,10 @@ static void UART_VT100_Menu_8()		    				// $$$$$$  SYSTEM DIAGNOSTIC MENU $$$$$
  *  @ref 			VT100 Terminal Emulation Nominal Baud:38400
  */
 static void UART_VT100_Help_Menu()						// $$$$$$  SCREEN HELP MENU  $$$$$$
-{
-		MenuLevel=100;
+{		MenuLevel=100;
 
-		printf("\x1B[2J");					//VT100 CLR SCREEN
-		printf("\x1B[H");					//VT100 CURSOR HOME
+		printf("\x1B[2J");								//VT100 CLR SCREEN
+		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-? Help MENU");
 		 
 		printf("\x1B[05;05H HELP CODES");
@@ -584,10 +566,18 @@ static void UART_VT100_Help_Menu()						// $$$$$$  SCREEN HELP MENU  $$$$$$
 /** @brief 		Function to load MAIN MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Main_Menu()			// $$$$$$  MAIN MENU DATA REFRESH  $$$$$$
 {
-	    printf("\x1B[1;60H 00000000");					//Device ID ToDo
-		printf("\x1B[2;60H READY");						//Self Test Status ToDo
-		
-		printf("\x1B[01;75H");							//Park VT100 cursor at row 01 column 75
+//		char *ID;
+//		int *len;
+//		DeviceNameFromID(ID, len);
+
+//		printf("\x1B[01;60H name");						//Device ID
+
+		printf("\x1B[02;60H READY");					//Self Test Status ToDo
+	
+//		tempf = readNRF_TEMP();
+//		printf("\x1B[03;60H%10d ", (int) tempf);		//SoC nrf51822 Internal Temperature
+
+		printf("\x1B[01;75H");							//Park VT100 cursor at row 01 column 75	//Park VT100 cursor at row 01 column 75
 }	
 
 /** @brief 		Function to load ALL SENSOR Refresh Data to VT100 Terminal Screen.  */
@@ -623,27 +613,55 @@ static void UART_VT100_Display_Data_GPS()				// $$$$$$ GPS MENU DATA REFRESH  $$
 static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MENU DATA REFRESH  $$$$$$
 {
 	int value;
-		
-	if (!ltc294x_get_voltage(&value))
-		printf("\x1B[06;19H%10d ",value);
-
 	
-	 if (!ltc294x_get_temperature(&value))
-		printf("\x1B[10;19H%10d",value);
+	float Acc[3];
+	double Calc;
+		
+	short data[3];
+	
+	unsigned long timestamp;
+	
+	int16_t temp; 
+
+//	readAccelFloatMG(Acc);
+
+//	printf("\x1B[06;44H%10d ",(int)Acc[0]);			/// WARNING Need to check format errors re loss of decimal points ---> Float to Int ???
+//	printf("\x1B[07;44H%10d ",(int)Acc[1]);
+//	printf("\x1B[08;44H%10d ",(int)Acc[2]);
+//	
+//	Calc = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
+//	printf("\x1B[09;44H%10d ",(int)Calc);
+
+//	readGyroFloatDeg(Acc);
+//	printf("\x1B[06;69H%10d ",(int)Acc[0]);
+//	printf("\x1B[07;69H%10d ",(int)Acc[1]);
+//	printf("\x1B[08;69H%10d ",(int)Acc[2]);
+//	
+//	Calc = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
+//	printf("\x1B[09;69H%10d ",(int)Calc);
+//	
+//	mpu_get_compass_reg(data, &timestamp);
+//	printf("\x1B[06;19H%10d ",(int)data[0]);
+//	printf("\x1B[07;19H%10d ",(int)data[1]);
+//	printf("\x1B[08;19H%10d ",(int)data[2]);
+//	
+//	Calc = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);   //Total Magnetic Field Exposure ---> Earth + Other ????
+//	printf("\x1B[09;19H%10d ",(int)Calc);
+//	
+//	printf("\x1B[10;19H%10d ",(int)timestamp);
 }	
 
 
 /** @brief 		Function to load ALTITUDE MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Altitude()			// $$$$$$  ALTITUDE MENU DATA REFRESH  $$$$$$
 {
-	int value;
-		
-	if (!ltc294x_get_voltage(&value))
-		printf("\x1B[06;19H%10d ",value);
+		// Note MPL3115A returns float ---> cast as int 
 
-	
-	 if (!ltc294x_get_temperature(&value))
-		printf("\x1B[10;19H%10d",value);
+		printf("\x1B[8;19H%10d", (int)MPL3115A2_getPressure());
+
+		printf("\x1B[08;19H%10d", (int)MPL3115A2_getTemperature());
+ 
+		printf("\x1B[06;50H%10d", (int)MPL3115A2_getAltitude());
 }	
 
 
@@ -705,10 +723,23 @@ static void UART_VT100_Display_Data_Cane()				// $$$$$$  CANE DIAGNOSTICS MENU D
 		printf("\x1B[10;19H%10d",value);
 }	
 
+/** @brief 		Function to load SYSTEM DIAGNOSTICS MENU Refresh Data to VT100 Terminal Screen.  */
+static void UART_VT100_Display_Data_System()			// $$$$$$  SYSTEM DIAGNOSTICS MENU DATA REFRESH  $$$$$$
+{
+	int value;
+		
+	if (!ltc294x_get_voltage(&value))
+		printf("\x1B[06;19H%10d ",value);
+
+	
+	 if (!ltc294x_get_temperature(&value))
+		printf("\x1B[10;19H%10d",value);
+}	
+
 /** @brief 		Function to load ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs to UART Terminal Screen.  */
-static void Load_VT100_All_Menues()		    	// $$$$$$  LOAD ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs  $$$$$$
+static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs  $$$$$$
 	{
-	printf("\x1B[01;75H");						//Park VT100 cursor at row 01 column 75
+	printf("\x1B[01;75H");								//Park VT100 cursor at row 01 column 75
 	
 	nrf_delay_ms(5);
 	
@@ -717,48 +748,53 @@ static void Load_VT100_All_Menues()		    	// $$$$$$  LOAD ALL VT100 IMMEDIATE AN
 	{
 		switch (cr) 
 		{
+
 		case '1':
-			UART_VT100_Menu_1();
+		UART_VT100_Menu_1();			//	1... All Sensors
 		break;
 		
 		case '2':
-			UART_VT100_Menu_2();
+			UART_VT100_Menu_2();		//	2... GPS Global Position
 		break;
 		
 		case '3':
-			UART_VT100_Menu_3();
+			UART_VT100_Menu_3();		//	3... Inertial Sensors
 		break;
 		
 		case '4':
-			UART_VT100_Menu_4();							
+			UART_VT100_Menu_4();		//	4... Altitude and Temperature							
 		break;
 		
 		case '5':
-			 UART_VT100_Menu_5();							
+			 UART_VT100_Menu_5();		//	5... Memory Functions						
 		break;
 		
 		case '6':
-			 UART_VT100_Menu_6();							
+			 UART_VT100_Menu_6();		//	6... Power Management						
 		break;
 		
 		case '7':
-			 UART_VT100_Menu_7();							
+			 UART_VT100_Menu_7();		//	7... Cane Diagnostics					
 		break;
 		
 		case '8':
-			 UART_VT100_Menu_8();							
+			 UART_VT100_Menu_8();		//	8... System Diagnostics						
 		break;
 		
 		case 'x':
-			UART_VT100_Main_Menu();
+			UART_VT100_Main_Menu();		//	0... Main Menue
 		break;
 		
 		case 'X':
 			UART_VT100_Main_Menu();
 		break;
 		
+		case 't':
+			printf ("BCD");				//	$$$$$ printf Diagnostic Test
+		break;
+		
 		case '?':
-			UART_VT100_Help_Menu();
+			UART_VT100_Help_Menu();		//	Help Menu
 		break;
 		} 
 	}		
@@ -801,25 +837,31 @@ static void Load_VT100_All_Menues()		    	// $$$$$$  LOAD ALL VT100 IMMEDIATE AN
 		case 70:		//Cane Diagnostcs
 			UART_VT100_Display_Data_Cane();
 		break;		
-			
-		}	
+		
+		case 80:		//System Diagnostcs - Including Error Counters
+			UART_VT100_Display_Data_System();
+		break;				
+		}
+		
 		printf("\x1B[01;75H");			//Park VT100 cursor at row 01 column 75
 		nrf_delay_ms(5);
 	}
 	}
 
+
 void someother_module_init()
-{
+{	
 	// LED setup
 	uint32_t err_code;
 	
 	// for button interupt, must be called before 'app_button_init' inside bsp_init
+	
 	APP_GPIOTE_INIT(1);  // one user, no use yet unless app_button_enable() is called
 
 
 	err_code = bsp_init(BSP_INIT_LED | BSP_INIT_BUTTONS,
 					APP_TIMER_TICKS(100, APP_TIMER_PRESCALER),
-					button_event_handler);  // test butten handler
+					button_event_handler);  				// test button handler
 	if (err_code == NRF_ERROR_INVALID_STATE)
 	{
 		err_code = NRF_ERROR_INVALID_STATE;
@@ -827,23 +869,25 @@ void someother_module_init()
     APP_ERROR_CHECK(err_code);
 //		nrf_gpio_cfg_output(BSP_LED_0);
 //		nrf_gpio_cfg_output(BSP_LED_1);
+
 	nrf_gpio_cfg_output(MOTOR_PIN_NUMBER);
 	
 //		AD7746_Init();
 	
 //		nrf_temp_init();
 
-		//nrf_gpio_cfg_output(7);
+		//nrf_gpio_cfg_output(7);			//Haptic Vibration Motor
 		
 	
 		unsigned char status = 0;
 		while(!status)  status = I2C_Init();
 		initMPU9150();
+	
 //		if(mpu_init(NULL));
 //		long gyro,accel;
 //		mpu_run_self_test(&gyro, &accel);
-//		sensorADC_config();  // sensor adc init
-		finishedADC = false;  // for sensor_adc only
+//		sensorADC_config();  				// sensor adc init
+		finishedADC = false;  				// for sensor_adc only
 	
 // read compass
 //		short data[3];
@@ -872,6 +916,7 @@ void someother_module_init()
 	MPL3115A2_init();
 	float f = MPL3115A2_getAltitude();
 	
+	
 	ltc294x_init();
 	int temp;
 	ltc294x_get_current(&temp);
@@ -886,29 +931,32 @@ static void capmeasure_timer_handler(void * p_context)
 
 }
 
-int32_t readNRF_TEMP() {
-	int32_t ret = 0;
-    while (true)
-    {
-        NRF_TEMP->TASKS_START = 1; /** Start the temperature measurement. */
 
-        /* Busy wait while temperature measurement is not finished, you can skip waiting if you enable interrupt for DATARDY event and read the result in the interrupt. */
-        /*lint -e{845} // A zero has been given as right argument to operator '|'" */
-        while (NRF_TEMP->EVENTS_DATARDY == 0)
-        {
-            // Do nothing.
-        }
-        NRF_TEMP->EVENTS_DATARDY = 0;
+/** @brief 		Function to read internal nrf51822 temperature. */
+//int32_t readNRF_TEMP() {
+//	int32_t ret = 0;
+//    while (true)
+//    {
+//        NRF_TEMP->TASKS_START = 1; /** Start the temperature measurement. */
 
-        /**@note Workaround for PAN_028 rev2.0A anomaly 29 - TEMP: Stop task clears the TEMP register. */
-        ret = (nrf_temp_read() / 4);
+//        /* Busy wait while temperature measurement is not finished, you can skip waiting if you enable interrupt for DATARDY event and read the result in the interrupt. */
+//        /*lint -e{845} // A zero has been given as right argument to operator '|'" */
+//        while (NRF_TEMP->EVENTS_DATARDY == 0)
+//        {
+//            // $$$$$$$$$$$$$$ WARNING Need to monitor this trap or setup a countdown and exit ---> Do nothing.  $$$$$$$$$
+//        }
+//        NRF_TEMP->EVENTS_DATARDY = 0;
 
-        /**@note Workaround for PAN_028 rev2.0A anomaly 30 - TEMP: Temp module analog front end does not power down when DATARDY event occurs. */
-        NRF_TEMP->TASKS_STOP = 1; /** Stop the temperature measurement. */
+//        /**@note Workaround for PAN_028 rev2.0A anomaly 29 - TEMP: Stop task clears the TEMP register. */
+//        ret = (nrf_temp_read() / 4);
 
-        return ret;
-    }
-}
+//        /**@note Workaround for PAN_028 rev2.0A anomaly 30 - TEMP: Temp module analog front end does not power down when DATARDY event occurs. */
+//        NRF_TEMP->TASKS_STOP = 1; /** Stop the temperature measurement. */
+
+//        return ret;
+//    }
+//}
+
 
 #define MEASURESIZE 128
 
@@ -931,8 +979,9 @@ typedef enum  {
 static SendDataType resumetype;
 unsigned int lastSendIndex;
 
-unsigned int resumeSendData() {  // only called by on_ble_evt when BLE_EVT_TX_COMPLETE happens
-	// return the index to current finished position in 'dataToSend' buffer
+unsigned int resumeSendData() 
+{  		// Only called by on_ble_evt when BLE_EVT_TX_COMPLETE happens
+										// returns the index to current finished position in 'dataToSend' buffer
 	uint32_t err_code = NRF_SUCCESS;
 	if (lastSendIndex==(unsigned int)-1) {
 		return (unsigned int)-1;
@@ -983,31 +1032,32 @@ unsigned int resumeSendData() {  // only called by on_ble_evt when BLE_EVT_TX_CO
 		default:
 			break;
 	}
-	return (unsigned int)-1; // Means invalid
+	return (unsigned int)-1; 			// Means invalid
 }
+
 static void tempmeasure_timer_handler(void * p_context)
 {
     UNUSED_PARAMETER(p_context);
 
-//	uint32_t err_code = NRF_SUCCESS;
-//  short data[3];
-//	unsigned long timestamp;
-//	int16_t temp; // = readTempData();
+	uint32_t err_code = NRF_SUCCESS;
+   short data[3];
+	unsigned long timestamp;
+	int16_t temp; // = readTempData();
 	
-//	float Acc[3];
-//	readAccelFloatMG(Acc);
-//	readGyroFloatDeg(Acc);
-
-//	readMagFloatUT(Acc);
-//	err_code = ble_AD7746_send_temp_notify(&m_AD7746, Acc[0]);
-//		if ((err_code != NRF_SUCCESS) &&
-//				(err_code != NRF_ERROR_INVALID_STATE) &&
-//				(err_code != BLE_ERROR_NO_TX_BUFFERS) &&
-//				(err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
-//			)  // ignore these errors as they appear only during setup and are normal
-//		{
-//			APP_ERROR_HANDLER(err_code);
-//		}
+	float Acc[3];
+//	readAccelFloatMG(Acc);			//[0]==Left=+ive    Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
+	readGyroFloatDeg(Acc);			//[0]==Pitch Up=+ive Down=-ive		[1]==Roll CW=+ive   ACW=-ive		[2]==Yaw Right=+ive  Left=-ive
+//	readMagFloatUT(Acc);			//[0]==Front=+ive    Rear=-ive		[1]==Right=+ive     Left=-ive		[2]==Z Down=+ive     Z Up=-ive
+	
+	err_code = ble_AD7746_send_temp_notify(&m_AD7746, Acc[2]);
+		if ((err_code != NRF_SUCCESS) &&
+				(err_code != NRF_ERROR_INVALID_STATE) &&
+				(err_code != BLE_ERROR_NO_TX_BUFFERS) &&
+				(err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
+			)  // ignore these errors as they appear only during setup and are normal
+		{
+			APP_ERROR_HANDLER(err_code);
+		}
 
 	//readAccelData(data);
 	// do measurement and notify
@@ -1297,7 +1347,7 @@ static void DeviceNameFromID(char* name, int len)
 {
 	if(len<16) {
 		strncpy(name, DEVICE_NAME, len);
-	}else {
+	} else {
 		while(!ds2401_initAndRead()) ;
 		int j = 0;
 		bool skipLeading = true;
@@ -1368,12 +1418,12 @@ static void services_init(void)
 	err_code = ble_AD7746_init(&m_AD7746, &ad7746_init);
     APP_ERROR_CHECK(err_code);
 	
-//	ble_nus_init_t   nus_init;
-//    memset(&nus_init, 0, sizeof(nus_init));
-//    nus_init.data_handler = nus_data_handler;
+//	ble_nus_init_t   nus_init;				//nus == Nordic UART Service
+//	memset(&nus_init, 0, sizeof(nus_init));
+//	nus_init.data_handler = nus_data_handler;
 //   
-//    err_code = ble_nus_init(&m_nus, &nus_init);
-//    APP_ERROR_CHECK(err_code);
+//	err_code = ble_nus_init(&m_nus, &nus_init);
+//	APP_ERROR_CHECK(err_code);
 }
 /**@brief Function for initializing the Advertising functionality.
  *
@@ -1580,7 +1630,7 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
  #include "ble_debug_assert_handler.h"
  
 void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name)
-{	return;		/////
+{
 	
     // This call can be used for debug purposes during application development.
     // @note CAUTION: Activating this code will write the stack to flash on an error.
@@ -1613,78 +1663,86 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
  */
 int main(void)
 {
-    uint32_t err_code;
+	uint32_t err_code;
+	
+	ble_stack_init();					// Initialize softdevice stack.
 
-		  
-    // Initialize softdevice stack.
-    ble_stack_init();
-	
 	// ps hold
-		    NRF_GPIO->PIN_CNF[PSHOLD_PIN_NUMBER] =     \
-        (GPIO_PIN_CNF_SENSE_Disabled 	<< GPIO_PIN_CNF_SENSE_Pos) \
-      | (GPIO_PIN_CNF_DRIVE_S0S1     	<< GPIO_PIN_CNF_DRIVE_Pos) \
-      | (GPIO_PIN_CNF_PULL_Pullup    	<< GPIO_PIN_CNF_PULL_Pos)  \
-      | (GPIO_PIN_CNF_INPUT_Disconnect  << GPIO_PIN_CNF_INPUT_Pos) \
-      | (GPIO_PIN_CNF_DIR_Output      	<< GPIO_PIN_CNF_DIR_Pos);	
-	
+	NRF_GPIO->PIN_CNF[PSHOLD_PIN_NUMBER] =     						\
+		(GPIO_PIN_CNF_SENSE_Disabled 	<< GPIO_PIN_CNF_SENSE_Pos)	\
+	  | (GPIO_PIN_CNF_DRIVE_S0S1     	<< GPIO_PIN_CNF_DRIVE_Pos)	\
+	  | (GPIO_PIN_CNF_PULL_Pullup    	<< GPIO_PIN_CNF_PULL_Pos) 	\
+	  | (GPIO_PIN_CNF_INPUT_Disconnect  << GPIO_PIN_CNF_INPUT_Pos)	\
+	  | (GPIO_PIN_CNF_DIR_Output      	<< GPIO_PIN_CNF_DIR_Pos);	
+
 	NRF_GPIO->DIRSET = (1UL << PSHOLD_PIN_NUMBER); 
 	NRF_GPIO->OUTSET = (1UL << PSHOLD_PIN_NUMBER); 
 
-	
-	
-		// Initialize common modules
-		scheduler_init();
-		device_manager_init();
-		timers_init(); ////////////////////////////////////
 
-		// Initialize GAP and GATT 
-		gap_params_init();
-		// Initialize service
-		services_init();	
-		advertising_init();
+	// Initialize common modules
 	
-		// Initialize application specific modules
-		someother_module_init();
-		
-		conn_params_init();
-	
-		application_timers_start();
-		
-		// start advertising
-		advertising_start();
+	scheduler_init();				// Initialize Scheduler
+
+	device_manager_init();			// Initialize Device Manager  
+
+	timers_init();					// Initialize Timers  
+
+	gap_params_init();				// Initialize GAP and GATT 
+
+	services_init();				// Initialize service
+
+	advertising_init();				// Initialize Advertising
+
+	someother_module_init();		// Initialize application specific modules
+
+	conn_params_init();				// Initialize connection parameters
 
 
-		// INIT Battery Gauge via I2C
-		uint8_t status = 0;	  
-		while(!status)  status = I2C_Init();
-		ltc294x_init();
+	application_timers_start();		// Start Timers
 
-		//Load UART Parameters ... USB UART Virtual COM port
+	advertising_start();			// Start Advertising
+
+
+	//Load UART Parameters ... USB UART Virtual COM port
 	const app_uart_comm_params_t comm_params =
-      {
-          RX_PIN_NUMBER,
-          TX_PIN_NUMBER,
-          RTS_PIN_NUMBER,
-          CTS_PIN_NUMBER,
-          APP_UART_FLOW_CONTROL_DISABLED,
-          false,
-          UART_BAUDRATE_BAUDRATE_Baud38400
-      };
+	  {
+		  RX_PIN_NUMBER,
+		  TX_PIN_NUMBER,
+		  RTS_PIN_NUMBER,
+		  CTS_PIN_NUMBER,
+		  APP_UART_FLOW_CONTROL_DISABLED,
+		  false,
+		  UART_BAUDRATE_BAUDRATE_Baud38400
+	  };
 
-		APP_UART_FIFO_INIT(&comm_params,
+		  
+	  APP_UART_FIFO_INIT(&comm_params,
 							 UART_RX_BUF_SIZE,
 							 UART_TX_BUF_SIZE,
 							 uart_error_handle,
 							 APP_IRQ_PRIORITY_LOW,
 							 err_code);
-		APP_ERROR_CHECK(err_code);
-	
-		UART_VT100_Main_Menu();					//Initialise Default UART VT100 Menu
+	  APP_ERROR_CHECK(err_code);				// Initalize UART FIFO with defined setup parameters
+	  
+		
+	  
+	//printf("DUMMY TEST");	
+
+
+
+	// INIT  I2C
+	uint8_t status = 0;	  
+	while(!status)  status = I2C_Init();
+
+	ltc294x_init();
+
+		  
+	UART_VT100_Main_Menu();					//Initialise Default UART VT100 Menu
 
 	  
 /** @brief 		MASTER TIME SLOT ASSIGNER.  
- *  @details 	This routine operates as a never ending loop within main() and managers foreground tasks based on a rotating counter MainCount
- *  @note  		This While Loop Operates as a Background Task Manager
+ *  @details 	This routine operates as a never ending loop within main() and managers background tasks based on a rotating counter MainCount
+ *  @note  		This while Loop Operates as a Background Task Manager
  *  @ref 
  *  @todo
  */
@@ -1693,34 +1751,74 @@ int main(void)
 		while (true)
 		{
 			app_sched_execute();
-//			err_code = sd_app_evt_wait();		// BYPASS Menu not working possible TRAP pending unkknowns !!!!!!!
+//			err_code = sd_app_evt_wait();		// BYPASS Menu not working possible TRAP pending unknowns !!!!!!!
 //			APP_ERROR_CHECK(err_code);			// BYPASS
 			
-			Load_VT100_All_Menues();		//Loads VT
+			Load_VT100_All_Menues();			//Loads VT100 Default Power Up Menu
 			
 			TLA_Count=TLA_Count+1;
 			if (TLA_Count>=25) TLA_Count=0;
 		
 			switch (TLA_Count)
 			{
-			case 0:
-				Load_VT100_All_Menues();		//Loads VT100 Static and Rehresh UART Menues (NOTE: msec Time Delays operate within this function)
+			case 0:								//Loads VT100 Static and Rehresh UART Menues (NOTE: msec Time Delays operate within this function)
+				Load_VT100_All_Menues();		
 				break;
 			
-			case 1:
-				//Load_VT100_All_Menues();
+			case 1:								//Collect GPS Navigation Data and Load Bearing to Next Weighpoint
+				
 				break;
 			
-			case 2:
-				//Load_VT100_All_Menues();
+			case 2:								//Upon Active GPS Weighpoint Zone - Use Inertial/Compass Data to Signal Correct Bearing
+				
 				break;
 			
-			case 3:
-				//Load_VT100_All_Menues();
+			case 3:								//During Active Movement Collect User Parametrics. Walking Pace, Stick Movement, Gestures
+				
+				break;
+			
+			case 4:								//To Be Assigned 
+				
 				break;
 				
-			case 25:
-				//Load_VT100_All_Menues();
+			case 5:								//To Be Assigned 
+				
+				break;
+				
+			case 6:								//To Be Assigned 
+				
+				break;
+			
+
+
+
+
+			case 19:							//System Monitoring and Health Checking
+				
+				break;
+			
+			case 20:							//State Machine to Control Haptic Transducer Vibration States and On-Off Sequences
+				
+				break;
+				
+			case 21:							//State machine to Signal Audio Tone Sequences at Various Output Frequencies
+				
+				break;
+			
+			case 22:							//State machine to start Audio Tone Sequence at Various Output Frequencies
+				
+				break;
+				
+			case 23:							//Monitor for physical movement and/or physical activity 
+				
+				break;
+				
+			case 24:							//Monitor Battery State and System Temperatures
+				
+				break;
+				
+			case 25:							//End of background tasker ---> delay if necessary
+				
 				break;
 
 			}	//end switch		

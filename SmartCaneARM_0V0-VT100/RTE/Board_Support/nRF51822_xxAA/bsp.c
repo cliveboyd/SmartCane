@@ -456,7 +456,6 @@ uint32_t bsp_indication_set(bsp_indication_t indicate)
     return err_code;
 }
 
-
 uint32_t bsp_indication_text_set(bsp_indication_t indicate, char const * p_text)
 {
     uint32_t err_code = bsp_indication_set(indicate);
@@ -519,6 +518,7 @@ uint32_t bsp_init(uint32_t type, uint32_t ticks_per_100ms, bsp_event_callback_t 
     }
 #endif // (BUTTONS_NUMBER > 0) && !(defined BSP_SIMPLE)
 
+	
 #if LEDS_NUMBER > 0 && !(defined BSP_SIMPLE)
 
     if (type & BSP_INIT_LED)
