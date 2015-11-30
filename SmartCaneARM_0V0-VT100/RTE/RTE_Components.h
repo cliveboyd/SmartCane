@@ -3,7 +3,7 @@
  * Auto generated Run-Time-Environment Component Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'ble_app_temp' 
+ * Project: 'ble_app_1V0-VT100' 
  * Target:  'ble_app_temp' 
  */
 

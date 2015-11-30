@@ -45,7 +45,7 @@ THE SOFTWARE.
 #include "ble_hci.h"  					// BlueTooth for set hci_status_code to sd_ble_gap_disconnect
 #include "ble_conn_params.h"			// BlueTooth
 
-										// for bsp_indication_set
+										// for bsp_indication_set ???
 
 #include "app_scheduler.h"  			// for scheduler APP_SCHED_INIT
 #include "app_timer_appsh.h"  			// for app_timer_event_t
@@ -54,21 +54,21 @@ THE SOFTWARE.
 
 #include "nrf_assert.h" 				// for ASSERT
 
-#include "ble_ad7746.h"
-#include "AD7746.h"
+#include "ble_ad7746.h"					// Capacitance Sensor Fudged for capScan Bluetooth data redirect
+#include "AD7746.h"						// Capacitance Sensor chip part of original Application Post Smartcane
 
-#include "sensorADC.h"
+//#include "sensorADC.h"
 
-#include "ds2401.h"
-#include "AT45_Flash.h"
+#include "ds2401.h"						//48bit Device ID
+//#include "AT45_Flash.h"				//Serial Flash 16Mbit
 #include "MPU_9150.h"  
 #include "inv_mpu.h"
 #include "nrf_delay.h"
 
-#include "A2035H.h"
-//#include "ble_nus.h"  				// BlueTooth nordic uart service
-#include "MPL3115.h"
-#include "ltc2943.h"
+#include "A2035H.h"						// GPS
+#include "ble_nus.h"  					// BlueTooth nordic uart service
+#include "MPL3115.h"					// Pressure_Altitude
+#include "ltc2943.h"					// Gas Gauge
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT  0                                          /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
@@ -622,16 +622,16 @@ static void UART_VT100_Display_Data_GPS()				// $$$$$$ GPS MENU DATA REFRESH  $$
 /** @brief 		Function to load INERTIAL MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MENU DATA REFRESH  $$$$$$
 {
-	int value;
+//	int value;
 	
-	float Acc[3];
-	double Calc;
+//	float Acc[3];
+//	double Calc;
 		
-	short data[3];
+//	short data[3];
 	
-	unsigned long timestamp;
+//	unsigned long timestamp;
 	
-	int16_t temp; 
+//	int16_t temp; 
 
 //	readAccelFloatMG(Acc);
 
@@ -889,9 +889,9 @@ void someother_module_init()
 		//nrf_gpio_cfg_output(7);			//Haptic Vibration Motor
 		
 	
-		unsigned char status = 0;
-		while(!status)  status = I2C_Init();
-		initMPU9150();
+//		unsigned char status = 0;
+//		while(!status)  status = I2C_Init();
+//		initMPU9150();
 	
 //		if(mpu_init(NULL));
 //		long gyro,accel;
@@ -1050,9 +1050,10 @@ static void tempmeasure_timer_handler(void * p_context)
     UNUSED_PARAMETER(p_context);
 
 	uint32_t err_code = NRF_SUCCESS;
-   short data[3];
-	unsigned long timestamp;
-	int16_t temp; // = readTempData();
+    
+//	short data[3];
+//	unsigned long timestamp;
+//	int16_t temp; // = readTempData();
 	
 	float Acc[3];
 //	readAccelFloatMG(Acc);			//[0]==Left=+ive    Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive

@@ -26,10 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "app_uart.h"
 #include "app_error.h"
+#include "app_uart.h"
 #include "nrf_delay.h"
-#include "nrf.h"
+//#include "nrf.h"
 #include "bsp.h"
 
 #include "Communication.h"
@@ -39,7 +39,7 @@
 //#include "MPU_9150.h"  
 //#include "inv_mpu.h"
 
-#include "MPL3115.h"
+//#include "MPL3115.h"
 
 #include "ltc2943.h"
 
@@ -48,16 +48,6 @@
 #define MAX_TEST_DATA_BYTES     (55U)               /**< max number of test bytes per TX Burst to be used for tx and rx. */
 #define UART_TX_BUF_SIZE 		512                 /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE 		1                   /**< UART RX buffer size. */
-
-
-
-//	*******************************************
-//
-//		NRF51822 Port P0.xx IO Assignments
-//
-//	*******************************************
-#define PSHOLD_PIN_NUMBER		(28U)				//Assert High to Hold 3V3 Power ---> Upon SW1 Long Push
-
 
 
 //	************************************************************

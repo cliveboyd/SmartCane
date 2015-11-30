@@ -54,10 +54,10 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t * rx_buf;      /**< Pointer to the RX buffer. */
-    uint32_t  rx_buf_size; /**< Size of the RX buffer. */
-    uint8_t * tx_buf;      /**< Pointer to the TX buffer. */
-    uint32_t  tx_buf_size; /**< Size of the TX buffer. */
+    uint8_t * rx_buf;      		/**< Pointer to the RX buffer. */
+    uint32_t  rx_buf_size; 		/**< Size of the RX buffer. */
+    uint8_t * tx_buf;      		/**< Pointer to the TX buffer. */
+    uint32_t  tx_buf_size; 		/**< Size of the TX buffer. */
 } app_uart_buffers_t;
 
 /**@brief Enumeration describing current state of the UART.

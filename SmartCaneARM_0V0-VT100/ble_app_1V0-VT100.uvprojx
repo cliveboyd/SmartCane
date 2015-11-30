@@ -339,7 +339,7 @@
               <OCR_RVCT9>
                 <Type>0</Type>
                 <StartAddress>0x20002000</StartAddress>
-                <Size>0x4000</Size>
+                <Size>0x2000</Size>
               </OCR_RVCT9>
               <OCR_RVCT10>
                 <Type>0</Type>
@@ -437,39 +437,9 @@
               <FilePath>.\Communication.c</FilePath>
             </File>
             <File>
-              <FileName>sensorADC.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\sensorADC.c</FilePath>
-            </File>
-            <File>
               <FileName>ds2401.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ds2401.c</FilePath>
-            </File>
-            <File>
-              <FileName>MPU_9150.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\MPU_9150.c</FilePath>
-            </File>
-            <File>
-              <FileName>inv_mpu.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\inv_mpu.c</FilePath>
-            </File>
-            <File>
-              <FileName>A2035H.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\A2035H.c</FilePath>
-            </File>
-            <File>
-              <FileName>nrf_pwm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\nrf_pwm.c</FilePath>
-            </File>
-            <File>
-              <FileName>AD9837.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\AD9837.c</FilePath>
             </File>
             <File>
               <FileName>ltc2943.c</FileName>
@@ -480,6 +450,16 @@
               <FileName>MPL3115.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\MPL3115.c</FilePath>
+            </File>
+            <File>
+              <FileName>MPU_9150.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\MPU_9150.c</FilePath>
+            </File>
+            <File>
+              <FileName>inv_mpu.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\inv_mpu.c</FilePath>
             </File>
           </Files>
         </Group>
