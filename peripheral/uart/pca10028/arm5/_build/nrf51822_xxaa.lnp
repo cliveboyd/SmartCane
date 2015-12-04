@@ -4,6 +4,7 @@
 ".\_build\communication.o"
 ".\_build\ds2401.o"
 ".\_build\mpl3115.o"
+".\_build\mpu_9150.o"
 ".\_build\arm_startup_nrf51.o"
 ".\_build\system_nrf51.o"
 ".\_build\app_uart_fifo.o"

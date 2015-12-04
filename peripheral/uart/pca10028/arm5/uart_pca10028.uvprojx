@@ -88,7 +88,7 @@
             <nStopA1X>0</nStopA1X>
             <nStopA2X>0</nStopA2X>
           </AfterMake>
-          <SelectedForBatchBuild>1</SelectedForBatchBuild>
+          <SelectedForBatchBuild>0</SelectedForBatchBuild>
           <SVCSIdString></SVCSIdString>
         </TargetCommonOption>
         <CommonProperty>
@@ -150,7 +150,7 @@
             <RestoreSysVw>1</RestoreSysVw>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
-          <TargetSelection>6</TargetSelection>
+          <TargetSelection>4</TargetSelection>
           <SimDlls>
             <CpuDll></CpuDll>
             <CpuDllArguments></CpuDllArguments>
@@ -488,6 +488,11 @@
               <FileType>1</FileType>
               <FilePath>..\..\MPL3115.c</FilePath>
             </File>
+            <File>
+              <FileName>MPU_9150.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\MPU_9150.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -604,7 +609,7 @@
             <nStopA1X>0</nStopA1X>
             <nStopA2X>0</nStopA2X>
           </AfterMake>
-          <SelectedForBatchBuild>0</SelectedForBatchBuild>
+          <SelectedForBatchBuild>1</SelectedForBatchBuild>
           <SVCSIdString></SVCSIdString>
         </TargetCommonOption>
         <CommonProperty>
@@ -1003,6 +1008,11 @@
               <FileName>MPL3115.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\MPL3115.c</FilePath>
+            </File>
+            <File>
+              <FileName>MPU_9150.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\MPU_9150.c</FilePath>
             </File>
           </Files>
         </Group>

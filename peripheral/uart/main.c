@@ -16,8 +16,18 @@
  * @ingroup uart_example
  * @brief UART Example Application main file.
  *
- * This file contains the source code for a sample application using UART.
+ * @Description SmartCane application not including Bluetooth 
+ *
+ *
+ * @ToDo
  * 
+ * ErrorsKnown
+ *	1... GasGauge Voltage Occassionally returns Near 0 Value  Need to access MPL3115.c for device ready
+ *	2... GassGauge Battery Status neeeds to be bassed on Charge not Voltage (No battery incorrectly indicates CHARGED if Volt used)
+ *	3... GasGauge Temp Occassionally returs -270
+ *	4... 
+ *	5...
+ *
  */
 
 #include <stdbool.h>
@@ -25,21 +35,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>								//Required for sqrt and other high order functions
 
-#include "app_error.h"
 #include "app_uart.h"
-#include "nrf_delay.h"
-//#include "nrf.h"
+#include "app_error.h"
+
+#include "nrf.h"
+#include "nrf_temp.h"
+
 #include "bsp.h"
 
 #include "Communication.h"
 
 #include "ds2401.h"
 
-//#include "MPU_9150.h"  
-//#include "inv_mpu.h"
+#include "MPU_9150.h"  
+#include "inv_mpu.h"
+#include "nrf_delay.h"
 
-//#include "MPL3115.h"
+#include "MPL3115.h"
 
 #include "ltc2943.h"
 
@@ -85,6 +99,9 @@
 
 char DS2401_ID[16];									// String to hold ---> DS2401 (4bits) + Device_ID
 uint8_t MenuLevel=0;								// Initalise Default Menu Level to 00 --> Main Menu
+float Quaternion[4];								// Test Global Decleration to test Quaternion filter update operation
+//float ax, ay, az, gx, gy, gz, mx, my, mz;			// Test Global Decleration to test Quaternion filter update operation
+
 
 void uart_error_handle(app_uart_evt_t * p_event)
 {
@@ -141,6 +158,32 @@ static void GrabDeviceID(char* name, int len)		//DS2401 xxxxxxxx
 	}
 	return;
 }
+
+/** @brief 		Function to read internal nrf51822 temperature. */
+	int32_t readNRF_TEMP() {
+	int32_t ret = 0;
+    while (true)
+    {
+        NRF_TEMP->TASKS_START = 1; /** Start the temperature measurement. */
+
+        /* Busy wait while temperature measurement is not finished, you can skip waiting if you enable interrupt for DATARDY event and read the result in the interrupt. */
+        /*lint -e{845} // A zero has been given as right argument to operator '|'" */
+        while (NRF_TEMP->EVENTS_DATARDY == 0)
+        {
+            // $$$$$$$$$$$$$$ WARNING Need to monitor this trap or setup a countdown and exit ---> Do nothing.  $$$$$$$$$
+        }
+        NRF_TEMP->EVENTS_DATARDY = 0;
+
+        /**@note Workaround for PAN_028 rev2.0A anomaly 29 - TEMP: Stop task clears the TEMP register. */
+        ret = (nrf_temp_read() / 4);
+
+        /**@note Workaround for PAN_028 rev2.0A anomaly 30 - TEMP: Temp module analog front end does not power down when DATARDY event occurs. */
+        NRF_TEMP->TASKS_STOP = 1; /** Stop the temperature measurement. */
+
+        return ret;
+    }
+}
+
 /** @brief 		Function to load a single top level VT100 Terminal Menu. 
  *  @details 	Transmitts VT100 ESC Sequenceone character to clear screen and load menu data.
  *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
@@ -155,8 +198,8 @@ static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
 		printf("\x1B[2J");								//VT100 CLR SCREEN
 		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;10H  GDV-UoM SMARTCANE MAIN MENU");
-		printf("\x1B[01;45HDEVICE ID = ");
-		printf("\x1B[02;45H   STATUS = ");
+		printf("\x1B[01;47HDEVICE ID = ");
+		printf("\x1B[02;47H   STATUS = ");
 
 		printf("\x1B[04;10H  1... All Sensors");
 		printf("\x1B[06;10H  2... GPS Global Position");
@@ -183,42 +226,48 @@ static void UART_VT100_Menu_1()							// $$$$$$  ALL SENSORS  $$$$$$
 		printf("\x1B[2J");								//VT100 CLR SCREEN
 		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-1  ALL SENSORS and SYSTEMS");
-		printf("\x1B[04;05H Gravity");
+		printf("\x1B[04;05H GRAVITY g");
 		printf("\x1B[05;05H ACC-X = ");
 		printf("\x1B[06;05H ACC-Y = ");
 		printf("\x1B[07;05H ACC-Z = ");
+		printf("\x1B[08;05H ACC-M = ");
 
 		nrf_delay_ms(5);
 
-		printf("\x1B[04;30H Gyroscope");
+		printf("\x1B[04;30H GYROSCOPE deg");
 		printf("\x1B[05;30H GYRO-X = ");
 		printf("\x1B[06;30H GYRO-Y = ");
 		printf("\x1B[07;30H GYRO-Z = ");
-
+		printf("\x1B[08;30H GYRO-M = ");
+	
 		nrf_delay_ms(5);
 
-		printf("\x1B[04;55H Compass");
+		printf("\x1B[04;55H COMPASS ");
 		printf("\x1B[05;55H Compass-X = ");
 		printf("\x1B[06;55H Compass-Y = ");
 		printf("\x1B[07;55H Compass-Z = ");
+		printf("\x1B[08;55H Compass-M = ");
 
 		nrf_delay_ms(5);
 		 
-		printf("\x1B[10;05H GPS");
-		printf("\x1B[11;05H Latitude   = ");
-		printf("\x1B[12;05H Longditude = ");
-		printf("\x1B[13;05H Time       = ");
+		printf("\x1B[11;05H GPS");
+		printf("\x1B[12;05H Latitude   = ");
+		printf("\x1B[13;05H Longditude = ");
+		printf("\x1B[14;05H Time       = ");
 
 		nrf_delay_ms(5);
 		 
-		printf("\x1B[10;30H Temperature");
-		printf("\x1B[11;30H Processor = ");
-		printf("\x1B[12;30H Compass   = ");
-		printf("\x1B[13;30H Pressure  = ");
-
-		printf("\x1B[10;55H Height");
-		printf("\x1B[11;55H Pressure = ");
-		printf("\x1B[12;55H Altitude = ");
+		printf("\x1B[11;30H TEMPERATURE");
+		printf("\x1B[12;30H ProcessorT = ");
+		printf("\x1B[13;30H CompassT   = ");
+		printf("\x1B[14;30H PressureT  = ");
+		printf("\x1B[15;30H GasGaugeT  = ");
+		
+		
+		printf("\x1B[11;55H HEIGHT");
+		printf("\x1B[12;55H Pressure  = ");
+		printf("\x1B[13;55H Altitude  = ");
+		
 
 		nrf_delay_ms(5);
 			
@@ -268,29 +317,35 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 		printf("\x1B[H");			//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-3  INERTIAL SENSOR MENU");
 		 
-		printf("\x1B[05;05H Magnetometer");
-		printf("\x1B[06;05H Mag-X     = ");
-		printf("\x1B[07;05H Mag-Y     = ");
-		printf("\x1B[08;05H Mag-Z     = ");
-		printf("\x1B[09;05H Mag-M     = ");
+		printf("\x1B[05;05H MAGNETOMETER uT");
+		printf("\x1B[06;05H Mag-X = ");
+		printf("\x1B[07;05H Mag-Y = ");
+		printf("\x1B[08;05H Mag-Z = ");
+		printf("\x1B[09;05H Mag-M = ");
 
 		nrf_delay_ms(5);
 		 
-		printf("\x1B[05;30H Gravity");
-		printf("\x1B[06;30H Grav-X    = ");
-		printf("\x1B[07;30H Grav-Y    = ");
-		printf("\x1B[08;30H Grav-Z    = ");
-		printf("\x1B[09;30H Grav-M    = ");
+		printf("\x1B[05;28H GRAVITY g");
+		printf("\x1B[06;28H Grav-X = ");
+		printf("\x1B[07;28H Grav-Y = ");
+		printf("\x1B[08;28H Grav-Z = ");
+		printf("\x1B[09;28H Grav-M = ");
 
 		nrf_delay_ms(5);
 
-		printf("\x1B[05;50H Gyroscope ");
-		printf("\x1B[06;50H Gyro-X    = ");
-		printf("\x1B[07;50H Gyro-Y    = ");
-		printf("\x1B[08;50H Gyro-Z    = ");
-		printf("\x1B[09;50H Gyro-M    = ");
+		printf("\x1B[05;55H GYROSCOPE deg/sec");
+		printf("\x1B[06;55H Pitch  = ");
+		printf("\x1B[07;55H Roll   = ");
+		printf("\x1B[08;55H Yaw    = ");
+
 		
 		nrf_delay_ms(5);
+		
+		printf("\x1B[12;05H MADGWICK QUATERNION");
+		printf("\x1B[13;05H Quat0 = ");
+		printf("\x1B[14;05H Quat1 = ");
+		printf("\x1B[15;05H Quat2 = ");
+		printf("\x1B[16;05H Quat3 = ");
     	        
 	  printf("\x1B[24;05H  X... exit    ?...Help");
 }	
@@ -307,14 +362,14 @@ static void UART_VT100_Menu_4()							// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$
 		printf("\x1B[H");			//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-4  PRESSURE, ALTITUDE & TEMPERATURE");
 		 
-		printf("\x1B[05;05H Pressure");
+		printf("\x1B[05;05H PRESSURE");
 		printf("\x1B[06;05H Abs Pressure = ");
 		printf("\x1B[07;05H ZeroRef      = ");
 		printf("\x1B[08;05H Temperature  = ");
 
 		nrf_delay_ms(5);
 		 
-		printf("\x1B[05;40H Altitude");
+		printf("\x1B[05;40H ALTITUDE");
 		printf("\x1B[06;40H Altitude    = ");
 		printf("\x1B[07;40H ZeroRef     = ");
 		printf("\x1B[08;40H 1HrRelative = ");
@@ -373,7 +428,7 @@ static void UART_VT100_Menu_6()		    				// $$$$$$  POWER MANAGEMENT MENU  $$$$$
 		printf("\x1B[H");			//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-6 POWER MANAGEMENT MENU");
 		 
-		printf("\x1B[05;05H Gauge Measurements");
+		printf("\x1B[05;05H GAUGE MEASUREMENTS");
 		printf("\x1B[06;05H Batt Voltage  = ");
 		printf("\x1B[07;05H Batt Current  = ");
 		printf("\x1B[08;05H Batt Status   = "); 
@@ -382,14 +437,13 @@ static void UART_VT100_Menu_6()		    				// $$$$$$  POWER MANAGEMENT MENU  $$$$$
 
 		nrf_delay_ms(5);
 		 
-		printf("\x1B[05;50H SoC ADC rail");
-		printf("\x1B[06;50H Vbatt     = ");
-		printf("\x1B[07;50H 3V3 Rail  = ");
-		printf("\x1B[08;50H Spare     = ");
+		printf("\x1B[05;50H SoC ADC RAILS");
+		printf("\x1B[06;50H Vbatt    = ");
+		printf("\x1B[07;50H 3V3 Rail = ");
+		printf("\x1B[08;50H Spare    = ");
 		
 		nrf_delay_ms(5);
-    
-	  
+
 		printf("\x1B[24;05H  X... exit    ?...Help");
 }	
 
@@ -503,13 +557,11 @@ static void UART_VT100_Help_Menu()						// $$$$$$  SCREEN HELP MENU  $$$$$$
 /** @brief		Function to load MAIN MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_Main_Menu()			// $$$$$$  MAIN MENU DATA REFRESH  $$$$$$
 {
-		printf("\x1B[01;55H %s %s", DEVICE_NAME, DS2401_ID);			//Device Name + Device ID
+		printf("\x1B[01;58H %s %s", DEVICE_NAME, DS2401_ID);			//Device Name + Device ID
 
-		printf("\x1B[02;55H READY");					//Self Test Status ToDo
+		printf("\x1B[02;58H READY");									//Self Test Status ToDo
+		
 	
-//		tempf = readNRF_TEMP();
-//		printf("\x1B[03;55H%10d ", (int) tempf);		//SoC nrf51822 Internal Temperature
-
 		printf("\x1B[01;78H");							//Park VT100 cursor at row 01 column 75	//Park VT100 cursor at row 01 column 78
 }	
 
@@ -517,14 +569,56 @@ static void UART_VT100_Display_Data_Main_Menu()			// $$$$$$  MAIN MENU DATA REFR
 static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU DATA REFRESH  $$$$$$
 {
 	int value;
-		
-	if (!ltc294x_get_voltage(&value))
-		printf("\x1B[06;19H%10d ",value);
+	float Acc[3];
+	double Calc, MagGravity, MagCompass;
+	float data[3], temp;
+	
+	readAccelFloatMG(Acc);							//ACCELERATION
 
+	printf("\x1B[05;14H%+2.2f ", Acc[0]);
+	printf("\x1B[06;14H%+2.2f ", Acc[1]);
+	printf("\x1B[07;14H%+2.2f ", Acc[2]);
 	
+	MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
+	printf("\x1B[08;14H%+2.2f ", MagGravity);
+
+	readGyroFloatDeg(Acc);							//GYRO
+	printf("\x1B[05;40H%+4.2f ", Acc[0]);
+	printf("\x1B[06;40H%+4.2f ", Acc[1]);
+	printf("\x1B[07;40H%+4.2f ", Acc[2]);
 	
-	 if (!ltc294x_get_temperature(&value))
-		printf("\x1B[10;19H%10d",value);
+	Calc = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
+	printf("\x1B[08;40H%+4.2f ", Calc);
+	
+//	mpu_get_compass_reg(data, &timestamp);
+	readMagFloatUT(data);							//MAGNETIC
+	printf("\x1B[05;68H%+4.2f ", (float)data[0]);
+	printf("\x1B[06;68H%+4.2f ", (float)data[1]);
+	printf("\x1B[07;68H%+4.2f ", (float)data[2]);
+	
+	MagCompass = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);   //Total Magnetic Field Exposure ---> Earth + Other ????
+	printf("\x1B[08;68H%+4.2f ", MagCompass);
+	
+//	printf("\x1B[10;19H%10d ",(int)timestamp);
+
+
+	printf("\x1B[12;68H%+4.2f ", (float)MPL3115A2_getPressure());
+ 	printf("\x1B[13;68H%+4.2f ", (float)MPL3115A2_getAltitude());
+
+
+//	TEMPERATURE ---> REAL TIME DEVICE UPDATES
+	
+	printf("\x1B[12;44H%+4.1f ", (float) readNRF_TEMP());					// Processor Temperature TODO
+	
+//	printf("\x1B[13;44H%+4.1f ", 0);										// Inertial Temperature TODO
+	
+	printf("\x1B[14;44H%+4.1f ", (float) MPL3115A2_getTemperature());		// Pressure Sensor Temp	
+
+	if (!ltc294x_get_temperature(&value))
+	temp = value/100;	
+	printf("\x1B[15;44H%+4.1f ", temp);										// GasGauge Temperature
+	 
+	
 }	
 
 
@@ -540,48 +634,48 @@ static void UART_VT100_Display_Data_GPS()				// $$$$$$ GPS MENU DATA REFRESH  $$
 	
 	 if (!ltc294x_get_temperature(&value))
 		printf("\x1B[10;19H%10d",value);
+	 
 }	
 
 /** @brief 		Function to load INERTIAL MENU Refresh Data to VT100 Terminal Screen.  */
-static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MENU DATA REFRESH  $$$$$$
+static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MPU9250 MENU DATA REFRESH  $$$$$$
 {
-	int value;
-	
 	float Acc[3];
-	double Calc;
+	double MagGravity, MagCompass;
 		
-	short data[3];
+	float data[4];
 	
-	unsigned long timestamp;
+	readAccelFloatMG(Acc);						// ACCELERATION-GRAVITY (g)
+	printf("\x1B[06;38H%+2.2f ", Acc[0]);
+	printf("\x1B[07;38H%+2.2f ", Acc[1]);
+	printf("\x1B[08;38H%+2.2f ", Acc[2]);
 	
-	int16_t temp; 
+	MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
+	printf("\x1B[09;38H%+2.2f ", (float) MagGravity);
 
-//	readAccelFloatMG(Acc);
-
-//	printf("\x1B[06;44H%10d ",(int)Acc[0]);			/// WARNING Need to check format errors re loss of decimal points ---> Float to Int ???
-//	printf("\x1B[07;44H%10d ",(int)Acc[1]);
-//	printf("\x1B[08;44H%10d ",(int)Acc[2]);
-//	
-//	Calc = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
-//	printf("\x1B[09;44H%10d ",(int)Calc);
-
-//	readGyroFloatDeg(Acc);
-//	printf("\x1B[06;69H%10d ",(int)Acc[0]);
-//	printf("\x1B[07;69H%10d ",(int)Acc[1]);
-//	printf("\x1B[08;69H%10d ",(int)Acc[2]);
-//	
-//	Calc = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
-//	printf("\x1B[09;69H%10d ",(int)Calc);
-//	
+	readGyroFloatDeg(Acc);						// GYROSCOPE Degrees
+	printf("\x1B[06;65H%+4.2f ", Acc[0]);
+	printf("\x1B[07;65H%+4.2f ", Acc[1]);
+	printf("\x1B[08;65H%+4.2f ", Acc[2]);
+	
+		
 //	mpu_get_compass_reg(data, &timestamp);
-//	printf("\x1B[06;19H%10d ",(int)data[0]);
-//	printf("\x1B[07;19H%10d ",(int)data[1]);
-//	printf("\x1B[08;19H%10d ",(int)data[2]);
-//	
-//	Calc = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);   //Total Magnetic Field Exposure ---> Earth + Other ????
-//	printf("\x1B[09;19H%10d ",(int)Calc);
-//	
-//	printf("\x1B[10;19H%10d ",(int)timestamp);
+	readMagFloatUT(data);						// MAGNETIC FIELD uTesla
+	printf("\x1B[06;14H%+4.2f ", data[0]);
+	printf("\x1B[07;14H%+4.2f ", data[1]);
+	printf("\x1B[08;14H%+4.2f ", data[2]);
+	
+	MagCompass = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);   //Total Magnetic Field Exposure ---> Earth + Other ????
+	printf("\x1B[09;14H%+4.2f ", MagCompass);
+	
+	
+	readQuaternion(Quaternion);					// QUARTERNION   ---> NOT UPDATING FILTER
+	printf("\x1B[13;14H%+4.2f ", Quaternion[0]);
+	printf("\x1B[14;14H%+4.2f ", Quaternion[1]);
+	printf("\x1B[15;14H%+4.2f ", Quaternion[2]);
+	printf("\x1B[16;14H%+4.2f ", Quaternion[3]);
+	
+	
 }	
 
 
@@ -590,11 +684,13 @@ static void UART_VT100_Display_Data_Altitude()			// $$$$$$  ALTITUDE MENU DATA R
 {
 		// Note MPL3115A returns float ---> cast as int 
 
-		printf("\x1B[06;21H%10d", (int)MPL3115A2_getPressure());
+		printf("\x1B[06;21H%+4.2f ", (float)MPL3115A2_getPressure());
+		
+		printf("\x1B[07;21H%+4.2f ", (float)MPL3115A2_getPressureSeaLevel()); 
 
-		printf("\x1B[08;21H%10d", (int)MPL3115A2_getTemperature());
+		printf("\x1B[08;21H%+4.2f ", (float)MPL3115A2_getTemperature());
 
-		printf("\x1B[06;55H%10d", (int)MPL3115A2_getAltitude());
+		printf("\x1B[06;55H%+4.2f ", (float)MPL3115A2_getAltitude());
 }	
 
 
@@ -617,29 +713,37 @@ static void UART_VT100_Display_Data_Memory()			// $$$$$$  Memory MENU DATA REFRE
 static void UART_VT100_Display_Data_Power()		    	// $$$$$$  POWER MANAGEMENT MENU DATA REFRESH  $$$$$$
 {
 	int value;
+	float temp;
 		
-	if (!ltc294x_get_voltage(&value))
-		printf("\x1B[06;21H%10d ",value);
+	if (!ltc294x_get_voltage(&value))				// WARNING GasGauge Intermitent Occassionally Returns 0000
+	temp = (float) value;
+	temp = temp / 1000000;
+	printf("\x1B[6;22H%+4.3f ", temp);				// GasGauge Battery Voltage 
 
-	if (value>4000000)									// WARNING If batter Removed the Charging Supply Jumps to .GT.4V1 and incorrectly shows as charged
-		printf("\x1B[08;21H   CHARGED");				// NEEd to base battery of charge counter or on battery reaching correct capacity
+	if (value>4000000)								// WARNING If battery emoved the Charging Supply Jumps to .GT.4V1 and incorrectly shows as charged
+		printf("\x1B[08;21H CHARGED ");				// Need to base battery of charge counter or on battery reaching correct capacity
 	else if (value>3500000)
-		printf("\x1B[08;21H      HIGH");
+		printf("\x1B[08;21H HIGH    ");
 	else if (value>2500000)
-		printf("\x1B[08;21H    MEDIUM"); 
+		printf("\x1B[08;21H MEDIUM  "); 
 	else if (value>2000000)
-		printf("\x1B[08;21H       LOW"); 
+		printf("\x1B[08;21H LOW     "); 
 	else if (value<=2000000)
-		printf("\x1B[08;21H  VERY LOW"); 
+		printf("\x1B[08;21H VERY LOW"); 
 	
-	if (!ltc294x_get_current(&value))					//FAULT ---> Not Returning Valid dada ??????????
-		printf("\x1B[07;21H%10d",value);
+	if (!ltc294x_get_current(&value))					
+	temp = (float) value/1000;
+	printf("\x1B[7;22H%+4.2f ", temp);				// GasGauge Battery Current  FAULT ---> Not Returning Valid dada ??????????
 	
+	printf("\x1B[10;22H%+4.2f ", temp);					
 	if (!ltc294x_get_charge_counter(&value))
-		printf("\x1B[09;21H%10d",value);
+	temp = (float) value/10;
+	printf("\x1B[09;22H%+4.2f ", temp);				// GasGauge Charge Counter
 	
-	 if (!ltc294x_get_temperature(&value))
-		printf("\x1B[10;21H%10d",value);
+	if (!ltc294x_get_temperature(&value))
+	temp = (float) value/100;	
+	printf("\x1B[10;22H%+4.2f ", temp);				// GasGauge Temperature 
+
 }	
 
 
@@ -817,7 +921,10 @@ int main(void)
 	
 	uint8_t status = 0;	  
 	while(!status)  status = I2C_Init();
-	ltc294x_init();
+	
+	ltc294x_init();							// Power Battery Gauge I2C
+	MPL3115A2_init();						// Pressure, Altitude and Temperature I2C
+	initMPU9150();							// Gyro, Accelerometer, Magnetometer (Compass) and Temperature I2C
 
 	UART_VT100_Main_Menu();					//Initialise Default UART VT100 Menu
 
@@ -859,15 +966,19 @@ int main(void)
 			
 			break;
 		
-		case 4:								//To Be Assigned 
+		case 4:								//Collect and Filter Inertial Data
 			
 			break;
 			
-		case 5:								//To Be Assigned 
+		case 5:								//Collect and Filter Pressure/Altitude Data 
 			
 			break;
 			
 		case 6:								//To Be Assigned 
+			
+			break;
+		
+		case 7:								//To Be Assigned 
 			
 			break;
 		

@@ -164,41 +164,34 @@ float MPL3115A2_getTemperature() {
 }
 
 float MPL3115A2_getAltitude() {
-	int32_t alt;
 
-	MPL3115A2_write8(MPL3115A2_CTRL_REG1, // 0x26
-		MPL3115A2_CTRL_REG1_SBYB |
-		MPL3115A2_CTRL_REG1_OS128 |
-		MPL3115A2_CTRL_REG1_ALT);  // 0xB9
+//	MPL3115A2_write8(MPL3115A2_CTRL_REG1, 				// 0x26
+//		MPL3115A2_CTRL_REG1_SBYB |						// 0x01 WRONG ---> 0 == Standby This State Required before Mod of Reg1
+//		MPL3115A2_CTRL_REG1_OS128 |
+	//		MPL3115A2_CTRL_REG1_ALT);  					// 0xB9  WRONG  ---> Alt:1 RAW:0 OS2:1 OS1:1 OS0:1 RST:0 OST:0 SBY:1
+	
+	MPL3115A2_write8(MPL3115A2_CTRL_REG1, 0xB8); 		//// 0xB8   ---> Alt:1 RAW:0 OS2:1 OS1:1 OS0:1 RST:0 OST:0 SBY:0
 
+	MPL3115A2_write8(0x13, 0x07); 						//Enable PT_DATA_CFG re Pg11
+	
+	MPL3115A2_write8(MPL3115A2_CTRL_REG1, 0xB9); 		//Set Active for Polling 0xB9 ---> Alt:1 RAW:0 OS2:1 OS1:1 OS0:1 RST:0 OST:0 SBY:1
+	
 	uint8_t sta = 0;
-	sta = MPL3115A2_read8(MPL3115A2_CTRL_REG1);
+
 	sta = MPL3115A2_read8(MPL3115A2_REGISTER_STATUS);
-	if (! (sta & (MPL3115A2_REGISTER_STATUS_PDR|MPL3115A2_REGISTER_STATUS_PTDR)) ) {
-		//sta = MPL3115A2_read8(MPL3115A2_WHOAMI);
-		nrf_delay_ms(200);
+	while (! (sta & MPL3115A2_REGISTER_STATUS_PTDR)) {
 		sta = MPL3115A2_read8(MPL3115A2_REGISTER_STATUS);
-		if (!((sta & (MPL3115A2_REGISTER_STATUS_PDR|MPL3115A2_REGISTER_STATUS_PTDR))) )
-		{
-		MPL3115A2_write8(MPL3115A2_CTRL_REG1, // 0x26
-		MPL3115A2_CTRL_REG1_SBYB |
-		MPL3115A2_CTRL_REG1_OS128 |
-		MPL3115A2_CTRL_REG1_ALT);  // 0xB9
-		sta = MPL3115A2_read8(MPL3115A2_REGISTER_STATUS);
-		}
+		nrf_delay_ms(10);
 	}
+	
 	uint8_t out[3];
 	MPL3115A2_readBytes_(MPL3115A2_ADDRESS, MPL3115A2_REGISTER_PRESSURE_MSB, 3, out, true);
 
-	alt = (out[0]<<16)|(out[1]<<8)|out[2]; // receive DATA
-	alt >>= 4;
+	float tempcsb = (out[2]>>4)/16.0;		//Fractional Part of Q16.4 Data Format Converted to floating decimal
 
-	if (alt & 0x800000) {
-		alt |= 0xFF000000;
-	}
-
-	float altitude = alt;
-	altitude /= 16.0;
+	float altitude = (float)( (out[0] << 8) | out[1]) + tempcsb;
+	
+	altitude = altitude - 65400;			//Dummy offset to align Zero Altitude somewhere near sea level !!!!
 	return altitude;
 }
 
@@ -213,7 +206,7 @@ float MPL3115A2_getPressure() {
 	MPL3115A2_write8(MPL3115A2_CTRL_REG1, 
 		MPL3115A2_CTRL_REG1_SBYB |
 		MPL3115A2_CTRL_REG1_OS128 |
-		MPL3115A2_CTRL_REG1_BAR);
+		MPL3115A2_CTRL_REG1_BAR);				//Set Active for Polling 0xB9 ---> Alt:1 RAW:0 OS2:1 OS1:1 OS0:1 RST:0 OST:0 SBY:1
 
 	uint8_t sta = 0;
 	while (! (sta & MPL3115A2_REGISTER_STATUS_PDR)) {
@@ -224,10 +217,30 @@ float MPL3115A2_getPressure() {
   	uint8_t out[3];
 	MPL3115A2_readBytes_(MPL3115A2_ADDRESS, MPL3115A2_REGISTER_PRESSURE_MSB, 3, out, true);
 
-	pressure = (out[0]<<16)|(out[1]<<8)|out[2]; // receive DATA
+	pressure = (out[0]<<16)|(out[1]<<8)|out[2]; 			// pressure DATA
 	pressure >>= 4;
-
 	float baro = pressure;
-	baro /= 4.0;
+	baro /= 400.0;
+	return baro;
+}
+
+//**************************************************************************/
+//
+//	@brief  Gets the floating-point sea level pressure setpint level in kPa
+//	Default Pressure == 101326Pa 
+//
+//**************************************************************************/
+float MPL3115A2_getPressureSeaLevel() {
+	
+	uint32_t pressure;
+	uint8_t out[2];
+	MPL3115A2_readBytes_(MPL3115A2_ADDRESS, 0x14, 2, out, true);		// Reg... BAR ---> MSB:14 + LSB:15
+
+//	pressure = 0xC5E70;		//
+	
+	pressure = (out[0]<<12)|(out[1]<<4); 								// Barometric pressure at Sea Level (used for Altimeter Adjust)
+	pressure >>= 3;
+	float baro = pressure;
+	baro /= 100.0;
 	return baro;
 }
