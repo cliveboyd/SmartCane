@@ -26,7 +26,6 @@
 .\_build\main.o: ..\..\Communication.h
 .\_build\main.o: ..\..\ds2401.h
 .\_build\main.o: ..\..\MPU_9150.h
-.\_build\main.o: ..\..\inv_mpu.h
 .\_build\main.o: c:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_Drivers\2.0.0\hal\nrf_delay.h
 .\_build\main.o: ..\..\MPL3115.h
 .\_build\main.o: ..\..\ltc2943.h

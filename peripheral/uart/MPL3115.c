@@ -191,7 +191,7 @@ float MPL3115A2_getAltitude() {
 
 	float altitude = (float)( (out[0] << 8) | out[1]) + tempcsb;
 	
-	altitude = altitude - 65400;			//Dummy offset to align Zero Altitude somewhere near sea level !!!!
+//	altitude = altitude + 65400;			//Dummy offset to align Zero Altitude somewhere near sea level !!!!
 	return altitude;
 }
 

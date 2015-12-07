@@ -2,6 +2,7 @@
 #include "nrf.h"
 #include "nrf_gpiote.h"
 #include "nrf_gpio.h"
+
 #if(USE_WITH_SOFTDEVICE == 1)
 #include "nrf_sdm.h"
 #endif

@@ -30,6 +30,11 @@
  *
  */
 
+#define EMPL_TARGET_UC3L0							//Definition Required by inv_mpu
+#define TARGET_NRF58122								// Define the main Cortex M0 ARM Processor
+#define MPU9250										// Define Inertial Sensor Type as MPU9250 (Used at inv_mpu)
+
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -50,14 +55,18 @@
 #include "ds2401.h"
 
 #include "MPU_9150.h"  
-#include "inv_mpu.h"
+//#include "inv_mpu.h"
+//#include "inv_mpu_dmp_motion_driver.h"
+
 #include "nrf_delay.h"
 
 #include "MPL3115.h"
+//#include "inv_mpu.h"
 
 #include "ltc2943.h"
 
-#define DEVICE_NAME				"SCANE1V0"			//Keep under 8 characters to allow 8 char DS2401 ID to be pre appended (Max --> 16)
+
+#define DEVICE_NAME				"SCANE1V0"			// Keep under 8 characters to allow 8 char DS2401 ID to be pre appended (Max --> 16)
 
 #define MAX_TEST_DATA_BYTES     (55U)               /**< max number of test bytes per TX Burst to be used for tx and rx. */
 #define UART_TX_BUF_SIZE 		512                 /**< UART TX buffer size. */
@@ -100,7 +109,10 @@
 char DS2401_ID[16];									// String to hold ---> DS2401 (4bits) + Device_ID
 uint8_t MenuLevel=0;								// Initalise Default Menu Level to 00 --> Main Menu
 float Quaternion[4];								// Test Global Decleration to test Quaternion filter update operation
-//float ax, ay, az, gx, gy, gz, mx, my, mz;			// Test Global Decleration to test Quaternion filter update operation
+
+
+float  gyro_ManualCal[2];							// The following registers are used within manual Gyro calibration
+float  accel_ManualCal[2];							// The following registers are used within manual Acceleration calibration
 
 
 void uart_error_handle(app_uart_evt_t * p_event)
@@ -346,7 +358,7 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 		printf("\x1B[14;05H Quat1 = ");
 		printf("\x1B[15;05H Quat2 = ");
 		printf("\x1B[16;05H Quat3 = ");
-    	        
+    	printf("\x1B[17;05H QuatM = ");        
 	  printf("\x1B[24;05H  X... exit    ?...Help");
 }	
 
@@ -502,10 +514,15 @@ static void UART_VT100_Menu_8()		    				// $$$$$$  SYSTEM DIAGNOSTIC MENU $$$$$
 
 		nrf_delay_ms(5);
 		 
-		printf("\x1B[05;30H SPARE");
-		printf("\x1B[06;30H Spare = ");
-		printf("\x1B[07;30H Spare = ");
-		printf("\x1B[08;30H Spare = ");
+		printf("\x1B[05;30H KEY COMMANDS");
+		printf("\x1B[06;30H A = calibrateMPU9150");
+		printf("\x1B[07;30H B = ");
+		printf("\x1B[08;30H C = ");
+		printf("\x1B[08;30H D = ");
+		printf("\x1B[08;30H E = ");
+		printf("\x1B[08;30H F = ");
+		printf("\x1B[08;30H G = ");
+		printf("\x1B[08;30H H = ");
 
 		nrf_delay_ms(5);
 
@@ -641,7 +658,7 @@ static void UART_VT100_Display_Data_GPS()				// $$$$$$ GPS MENU DATA REFRESH  $$
 static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MPU9250 MENU DATA REFRESH  $$$$$$
 {
 	float Acc[3];
-	double MagGravity, MagCompass;
+	double MagGravity, Magnitude;
 		
 	float data[4];
 	
@@ -665,8 +682,8 @@ static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MPU9250 MEN
 	printf("\x1B[07;14H%+4.2f ", data[1]);
 	printf("\x1B[08;14H%+4.2f ", data[2]);
 	
-	MagCompass = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);   //Total Magnetic Field Exposure ---> Earth + Other ????
-	printf("\x1B[09;14H%+4.2f ", MagCompass);
+	Magnitude = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);   //Total Magnetic Field Exposure ---> Earth + Other ????
+	printf("\x1B[09;14H%+4.2f ", Magnitude);
 	
 	
 	readQuaternion(Quaternion);					// QUARTERNION   ---> NOT UPDATING FILTER
@@ -675,6 +692,11 @@ static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MPU9250 MEN
 	printf("\x1B[15;14H%+4.2f ", Quaternion[2]);
 	printf("\x1B[16;14H%+4.2f ", Quaternion[3]);
 	
+	Magnitude = sqrt(	Quaternion[0]*Quaternion[0] + 
+						Quaternion[1]*Quaternion[1] + 
+						Quaternion[2]*Quaternion[2] +
+						Quaternion[3]*Quaternion[3]);		//Magnitude of Quaternion ????
+	printf("\x1B[17;14H%+4.4f ", Magnitude);
 	
 }	
 
@@ -688,7 +710,7 @@ static void UART_VT100_Display_Data_Altitude()			// $$$$$$  ALTITUDE MENU DATA R
 		
 		printf("\x1B[07;21H%+4.2f ", (float)MPL3115A2_getPressureSeaLevel()); 
 
-		printf("\x1B[08;21H%+4.2f ", (float)MPL3115A2_getTemperature());
+		printf("\x1B[08;23H%+4.2f ", (float)MPL3115A2_getTemperature());
 
 		printf("\x1B[06;55H%+4.2f ", (float)MPL3115A2_getAltitude());
 }	
@@ -833,6 +855,13 @@ static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE 
 		case '?':
 			UART_VT100_Help_Menu();		//	Help Menu
 		break;
+		
+		case 'A':
+		 			
+			calibrateMPU9150(gyro_ManualCal, accel_ManualCal);
+//		float testxxx = gyro_ManualCal[0];
+		break;
+
 		} 
 	}		
 	
@@ -840,7 +869,7 @@ static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE 
 	
 	{
 		nrf_delay_ms(25);
-					
+			
 		switch (MenuLevel)				//Load UART Reresh data based on current Menu Level
 		{
 		case 00:		//Main Menu

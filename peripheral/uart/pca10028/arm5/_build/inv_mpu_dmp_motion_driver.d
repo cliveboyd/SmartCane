@@ -1,0 +1,10 @@
+.\_build\inv_mpu_dmp_motion_driver.o: ..\..\inv_mpu_dmp_motion_driver.c
+.\_build\inv_mpu_dmp_motion_driver.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+.\_build\inv_mpu_dmp_motion_driver.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\_build\inv_mpu_dmp_motion_driver.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\_build\inv_mpu_dmp_motion_driver.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+.\_build\inv_mpu_dmp_motion_driver.o: c:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\_build\inv_mpu_dmp_motion_driver.o: ..\..\inv_mpu.h
+.\_build\inv_mpu_dmp_motion_driver.o: ..\..\inv_mpu_dmp_motion_driver.h
+.\_build\inv_mpu_dmp_motion_driver.o: ..\..\dmpKey.h
+.\_build\inv_mpu_dmp_motion_driver.o: ..\..\dmpmap.h

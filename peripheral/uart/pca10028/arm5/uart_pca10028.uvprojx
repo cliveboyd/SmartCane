@@ -493,6 +493,11 @@
               <FileType>1</FileType>
               <FilePath>..\..\MPU_9150.c</FilePath>
             </File>
+            <File>
+              <FileName>nrf_pwm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\nrf_pwm.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1013,6 +1018,11 @@
               <FileName>MPU_9150.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\MPU_9150.c</FilePath>
+            </File>
+            <File>
+              <FileName>nrf_pwm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\nrf_pwm.c</FilePath>
             </File>
           </Files>
         </Group>
