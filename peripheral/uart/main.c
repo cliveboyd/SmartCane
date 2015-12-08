@@ -45,10 +45,26 @@
 #include "app_uart.h"
 #include "app_error.h"
 
+#include "app_button.h"
+#include "app_timer.h"  				// for APP_TIMER_TICKS
+#include "app_gpiote.h" 				// for APP_GPIOTE_INIT
+
+#include "nrf_delay.h"
 #include "nrf.h"
 #include "nrf_temp.h"
 
 #include "bsp.h"
+
+//#include "softdevice_handler.h"		// BlueTooth
+#include "pstorage.h"
+//#include "ble_advertising.h"			// BlueTooth
+//#include "device_manager.h"
+//#include "ble_hci.h"  				// BlueTooth for set hci_status_code to sd_ble_gap_disconnect
+//#include "ble_conn_params.h"			// BlueTooth
+#include "app_scheduler.h"  			// for scheduler APP_SCHED_INIT
+#include "app_timer_appsh.h"  			// for app_timer_event_t
+#include "nordic_common.h"  			// for UNUSED_PARAMETER
+#include "nrf_assert.h" 				// for ASSERT
 
 #include "Communication.h"
 
@@ -58,19 +74,53 @@
 //#include "inv_mpu.h"
 //#include "inv_mpu_dmp_motion_driver.h"
 
-#include "nrf_delay.h"
+#include "MPL3115.h"								// Pressure Transducer
+#include "ltc2943.h"								// Battery Gas Gauge
 
-#include "MPL3115.h"
-//#include "inv_mpu.h"
+#define IS_SRVC_CHANGED_CHARACT_PRESENT  0                                          /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
+#define DEVICE_APPEARANCE				 BLE_APPEARANCE_UNKNOWN						/**< Device appearance **/
+// for ble_conn_param_init param
+#define APP_TIMER_PRESCALER              0                                          /**< Value of the RTC1 PRESCALER register. */
+#define APP_TIMER_MAX_TIMERS             (6+BSP_APP_TIMERS_NUMBER)                  /**< Maximum number of simultaneously created timers. */
+#define APP_TIMER_OP_QUEUE_SIZE          4                                          /**< Size of timer operation queues. */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER) /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY    APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER)/**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define MAX_CONN_PARAMS_UPDATE_COUNT     3                                          /**< Number of attempts before giving up the connection parameter negotiation. */
+// for GAP param init
+#define MIN_CONN_INTERVAL                MSEC_TO_UNITS(9, UNIT_1_25_MS)           	/**< Minimum acceptable connection interval (0.4 seconds). */
+#define MAX_CONN_INTERVAL                MSEC_TO_UNITS(300, UNIT_1_25_MS)           /**< Maximum acceptable connection interval (0.65 second). */
+#define SLAVE_LATENCY                    0                                          /**< Slave latency. */
+#define CONN_SUP_TIMEOUT                 MSEC_TO_UNITS(4000, UNIT_10_MS)            /**< Connection supervisory timeout (4 seconds). */
+#define TX_POWER_LEVEL                   (0) 										/**< TX Power Level value. This will be set both in the TX Power service, in the advertising data, and also used to set the radio transmit power. */
 
-#include "ltc2943.h"
+// for on_adv_evt
+// to use button, define BUTTONS_NUMBER in custom_board.h
+#define WAKEUP_BUTTON_ID                 0                                          /**< Button used to wake up the application. */
+#define BOND_DELETE_ALL_BUTTON_ID        1                                          /**< Button used for deleting all bonded centrals during startup. */
+
+// for ble_advertising_init param
+#define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
+#define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
+#define APP_ADV_GAP_FLAG				BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE  
+
+// for app scheduler module
+#define SCHED_MAX_EVENT_DATA_SIZE       sizeof(app_timer_event_t)                   /**< Maximum size of scheduler events. Note that scheduler BLE stack events do not contain any data, as the events are being pulled from the stack in the event handler. */
+#define SCHED_QUEUE_SIZE                10  										/**< Maximum number of events in the scheduler queue. */
+
+// for device manager module
+#define SEC_PARAM_BOND                   1                                          /**< Perform bonding. */
+#define SEC_PARAM_MITM                   0                                          /**< Man In The Middle protection not required. */
+#define SEC_PARAM_IO_CAPABILITIES        BLE_GAP_IO_CAPS_NONE                       /**< No I/O capabilities. */
+#define SEC_PARAM_OOB                    0                                          /**< Out Of Band data not available. */
+#define SEC_PARAM_MIN_KEY_SIZE           7                                          /**< Minimum encryption key size. */
+#define SEC_PARAM_MAX_KEY_SIZE           16                                         /**< Maximum encryption key size. */
 
 
 #define DEVICE_NAME				"SCANE1V0"			// Keep under 8 characters to allow 8 char DS2401 ID to be pre appended (Max --> 16)
 
-#define MAX_TEST_DATA_BYTES     (55U)               /**< max number of test bytes per TX Burst to be used for tx and rx. */
-#define UART_TX_BUF_SIZE 		512                 /**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE 		1                   /**< UART RX buffer size. */
+#define MAX_TEST_DATA_BYTES     (55U)				/**< max number of test bytes per TX Burst to be used for tx and rx. */
+#define UART_TX_BUF_SIZE 		512					/**< UART TX buffer size. */
+#define UART_RX_BUF_SIZE 		16					/**< UART RX buffer size. */
 
 
 //	************************************************************
@@ -113,7 +163,9 @@ float Quaternion[4];								// Test Global Decleration to test Quaternion filter
 
 float  gyro_ManualCal[2];							// The following registers are used within manual Gyro calibration
 float  accel_ManualCal[2];							// The following registers are used within manual Acceleration calibration
-
+float  ErrorCount[16];								// Background Error Counters
+char cStatus[32];
+//cStatus = "Initalised";								// Current System Status Message
 
 void uart_error_handle(app_uart_evt_t * p_event)
 {
@@ -333,15 +385,17 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 		printf("\x1B[06;05H Mag-X = ");
 		printf("\x1B[07;05H Mag-Y = ");
 		printf("\x1B[08;05H Mag-Z = ");
-		printf("\x1B[09;05H Mag-M = ");
-
+		printf("\x1B[09;05H Magxy = ");
+		printf("\x1B[10;05H Magxxy= ");
+	
+	
 		nrf_delay_ms(5);
 		 
-		printf("\x1B[05;28H GRAVITY g");
-		printf("\x1B[06;28H Grav-X = ");
-		printf("\x1B[07;28H Grav-Y = ");
-		printf("\x1B[08;28H Grav-Z = ");
-		printf("\x1B[09;28H Grav-M = ");
+		printf("\x1B[05;30H GRAVITY g");
+		printf("\x1B[06;30H Grav-X = ");
+		printf("\x1B[07;30H Grav-Y = ");
+		printf("\x1B[08;30H Grav-Z = ");
+		printf("\x1B[09;30H Grav-M = ");
 
 		nrf_delay_ms(5);
 
@@ -507,31 +561,37 @@ static void UART_VT100_Menu_8()		    				// $$$$$$  SYSTEM DIAGNOSTIC MENU $$$$$
 		printf("\x1B[H");								//VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-8 SYSTEM DIAGNOSTIC MENU");
 		 
-		printf("\x1B[05;05H ErrorCount 01=");
-		printf("\x1B[06;05H ErrorCount 02=");
-		printf("\x1B[07;05H ErrorCount 03= ");
-		printf("\x1B[08;05H ErrorCount 04= ");
+		printf("\x1B[05;05H KEY COMMANDS");
+		printf("\x1B[06;05H A = calibrateMPU9150");
+		printf("\x1B[07;05H B = ZERO Manual Cal's");
+		printf("\x1B[08;05H C = Strobe Vibro 1sec");
+		printf("\x1B[09;05H D = Start Timer");
+		printf("\x1B[10;05H E = StrobeRedLED");
+		printf("\x1B[11;05H F = Strobe PWM Tone");
+		printf("\x1B[12;05H G = Spare");
+		printf("\x1B[13;05H H = Spare");
+	
 
-		nrf_delay_ms(5);
+		nrf_delay_ms(10);
 		 
-		printf("\x1B[05;30H KEY COMMANDS");
-		printf("\x1B[06;30H A = calibrateMPU9150");
-		printf("\x1B[07;30H B = ");
-		printf("\x1B[08;30H C = ");
-		printf("\x1B[08;30H D = ");
-		printf("\x1B[08;30H E = ");
-		printf("\x1B[08;30H F = ");
-		printf("\x1B[08;30H G = ");
-		printf("\x1B[08;30H H = ");
+		printf("\x1B[05;32H ERROR COUNTERS");
+		printf("\x1B[06;32H ErrorCount 01= ");
+		printf("\x1B[07;32H ErrorCount 02= ");
+		printf("\x1B[08;32H ErrorCount 03= ");
+		printf("\x1B[09;32H ErrorCount 04= ");
+		printf("\x1B[10;32H ErrorCount 05= ");
+		printf("\x1B[11;32H ErrorCount 06= ");
+		printf("\x1B[12;32H ErrorCount 07= ");
 
-		nrf_delay_ms(5);
 
-		printf("\x1B[05;55H SPARE");
-		printf("\x1B[06;55H Spare = ");
-		printf("\x1B[07;55H Spare = ");
-		printf("\x1B[08;55H Spare = ");
+		nrf_delay_ms(10);
 
-		nrf_delay_ms(5);		
+		printf("\x1B[05;58H SPARE");
+		printf("\x1B[06;58H Spare = ");
+		printf("\x1B[07;58H Spare = ");
+		printf("\x1B[08;58H Spare = ");
+
+		nrf_delay_ms(10);		
 
 		printf("\x1B[24;05H  X... exit    ?...Help");
 }	
@@ -662,31 +722,35 @@ static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MPU9250 MEN
 		
 	float data[4];
 	
-	readAccelFloatMG(Acc);						// ACCELERATION-GRAVITY (g)
-	printf("\x1B[06;38H%+2.2f ", Acc[0]);
-	printf("\x1B[07;38H%+2.2f ", Acc[1]);
-	printf("\x1B[08;38H%+2.2f ", Acc[2]);
+	readAccelFloatMG(Acc);									// ACCELERATION-GRAVITY (g)
+	printf("\x1B[06;40H%+2.2f ", Acc[0]);
+	printf("\x1B[07;40H%+2.2f ", Acc[1]);
+	printf("\x1B[08;40H%+2.2f ", Acc[2]);
 	
 	MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
-	printf("\x1B[09;38H%+2.2f ", (float) MagGravity);
+	printf("\x1B[09;40H%+2.4f ", (float) MagGravity);		// MAG X-Y-Z
 
-	readGyroFloatDeg(Acc);						// GYROSCOPE Degrees
+	readGyroFloatDeg(Acc);									// GYROSCOPE Degrees
 	printf("\x1B[06;65H%+4.2f ", Acc[0]);
 	printf("\x1B[07;65H%+4.2f ", Acc[1]);
 	printf("\x1B[08;65H%+4.2f ", Acc[2]);
 	
 		
 //	mpu_get_compass_reg(data, &timestamp);
-	readMagFloatUT(data);						// MAGNETIC FIELD uTesla
+	readMagFloatUT(data);									// MAGNETIC FIELD uTesla
 	printf("\x1B[06;14H%+4.2f ", data[0]);
 	printf("\x1B[07;14H%+4.2f ", data[1]);
 	printf("\x1B[08;14H%+4.2f ", data[2]);
 	
+	Magnitude = sqrt(data[0]*data[0] + data[1]*data[1] );   //Total X-Y Magnetic Field Exposure ---> Earth + Other ????
+	printf("\x1B[09;14H%+4.4f ", Magnitude);
+	
+	
 	Magnitude = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);   //Total Magnetic Field Exposure ---> Earth + Other ????
-	printf("\x1B[09;14H%+4.2f ", Magnitude);
+	printf("\x1B[10;14H%+4.4f ", Magnitude);
 	
 	
-	readQuaternion(Quaternion);					// QUARTERNION   ---> NOT UPDATING FILTER
+	readQuaternion(Quaternion);								// QUARTERNION   ---> NOT UPDATING FILTER
 	printf("\x1B[13;14H%+4.2f ", Quaternion[0]);
 	printf("\x1B[14;14H%+4.2f ", Quaternion[1]);
 	printf("\x1B[15;14H%+4.2f ", Quaternion[2]);
@@ -695,7 +759,7 @@ static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MPU9250 MEN
 	Magnitude = sqrt(	Quaternion[0]*Quaternion[0] + 
 						Quaternion[1]*Quaternion[1] + 
 						Quaternion[2]*Quaternion[2] +
-						Quaternion[3]*Quaternion[3]);		//Magnitude of Quaternion ????
+						Quaternion[3]*Quaternion[3]);		// Magnitude of Quaternion ????
 	printf("\x1B[17;14H%+4.4f ", Magnitude);
 	
 }	
@@ -785,14 +849,7 @@ static void UART_VT100_Display_Data_Cane()				// $$$$$$  CANE DIAGNOSTICS MENU D
 /** @brief 		Function to load SYSTEM DIAGNOSTICS MENU Refresh Data to VT100 Terminal Screen.  */
 static void UART_VT100_Display_Data_System()			// $$$$$$  SYSTEM DIAGNOSTICS MENU DATA REFRESH  $$$$$$
 {
-	int value;
-		
-	if (!ltc294x_get_voltage(&value))
-		printf("\x1B[06;19H%10d ",value);
-
 	
-	 if (!ltc294x_get_temperature(&value))
-		printf("\x1B[10;19H%10d",value);
 }	
 
 /** @brief		Function to load ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs to UART Terminal Screen.  
@@ -809,59 +866,113 @@ static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE 
 		switch (ch) 
 		{
 		case '1':
-		UART_VT100_Menu_1();			//	1... All Sensors
+		UART_VT100_Menu_1();							//	1... All Sensors
 		break;
 		
 		case '2':
-			UART_VT100_Menu_2();		//	2... GPS Global Position
+			UART_VT100_Menu_2();						//	2... GPS Global Position
 		break;
 		
 		case '3':
-			UART_VT100_Menu_3();		//	3... Inertial Sensors
+			UART_VT100_Menu_3();						//	3... Inertial Sensors
 		break;
 		
 		case '4':
-			UART_VT100_Menu_4();		//	4... Altitude and Temperature							
+			UART_VT100_Menu_4();						//	4... Altitude and Temperature							
 		break;
 		
 		case '5':
-			 UART_VT100_Menu_5();		//	5... Memory Functions						
+			 UART_VT100_Menu_5();						//	5... Memory Functions						
 		break;
 		
 		case '6':
-			 UART_VT100_Menu_6();		//	6... Power Management						
+			 UART_VT100_Menu_6();						//	6... Power Management						
 		break;
 		
 		case '7':
-			 UART_VT100_Menu_7();		//	7... Cane Diagnostics					
+			 UART_VT100_Menu_7();						//	7... Cane Diagnostics					
 		break;
 		
 		case '8':
-			 UART_VT100_Menu_8();		//	8... System Diagnostics						
+			 UART_VT100_Menu_8();						//	8... System Diagnostics						
 		break;
 		
 		case 'x':
-			UART_VT100_Main_Menu();		//	0... Main Menue
-		break;
+			UART_VT100_Main_Menu();						//	0... Main Menue
+		break;	
 		
 		case 'X':
 			UART_VT100_Main_Menu();
 		break;
 		
 		case 't':
-			printf ("BCD");				//	$$$$$ printf Diagnostic Test
+			printf ("BCD");								//	$$$$$ printf Diagnostic Test
 		break;
 		
 		case '?':
-			UART_VT100_Help_Menu();		//	Help Menu
+			UART_VT100_Help_Menu();						//	Help Menu
 		break;
 		
 		case 'A':
-		 			
+			if ( MenuLevel == 80) 						// Grab Static Manual Calibration Variables
+			{
 			calibrateMPU9150(gyro_ManualCal, accel_ManualCal);
-//		float testxxx = gyro_ManualCal[0];
+//			cStatus="Manual Acc-Gyro Offsets";
+			}
 		break;
-
+		
+		case 'B':
+			if ( MenuLevel == 80) 						// Zero Manual Calibrations
+			{gyro_ManualCal[0]=0;   gyro_ManualCal[1]=0;  gyro_ManualCal[2]=0;
+			accel_ManualCal[0]=0; accel_ManualCal[1]=0; accel_ManualCal[2]=0;
+//			cStatus="Zero Acc-Gyro Offsets";
+			}
+		break;
+		
+		case 'C':
+			if ( MenuLevel == 80) 					
+			{
+			nrf_gpio_pin_set(MOTOR_PIN_NUMBER);			// Strobe Vibro Motor 500msec
+			nrf_delay_ms(500);
+			nrf_gpio_pin_clear(MOTOR_PIN_NUMBER);
+//			str cStatus = "Strobe Vibro Motor";
+			}
+		break;
+		
+		case 'D':
+			if ( MenuLevel == 80) 						// Start Background Timer
+			{
+//			cStatus="System Spare D";
+			}
+		break;
+		
+		case 'E':
+			if ( MenuLevel == 80) 						// LED Red Test
+			{
+//			cStatus="System Spare E";
+			}
+		break;
+		
+		case 'F':
+			if ( MenuLevel == 80) 						// PWM Tone Test
+			{
+//			cStatus="System Spare F";
+			}
+		break;
+		
+		case 'G':
+			if ( MenuLevel == 80) 						// Spare G
+			{
+//			cStatus="System Spare G";
+			}
+		break;
+		
+		case 'H':
+			if ( MenuLevel == 80) 						// Spare H
+			{
+//			cStatus="System Spare H";
+			}
+		break;
 		} 
 	}		
 	
@@ -870,45 +981,49 @@ static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE 
 	{
 		nrf_delay_ms(25);
 			
-		switch (MenuLevel)				//Load UART Reresh data based on current Menu Level
+		switch (MenuLevel)								//Load UART Reresh data based on current Menu Level
 		{
-		case 00:		//Main Menu
+		case 00:									//Main Menu
 			UART_VT100_Display_Data_Main_Menu();
 		break;		
 		
-		case 10:		//All Sensors
+		case 10:									//All Sensors
 			UART_VT100_Display_Data_All_Sensors();
 		break;		
 			
-		case 20:		//GPS Global Position
+		case 20:									//GPS Global Position
 			UART_VT100_Display_Data_GPS();
 		break;	
 
-		case 30:		//Inertial Sensors
+		case 30:									//Inertial Sensors
 			UART_VT100_Display_Data_Inertial();
 		break;
 
-		case 40:		//Altitude Pressure and Temperature
+		case 40:									//Altitude Pressure and Temperature
 			UART_VT100_Display_Data_Altitude();
 		break;		
 			
-		case 50:		//Memory Functions
+		case 50:									//Memory Functions
 			UART_VT100_Display_Data_Memory();
 		break;		
 		
-		case 60:		//Power Management
+		case 60:									//Power Management
 			UART_VT100_Display_Data_Power();
 		break;	
 
-		case 70:		//Cane Diagnostcs
+		case 70:									//Cane Diagnostcs
 			UART_VT100_Display_Data_Cane();
 		break;		
 		
-		case 80:		//System Diagnostcs - Including Error Counters
+		case 80:									//System Diagnostcs - Including Error Counters
 			UART_VT100_Display_Data_System();
 		break;				
 		}	
-		printf("\x1B[01;78H");			//Park VT100 cursor at row 01 column 75
+		
+		printf("\x1B[35;45H STATUS: %c", cStatus);		//Display System Status Message
+		
+		printf("\x1B[01;78H");							//Park VT100 cursor at row 01 column 75
+		
 		nrf_delay_ms(5);
 	}
 	}

@@ -3,9 +3,9 @@
 <title>Static Call Graph - [.\_build\nrf51822_xxaa.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\_build\nrf51822_xxaa.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060020: Last Updated: Mon Dec 07 18:11:24 2015
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060020: Last Updated: Tue Dec 08 14:03:22 2015
 <BR><P>
-<H3>Maximum Stack Usage =        520 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
+<H3>Maximum Stack Usage =        512 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
 main &rArr; Load_VT100_All_Menues &rArr; UART_VT100_Display_Data_Inertial &rArr; readQuaternion &rArr; MadgwickQuaternionUpdate &rArr; sqrt &rArr; _dsqrt &rArr; __aeabi_llsr
 <P>
@@ -793,10 +793,10 @@ Global Symbols
 <P><STRONG><a name="[f]"></a>TIMER2_IRQHandler</STRONG> (Thumb, 862 bytes, Stack size 8 bytes, nrf_pwm.o(i.TIMER2_IRQHandler))
 <BR><BR>[Stack]<UL><LI>Max Depth = 24<LI>Call Chain = TIMER2_IRQHandler &rArr; nrf_gpiote_task_config
 </UL>
-<BR>[Calls]<UL><LI><a href="#[85]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;safe_margins_present
-<LI><a href="#[82]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_gpiote_unconfig
+<BR>[Calls]<UL><LI><a href="#[82]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_gpiote_unconfig
 <LI><a href="#[84]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_gpiote_task_config
 <LI><a href="#[83]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_gpio_pin_write
+<LI><a href="#[85]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;safe_margins_present
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> arm_startup_nrf51.o(RESET)
 </UL>
@@ -828,7 +828,6 @@ Global Symbols
 <LI><a href="#[5a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Menu_1
 <LI><a href="#[62]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Main_Menu
 <LI><a href="#[63]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Help_Menu
-<LI><a href="#[6d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_System
 <LI><a href="#[6b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Power
 <LI><a href="#[6a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Memory
 <LI><a href="#[65]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Main_Menu
@@ -1064,8 +1063,7 @@ Global Symbols
 <BR>[Calls]<UL><LI><a href="#[b6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ltc294x_read_regs
 <LI><a href="#[2d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_uidivmod
 </UL>
-<BR>[Called By]<UL><LI><a href="#[6d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_System
-<LI><a href="#[6b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Power
+<BR>[Called By]<UL><LI><a href="#[6b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Power
 <LI><a href="#[6a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Memory
 <LI><a href="#[67]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_GPS
 <LI><a href="#[6c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Cane
@@ -1078,8 +1076,7 @@ Global Symbols
 <BR>[Calls]<UL><LI><a href="#[b6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ltc294x_read_regs
 <LI><a href="#[2d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_uidivmod
 </UL>
-<BR>[Called By]<UL><LI><a href="#[6d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_System
-<LI><a href="#[6b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Power
+<BR>[Called By]<UL><LI><a href="#[6b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Power
 <LI><a href="#[6a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Memory
 <LI><a href="#[67]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_GPS
 <LI><a href="#[6c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_VT100_Display_Data_Cane
@@ -1112,7 +1109,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[1f]"></a>main</STRONG> (Thumb, 270 bytes, Stack size 40 bytes, main.o(i.main))
-<BR><BR>[Stack]<UL><LI>Max Depth = 520<LI>Call Chain = main &rArr; Load_VT100_All_Menues &rArr; UART_VT100_Display_Data_Inertial &rArr; readQuaternion &rArr; MadgwickQuaternionUpdate &rArr; sqrt &rArr; _dsqrt &rArr; __aeabi_llsr
+<BR><BR>[Stack]<UL><LI>Max Depth = 512<LI>Call Chain = main &rArr; Load_VT100_All_Menues &rArr; UART_VT100_Display_Data_Inertial &rArr; readQuaternion &rArr; MadgwickQuaternionUpdate &rArr; sqrt &rArr; _dsqrt &rArr; __aeabi_llsr
 </UL>
 <BR>[Calls]<UL><LI><a href="#[b7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ltc294x_init
 <LI><a href="#[b1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;initMPU9150
@@ -1309,8 +1306,8 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[1f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[55]"></a>Load_VT100_All_Menues</STRONG> (Thumb, 292 bytes, Stack size 16 bytes, main.o(i.Load_VT100_All_Menues))
-<BR><BR>[Stack]<UL><LI>Max Depth = 480<LI>Call Chain = Load_VT100_All_Menues &rArr; UART_VT100_Display_Data_Inertial &rArr; readQuaternion &rArr; MadgwickQuaternionUpdate &rArr; sqrt &rArr; _dsqrt &rArr; __aeabi_llsr
+<P><STRONG><a name="[55]"></a>Load_VT100_All_Menues</STRONG> (Thumb, 412 bytes, Stack size 8 bytes, main.o(i.Load_VT100_All_Menues))
+<BR><BR>[Stack]<UL><LI>Max Depth = 472<LI>Call Chain = Load_VT100_All_Menues &rArr; UART_VT100_Display_Data_Inertial &rArr; readQuaternion &rArr; MadgwickQuaternionUpdate &rArr; sqrt &rArr; _dsqrt &rArr; __aeabi_llsr
 </UL>
 <BR>[Calls]<UL><LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
 <LI><a href="#[64]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;calibrateMPU9150
@@ -1395,7 +1392,7 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Load_VT100_All_Menues
 </UL>
 
-<P><STRONG><a name="[68]"></a>UART_VT100_Display_Data_Inertial</STRONG> (Thumb, 528 bytes, Stack size 88 bytes, main.o(i.UART_VT100_Display_Data_Inertial))
+<P><STRONG><a name="[68]"></a>UART_VT100_Display_Data_Inertial</STRONG> (Thumb, 582 bytes, Stack size 88 bytes, main.o(i.UART_VT100_Display_Data_Inertial))
 <BR><BR>[Stack]<UL><LI>Max Depth = 464<LI>Call Chain = UART_VT100_Display_Data_Inertial &rArr; readQuaternion &rArr; MadgwickQuaternionUpdate &rArr; sqrt &rArr; _dsqrt &rArr; __aeabi_llsr
 </UL>
 <BR>[Calls]<UL><LI><a href="#[8f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;readQuaternion
@@ -1445,14 +1442,8 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Load_VT100_All_Menues
 </UL>
 
-<P><STRONG><a name="[6d]"></a>UART_VT100_Display_Data_System</STRONG> (Thumb, 40 bytes, Stack size 8 bytes, main.o(i.UART_VT100_Display_Data_System))
-<BR><BR>[Stack]<UL><LI>Max Depth = 216<LI>Call Chain = UART_VT100_Display_Data_System &rArr; ltc294x_get_voltage &rArr; ltc294x_read_regs &rArr; i2c_transfer &rArr; I2C_Write &rArr; twi_master_transfer &rArr; twi_master_write &rArr; twi_master_init &rArr; twi_master_clear_bus
-</UL>
-<BR>[Calls]<UL><LI><a href="#[8e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ltc294x_get_voltage
-<LI><a href="#[8d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ltc294x_get_temperature
-<LI><a href="#[56]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
-</UL>
-<BR>[Called By]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Load_VT100_All_Menues
+<P><STRONG><a name="[6d]"></a>UART_VT100_Display_Data_System</STRONG> (Thumb, 2 bytes, Stack size 0 bytes, main.o(i.UART_VT100_Display_Data_System))
+<BR><BR>[Called By]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Load_VT100_All_Menues
 </UL>
 
 <P><STRONG><a name="[63]"></a>UART_VT100_Help_Menu</STRONG> (Thumb, 124 bytes, Stack size 8 bytes, main.o(i.UART_VT100_Help_Menu))
@@ -1491,7 +1482,7 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Load_VT100_All_Menues
 </UL>
 
-<P><STRONG><a name="[5c]"></a>UART_VT100_Menu_3</STRONG> (Thumb, 172 bytes, Stack size 8 bytes, main.o(i.UART_VT100_Menu_3))
+<P><STRONG><a name="[5c]"></a>UART_VT100_Menu_3</STRONG> (Thumb, 178 bytes, Stack size 8 bytes, main.o(i.UART_VT100_Menu_3))
 <BR><BR>[Stack]<UL><LI>Max Depth = 32<LI>Call Chain = UART_VT100_Menu_3 &rArr; __2printf
 </UL>
 <BR>[Calls]<UL><LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
@@ -1536,7 +1527,7 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Load_VT100_All_Menues
 </UL>
 
-<P><STRONG><a name="[61]"></a>UART_VT100_Menu_8</STRONG> (Thumb, 154 bytes, Stack size 8 bytes, main.o(i.UART_VT100_Menu_8))
+<P><STRONG><a name="[61]"></a>UART_VT100_Menu_8</STRONG> (Thumb, 178 bytes, Stack size 8 bytes, main.o(i.UART_VT100_Menu_8))
 <BR><BR>[Stack]<UL><LI>Max Depth = 32<LI>Call Chain = UART_VT100_Menu_8 &rArr; __2printf
 </UL>
 <BR>[Calls]<UL><LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_delay_ms
