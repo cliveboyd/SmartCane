@@ -122,7 +122,7 @@ typedef void (* app_uart_event_handler_t) (app_uart_evt_t * p_app_uart_event);
  * @param[in]   P_COMM_PARAMS   Pointer to a UART communication structure: app_uart_comm_params_t
  * @param[in]   RX_BUF_SIZE     Size of desired RX buffer, must be a power of 2 or ZERO (No FIFO).
  * @param[in]   TX_BUF_SIZE     Size of desired TX buffer, must be a power of 2 or ZERO (No FIFO).
- * @param[in]   EVT_HANDLER   Event handler function to be called when an event occurs in the
+ * @param[in]   EVT_HANDLER		Event handler function to be called when an event occurs in the
  *                              UART module.
  * @param[in]   IRQ_PRIO        IRQ priority, app_irq_priority_t, for the UART module irq handler.
  * @param[out]  ERR_CODE        The return value of the UART initialization function will be

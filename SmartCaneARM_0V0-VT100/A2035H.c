@@ -26,19 +26,19 @@ THE SOFTWARE.
 #include "app_uart.h"
 #include <stdio.h>
 
-#include "nordic_common.h"  // for UNUSED_PARAMETER
+#include "nordic_common.h"  								// for UNUSED_PARAMETER
 
 
-#define MAX_TEST_DATA_BYTES     (15U)                /**< max number of test bytes to be used for tx and rx. */
-#define UART_TX_BUF_SIZE 256                         /**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE 1                           /**< UART RX buffer size. */
+#define MAX_TEST_DATA_BYTES     (15U)						/**< max number of test bytes to be used for tx and rx. */
+#define UART_TX_BUF_SIZE 16									/**< UART TX buffer size. */
+#define UART_RX_BUF_SIZE 32									/**< UART RX buffer size. */
 
-static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
+static ble_nus_t	m_nus;									/**< Structure to identify the Nordic UART Service. */
 
 
-void uart_event_handle_withBle(app_uart_evt_t * p_event)  // is setup callback in initA2035H
+void uart_event_handle_withBle(app_uart_evt_t * p_event)	// is setup callback in initA2035H
 {
-	static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];   // 20 bytes
+	static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];		// 20 bytes
     static uint8_t index = 0;
     uint32_t err_code;
 
@@ -126,6 +126,7 @@ void initA2035H(void)
 	pullupdown_gpio_cfg_output(A2035H_ON_OFF_PIN_NUMBER, Pull_down);
 	pullupdown_gpio_cfg_output(A2035H_NRST_PIN_NUMBER, Pull_up);
 	pullupdown_gpio_cfg_output(A2035H_RX_PIN_NUMBER, Pull_up);
+	
 //	pullupdown_gpio_cfg_output(A2035H_TX_PIN_NUMBER, Pull_down);
 	
 //	nrf_gpio_cfg_output(A2035H_ON_OFF_PIN_NUMBER);

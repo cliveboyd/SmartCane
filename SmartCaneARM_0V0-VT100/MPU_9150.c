@@ -26,9 +26,9 @@ THE SOFTWARE.
 #include "Communication.h"
 #include "math.h"
 
-Ascale_t Ascale = AFS_2G;     // AFS_2G, AFS_4G, AFS_8G, AFS_16G
-Gscale_t Gscale = GFS_1000DPS; // GFS_250DPS, GFS_500DPS, GFS_1000DPS, GFS_2000DPS
-float aRes, gRes, mRes;      // scale resolutions per LSB for the sensors
+Ascale_t Ascale = AFS_2G;     		// AFS_2G, AFS_4G, AFS_8G, AFS_16G
+Gscale_t Gscale = GFS_1000DPS; 		// GFS_250DPS, GFS_500DPS, GFS_1000DPS, GFS_2000DPS
+float aRes, gRes, mRes;      		// scale resolutions per LSB for the sensors
  
 int16_t accelCount[3];  // Stores the 16-bit signed accelerometer sensor output
 int16_t gyroCount[3];   // Stores the 16-bit signed gyro sensor output

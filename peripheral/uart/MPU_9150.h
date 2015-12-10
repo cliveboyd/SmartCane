@@ -70,9 +70,9 @@ THE SOFTWARE.
 #define AK8975A_CNTL2	 0x0B
 #define AK8975A_CNTL2_SRESET	 0x01
 
-#define AK8975A_ASTC     0x0C  // Self test control
-#define AK8975A_ASTC_NOTEST     0x0 // NORMAL
-#define AK8975A_ASTC_GENTEST     0x40 // NORMAL
+#define AK8975A_ASTC     0x0C  			// Self test control
+#define AK8975A_ASTC_NOTEST     0x0 	// NORMAL
+#define AK8975A_ASTC_GENTEST    0x40 	// NORMAL
 
 #define AK8975A_ASAX     0x10  // Fuse ROM x-axis sensitivity adjustment value
 #define AK8975A_ASAY     0x11  // Fuse ROM y-axis sensitivity adjustment value
@@ -197,8 +197,7 @@ THE SOFTWARE.
 #define WHO_AM_I_MPU9150 0x75 // Should return 0x68, 0x0 110100 0 , as device address
  
  
- 
-// Set initial input parameters
+ // Set initial input parameters
 typedef enum  {
   AFS_2G = 0,
   AFS_4G,
@@ -213,6 +212,10 @@ typedef enum  {
   GFS_2000DPS
 }Gscale_t;
 
+typedef enum {
+  MFS_14BITS = 0,		// 0.60 mG per LSB
+  MFS_16BITS			// 0.15 mG per LSB
+}Mscale_t;
 
 void readAccelFloatMG(float *xyz);
 void readGyroFloatDeg(float *xyz);
@@ -227,8 +230,6 @@ void initMPU9150(void);
 void MPU9150SelfTest(float * destination);
 void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
 void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
-
-//void readQuaternion(float *xyz);
 
 #endif
 

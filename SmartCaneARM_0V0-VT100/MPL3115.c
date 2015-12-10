@@ -231,3 +231,23 @@ float MPL3115A2_getPressure() {
 	baro /= 4.0;
 	return baro;
 }
+//**************************************************************************/
+//
+//	@brief  Gets the floating-point sea level pressure setpint level in kPa
+//	Default Pressure == 101326Pa 
+//
+//**************************************************************************/
+float MPL3115A2_getPressureSeaLevel() 
+	{
+	uint32_t pressure;
+	uint8_t out[2];
+	MPL3115A2_readBytes_(MPL3115A2_ADDRESS, 0x14, 2, out, true);		// Reg... BAR ---> MSB:14 + LSB:15
+
+	/*	NOTE: Default pressure = 0xC5E70;		*/
+	
+	pressure = (out[0]<<12)|(out[1]<<4); 								// Barometric pressure at Sea Level (used for Altimeter Adjust)
+	pressure >>= 3;
+	float baro = pressure;
+	baro /= 100.0;
+	return baro;
+    }

@@ -29,21 +29,19 @@
 #define INV_XYZ_COMPASS (0x01)
 
 struct int_param_s {
-
-	#if defined EMPL_TARGET_MSP430 || defined MOTION_DRIVER_TARGET_MSP430
+#if defined EMPL_TARGET_MSP430 || defined MOTION_DRIVER_TARGET_MSP430
     void (*cb)(void);
     unsigned short pin;
     unsigned char lp_exit;
     unsigned char active_low;
-
 #elif defined EMPL_TARGET_UC3L0
     unsigned long pin;
     void (*cb)(volatile void*);
     void *arg;
-#else									// CLIVE Added to drop Error
-	unsigned long pin;					// CLIVE Added to drop Error
-    void (*cb)(volatile void*);			// CLIVE Added to drop Error
-    void *arg;							// CLIVE Added to drop Error
+#elif defined EMPL_TARGET_STM32F4
+    void (*cb)(void);
+#elif defined BOARD_CUSTOM 
+	void (*cb)(void);
 #endif
 };
 
@@ -70,7 +68,7 @@ int mpu_set_bypass(unsigned char bypass_on);
 /* Configuration APIs */
 int mpu_lp_accel_mode(unsigned short rate);
 int mpu_lp_motion_interrupt(unsigned short thresh, unsigned char time,
-    unsigned char lpa_freq);
+    unsigned short lpa_freq);
 int mpu_set_int_level(unsigned char active_low);
 int mpu_set_int_latched(unsigned char enable);
 
@@ -133,6 +131,5 @@ int mpu_read_reg(unsigned char reg, unsigned char *data);
 int mpu_run_self_test(long *gyro, long *accel);
 int mpu_run_6500_self_test(long *gyro, long *accel, unsigned char debug);
 int mpu_register_tap_cb(void (*func)(unsigned char, unsigned char));
-
 #endif  /* #ifndef _INV_MPU_H_ */
 

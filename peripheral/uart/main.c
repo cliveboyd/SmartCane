@@ -16,24 +16,9 @@
  * @ingroup uart_example
  * @brief UART Example Application main file.
  *
- * @Description SmartCane application not including Bluetooth 
- *
- *
- * @ToDo
+ * This file contains the source code for a sample application using UART.
  * 
- * ErrorsKnown
- *	1... GasGauge Voltage Occassionally returns Near 0 Value  Need to access MPL3115.c for device ready
- *	2... GassGauge Battery Status neeeds to be bassed on Charge not Voltage (No battery incorrectly indicates CHARGED if Volt used)
- *	3... GasGauge Temp Occassionally returs -270
- *	4... 
- *	5...
- *
  */
-
-#define EMPL_TARGET_UC3L0							//Definition Required by inv_mpu
-#define TARGET_NRF58122								// Define the main Cortex M0 ARM Processor
-#define MPU9250										// Define Inertial Sensor Type as MPU9250 (Used at inv_mpu)
-
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -42,12 +27,8 @@
 #include <string.h>
 #include <math.h>								//Required for sqrt and other high order functions
 
-#include "app_uart.h"
 #include "app_error.h"
-
-#include "app_button.h"
-#include "app_timer.h"  				// for APP_TIMER_TICKS
-#include "app_gpiote.h" 				// for APP_GPIOTE_INIT
+#include "app_uart.h"
 
 #include "nrf_delay.h"
 #include "nrf.h"
@@ -55,72 +36,24 @@
 
 #include "bsp.h"
 
-//#include "softdevice_handler.h"		// BlueTooth
-#include "pstorage.h"
-//#include "ble_advertising.h"			// BlueTooth
-//#include "device_manager.h"
-//#include "ble_hci.h"  				// BlueTooth for set hci_status_code to sd_ble_gap_disconnect
-//#include "ble_conn_params.h"			// BlueTooth
-#include "app_scheduler.h"  			// for scheduler APP_SCHED_INIT
-#include "app_timer_appsh.h"  			// for app_timer_event_t
-#include "nordic_common.h"  			// for UNUSED_PARAMETER
-#include "nrf_assert.h" 				// for ASSERT
-
 #include "Communication.h"
 
 #include "ds2401.h"
 
 #include "MPU_9150.h"  
-//#include "inv_mpu.h"
-//#include "inv_mpu_dmp_motion_driver.h"
 
-#include "MPL3115.h"								// Pressure Transducer
-#include "ltc2943.h"								// Battery Gas Gauge
+#include "inv_mpu.h"
 
-#define IS_SRVC_CHANGED_CHARACT_PRESENT  0                                          /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
-#define DEVICE_APPEARANCE				 BLE_APPEARANCE_UNKNOWN						/**< Device appearance **/
-// for ble_conn_param_init param
-#define APP_TIMER_PRESCALER              0                                          /**< Value of the RTC1 PRESCALER register. */
-#define APP_TIMER_MAX_TIMERS             (6+BSP_APP_TIMERS_NUMBER)                  /**< Maximum number of simultaneously created timers. */
-#define APP_TIMER_OP_QUEUE_SIZE          4                                          /**< Size of timer operation queues. */
-#define FIRST_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER) /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY    APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER)/**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
-#define MAX_CONN_PARAMS_UPDATE_COUNT     3                                          /**< Number of attempts before giving up the connection parameter negotiation. */
-// for GAP param init
-#define MIN_CONN_INTERVAL                MSEC_TO_UNITS(9, UNIT_1_25_MS)           	/**< Minimum acceptable connection interval (0.4 seconds). */
-#define MAX_CONN_INTERVAL                MSEC_TO_UNITS(300, UNIT_1_25_MS)           /**< Maximum acceptable connection interval (0.65 second). */
-#define SLAVE_LATENCY                    0                                          /**< Slave latency. */
-#define CONN_SUP_TIMEOUT                 MSEC_TO_UNITS(4000, UNIT_10_MS)            /**< Connection supervisory timeout (4 seconds). */
-#define TX_POWER_LEVEL                   (0) 										/**< TX Power Level value. This will be set both in the TX Power service, in the advertising data, and also used to set the radio transmit power. */
+#include "MPL3115.h"
 
-// for on_adv_evt
-// to use button, define BUTTONS_NUMBER in custom_board.h
-#define WAKEUP_BUTTON_ID                 0                                          /**< Button used to wake up the application. */
-#define BOND_DELETE_ALL_BUTTON_ID        1                                          /**< Button used for deleting all bonded centrals during startup. */
+#include "ltc2943.h"
 
-// for ble_advertising_init param
-#define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
-#define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
-#define APP_ADV_GAP_FLAG				BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE  
+#define DEVICE_NAME				"SCANE1V0"			//Keep under 8 characters to allow 8 char DS2401 ID to be pre appended (Max --> 16)
 
-// for app scheduler module
-#define SCHED_MAX_EVENT_DATA_SIZE       sizeof(app_timer_event_t)                   /**< Maximum size of scheduler events. Note that scheduler BLE stack events do not contain any data, as the events are being pulled from the stack in the event handler. */
-#define SCHED_QUEUE_SIZE                10  										/**< Maximum number of events in the scheduler queue. */
+#define MAX_TEST_DATA_BYTES     (55U)               /**< max number of test bytes per TX Burst to be used for tx and rx. */
 
-// for device manager module
-#define SEC_PARAM_BOND                   1                                          /**< Perform bonding. */
-#define SEC_PARAM_MITM                   0                                          /**< Man In The Middle protection not required. */
-#define SEC_PARAM_IO_CAPABILITIES        BLE_GAP_IO_CAPS_NONE                       /**< No I/O capabilities. */
-#define SEC_PARAM_OOB                    0                                          /**< Out Of Band data not available. */
-#define SEC_PARAM_MIN_KEY_SIZE           7                                          /**< Minimum encryption key size. */
-#define SEC_PARAM_MAX_KEY_SIZE           16                                         /**< Maximum encryption key size. */
-
-
-#define DEVICE_NAME				"SCANE1V0"			// Keep under 8 characters to allow 8 char DS2401 ID to be pre appended (Max --> 16)
-
-#define MAX_TEST_DATA_BYTES     (55U)				/**< max number of test bytes per TX Burst to be used for tx and rx. */
-#define UART_TX_BUF_SIZE 		512					/**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE 		16					/**< UART RX buffer size. */
+#define UART_TX_BUF_SIZE 		512                 /**< UART TX buffer size. ... Needs to be 512*/
+#define UART_RX_BUF_SIZE 		16					/**< UART RX buffer size. Modified from 1 to 16 */
 
 
 //	************************************************************
@@ -157,15 +90,11 @@
 
 
 char DS2401_ID[16];									// String to hold ---> DS2401 (4bits) + Device_ID
-uint8_t MenuLevel=0;								// Initalise Default Menu Level to 00 --> Main Menu
-float Quaternion[4];								// Test Global Decleration to test Quaternion filter update operation
+char cStatus[] = "Ready                        ";	// VT100 Status Updates
+uint8_t MenuLevel=0;								// Initalise Default VT100 Menu Level to 00 --> Main Menu
+float Quaternion[4];								// Use to hold Inertial Quaternion wxyz
 
 
-float  gyro_ManualCal[2];							// The following registers are used within manual Gyro calibration
-float  accel_ManualCal[2];							// The following registers are used within manual Acceleration calibration
-float  ErrorCount[16];								// Background Error Counters
-char cStatus[32];
-//cStatus = "Initalised";								// Current System Status Message
 
 void uart_error_handle(app_uart_evt_t * p_event)
 {
@@ -222,32 +151,6 @@ static void GrabDeviceID(char* name, int len)		//DS2401 xxxxxxxx
 	}
 	return;
 }
-
-/** @brief 		Function to read internal nrf51822 temperature. */
-	int32_t readNRF_TEMP() {
-	int32_t ret = 0;
-    while (true)
-    {
-        NRF_TEMP->TASKS_START = 1; /** Start the temperature measurement. */
-
-        /* Busy wait while temperature measurement is not finished, you can skip waiting if you enable interrupt for DATARDY event and read the result in the interrupt. */
-        /*lint -e{845} // A zero has been given as right argument to operator '|'" */
-        while (NRF_TEMP->EVENTS_DATARDY == 0)
-        {
-            // $$$$$$$$$$$$$$ WARNING Need to monitor this trap or setup a countdown and exit ---> Do nothing.  $$$$$$$$$
-        }
-        NRF_TEMP->EVENTS_DATARDY = 0;
-
-        /**@note Workaround for PAN_028 rev2.0A anomaly 29 - TEMP: Stop task clears the TEMP register. */
-        ret = (nrf_temp_read() / 4);
-
-        /**@note Workaround for PAN_028 rev2.0A anomaly 30 - TEMP: Temp module analog front end does not power down when DATARDY event occurs. */
-        NRF_TEMP->TASKS_STOP = 1; /** Stop the temperature measurement. */
-
-        return ret;
-    }
-}
-
 /** @brief 		Function to load a single top level VT100 Terminal Menu. 
  *  @details 	Transmitts VT100 ESC Sequenceone character to clear screen and load menu data.
  *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
@@ -273,7 +176,6 @@ static void UART_VT100_Main_Menu()						// $$$$$$ TOP LEVEL MENU $$$$$$
 		printf("\x1B[14;10H  6... Power Management");
 		printf("\x1B[16;10H  7... Cane Diagnostics");
 		printf("\x1B[18;10H  8... System Diagnostics");
-
 		printf("\x1B[22;10H  9... Shutdown");
 
 		printf("\x1B[24;10H  ?... Help");
@@ -392,10 +294,10 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 		nrf_delay_ms(5);
 		 
 		printf("\x1B[05;30H GRAVITY g");
-		printf("\x1B[06;30H Grav-X = ");
-		printf("\x1B[07;30H Grav-Y = ");
-		printf("\x1B[08;30H Grav-Z = ");
-		printf("\x1B[09;30H Grav-M = ");
+		printf("\x1B[06;30H Grav-X  = ");
+		printf("\x1B[07;30H Grav-Y  = ");
+		printf("\x1B[08;30H Grav-Z  = ");
+		printf("\x1B[09;30H Grav-M  = ");
 
 		nrf_delay_ms(5);
 
@@ -412,7 +314,12 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 		printf("\x1B[14;05H Quat1 = ");
 		printf("\x1B[15;05H Quat2 = ");
 		printf("\x1B[16;05H Quat3 = ");
-    	printf("\x1B[17;05H QuatM = ");        
+    	printf("\x1B[17;05H QuatM = "); 
+
+		printf("\x1B[12;30H QUATERNION P-R-Y");
+		printf("\x1B[13;30H Q pitch = ");
+		printf("\x1B[14;30H Q roll  = ");
+		printf("\x1B[15;30H Q yaw   = ");
 	  printf("\x1B[24;05H  X... exit    ?...Help");
 }	
 
@@ -453,8 +360,8 @@ static void UART_VT100_Menu_4()							// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$
 static void UART_VT100_Menu_5()							// $$$$$$  SFLASH EEPROM SoC_FLASH MEMORY MANAGEMENT MENU  $$$$$$
 {		MenuLevel=50;
 	
-		printf("\x1B[2J");			//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								// VT100 CLR SCREEN
+		printf("\x1B[H");								// VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-5 SFLASH EEPROM SoC_FLASH MEMORY MANAGEMENT MENU");
 		 
 		printf("\x1B[05;05H SFLASH");
@@ -490,8 +397,8 @@ static void UART_VT100_Menu_5()							// $$$$$$  SFLASH EEPROM SoC_FLASH MEMORY 
 static void UART_VT100_Menu_6()		    				// $$$$$$  POWER MANAGEMENT MENU  $$$$$$
 {		MenuLevel=60;
 	
-		printf("\x1B[2J");			//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								// VT100 CLR SCREEN
+		printf("\x1B[H");								// VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-6 POWER MANAGEMENT MENU");
 		 
 		printf("\x1B[05;05H GAUGE MEASUREMENTS");
@@ -521,8 +428,8 @@ static void UART_VT100_Menu_6()		    				// $$$$$$  POWER MANAGEMENT MENU  $$$$$
 static void UART_VT100_Menu_7()		    				// $$$$$$  CANE DIAGNOSTIC MENU $$$$$$
 {		MenuLevel=70;
 	
-		printf("\x1B[2J");			//VT100 CLR SCREEN
-		printf("\x1B[H");			//VT100 CURSOR HOME
+		printf("\x1B[2J");								// VT100 CLR SCREEN
+		printf("\x1B[H");								// VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-7 CANE DIAGNOSTIC MENU");
 		 
 		printf("\x1B[05;05H Configurations");
@@ -603,8 +510,8 @@ static void UART_VT100_Menu_8()		    				// $$$$$$  SYSTEM DIAGNOSTIC MENU $$$$$
 static void UART_VT100_Help_Menu()						// $$$$$$  SCREEN HELP MENU  $$$$$$
 {		MenuLevel=100;
 
-		printf("\x1B[2J");					//VT100 CLR SCREEN
-		printf("\x1B[H");					//VT100 CURSOR HOME
+		printf("\x1B[2J");								// VT100 CLR SCREEN
+		printf("\x1B[H");								// VT100 CURSOR HOME
 		printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-? Help MENU");
 		 
 		printf("\x1B[05;05H HELP CODES");
@@ -650,7 +557,7 @@ static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU D
 	double Calc, MagGravity, MagCompass;
 	float data[3], temp;
 	
-	readAccelFloatMG(Acc);							//ACCELERATION
+	readAccelFloatMG(Acc);								//ACCELERATION
 
 	printf("\x1B[05;14H%+2.2f ", Acc[0]);
 	printf("\x1B[06;14H%+2.2f ", Acc[1]);
@@ -659,7 +566,7 @@ static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU D
 	MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
 	printf("\x1B[08;14H%+2.2f ", MagGravity);
 
-	readGyroFloatDeg(Acc);							//GYRO
+	readGyroFloatDeg(Acc);								//GYRO
 	printf("\x1B[05;40H%+4.2f ", Acc[0]);
 	printf("\x1B[06;40H%+4.2f ", Acc[1]);
 	printf("\x1B[07;40H%+4.2f ", Acc[2]);
@@ -668,7 +575,7 @@ static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU D
 	printf("\x1B[08;40H%+4.2f ", Calc);
 	
 //	mpu_get_compass_reg(data, &timestamp);
-	readMagFloatUT(data);							//MAGNETIC
+	readMagFloatUT(data);								//MAGNETIC
 	printf("\x1B[05;68H%+4.2f ", (float)data[0]);
 	printf("\x1B[06;68H%+4.2f ", (float)data[1]);
 	printf("\x1B[07;68H%+4.2f ", (float)data[2]);
@@ -680,14 +587,15 @@ static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU D
 
 
 	printf("\x1B[12;68H%+4.2f ", (float)MPL3115A2_getPressure());
+	
  	printf("\x1B[13;68H%+4.2f ", (float)MPL3115A2_getAltitude());
 
 
 //	TEMPERATURE ---> REAL TIME DEVICE UPDATES
 	
-	printf("\x1B[12;44H%+4.1f ", (float) readNRF_TEMP());					// Processor Temperature TODO
+	printf("\x1B[12;44H%+4.1f ", (float) readNRF_TEMP());					// Processor Temperature
 	
-//	printf("\x1B[13;44H%+4.1f ", 0);										// Inertial Temperature TODO
+	printf("\x1B[13;44H%+4.1f ", (float) readTempData()); 					// Inertial Temperature
 	
 	printf("\x1B[14;44H%+4.1f ", (float) MPL3115A2_getTemperature());		// Pressure Sensor Temp	
 
@@ -701,7 +609,7 @@ static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU D
 
 /** @brief 		Function to load GPS MENU Refresh Data to VT100 Terminal Screen.  
 */
-static void UART_VT100_Display_Data_GPS()				// $$$$$$ GPS MENU DATA REFRESH  $$$$$$
+static void UART_VT100_Display_Data_GPS()					// $$$$$$ GPS MENU DATA REFRESH  $$$$$$
 {
 	int value;
 		
@@ -715,20 +623,20 @@ static void UART_VT100_Display_Data_GPS()				// $$$$$$ GPS MENU DATA REFRESH  $$
 }	
 
 /** @brief 		Function to load INERTIAL MENU Refresh Data to VT100 Terminal Screen.  */
-static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MPU9250 MENU DATA REFRESH  $$$$$$
-{
+static void UART_VT100_Display_Data_Inertial()				// $$$$$$  INERTIAL MPU9250 MENU DATA REFRESH  $$$$$$
+	{
 	float Acc[3];
 	double MagGravity, Magnitude;
 		
 	float data[4];
 	
 	readAccelFloatMG(Acc);									// ACCELERATION-GRAVITY (g)
-	printf("\x1B[06;40H%+2.2f ", Acc[0]);
-	printf("\x1B[07;40H%+2.2f ", Acc[1]);
-	printf("\x1B[08;40H%+2.2f ", Acc[2]);
+	printf("\x1B[06;41H%+2.2f ", Acc[0]);
+	printf("\x1B[07;41H%+2.2f ", Acc[1]);
+	printf("\x1B[08;41H%+2.2f ", Acc[2]);
 	
 	MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
-	printf("\x1B[09;40H%+2.4f ", (float) MagGravity);		// MAG X-Y-Z
+	printf("\x1B[09;41H%+2.4f ", (float) MagGravity);		// MAG X-Y-Z
 
 	readGyroFloatDeg(Acc);									// GYROSCOPE Degrees
 	printf("\x1B[06;65H%+4.2f ", Acc[0]);
@@ -762,7 +670,36 @@ static void UART_VT100_Display_Data_Inertial()			// $$$$$$  INERTIAL MPU9250 MEN
 						Quaternion[3]*Quaternion[3]);		// Magnitude of Quaternion ????
 	printf("\x1B[17;14H%+4.4f ", Magnitude);
 	
-}	
+/*	Define output variables from updated quaternion---these are Tait-Bryan angles, commonly used in aircraft orientation.
+	In this coordinate system, the positive z-axis is down toward Earth. 
+	Yaw is the angle between Sensor x-axis and Earth magnetic North (or true North if corrected for local declination, looking down on the sensor positive yaw is counterclockwise.
+	Pitch is angle between sensor x-axis and Earth ground plane, toward the Earth is positive, up toward the sky is negative.
+	Roll is angle between sensor y-axis and Earth ground plane, y-axis up is positive roll.
+	These arise from the definition of the homogeneous rotation matrix constructed from quaternions.
+	Tait-Bryan angles as well as Euler angles are non-commutative; that is, the get the correct orientation the rotations must be
+	applied in the correct order which for this configuration is yaw, pitch, and then roll.
+	For more see http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles which has additional links.*/
+  
+	float yaw, pitch, roll, q[4];
+	float PI = 3.14159265358979323846f;
+	
+	q[0] = Quaternion[0];
+	q[1] = Quaternion[1];
+	q[2] = Quaternion[2];
+	q[3] = Quaternion[3];
+
+	yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);   
+	pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
+	roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
+	pitch *= 180.0f / PI;
+	yaw   *= 180.0f / PI; 
+	yaw   -= 13.8f; // Declination at Danville, California is 13 degrees 48 minutes and 47 seconds on 2014-04-04
+	roll  *= 180.0f / PI;
+
+	printf("\x1B[13;41H%+4.2f ", pitch);
+	printf("\x1B[14;41H%+4.2f ", roll);
+	printf("\x1B[15;41H%+4.2f ", yaw);
+	}	
 
 
 /** @brief 		Function to load ALTITUDE MENU Refresh Data to VT100 Terminal Screen.  */
@@ -916,16 +853,17 @@ static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE 
 		case 'A':
 			if ( MenuLevel == 80) 						// Grab Static Manual Calibration Variables
 			{
-			calibrateMPU9150(gyro_ManualCal, accel_ManualCal);
-//			cStatus="Manual Acc-Gyro Offsets";
+//			calibrateMPU9150(gyro_ManualCal, accel_ManualCal);
+//			char cStatus[] = "Manual Acc-Gyro Offsets";
 			}
 		break;
 		
 		case 'B':
 			if ( MenuLevel == 80) 						// Zero Manual Calibrations
-			{gyro_ManualCal[0]=0;   gyro_ManualCal[1]=0;  gyro_ManualCal[2]=0;
-			accel_ManualCal[0]=0; accel_ManualCal[1]=0; accel_ManualCal[2]=0;
-//			cStatus="Zero Acc-Gyro Offsets";
+			{
+////			gyro_ManualCal[0]=0;   gyro_ManualCal[1]=0;  gyro_ManualCal[2]=0;
+////			accel_ManualCal[0]=0; accel_ManualCal[1]=0; accel_ManualCal[2]=0;
+//				char cStatus[] = "Zero Acc-Gyro Offsets";
 			}
 		break;
 		
@@ -935,42 +873,42 @@ static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE 
 			nrf_gpio_pin_set(MOTOR_PIN_NUMBER);			// Strobe Vibro Motor 500msec
 			nrf_delay_ms(500);
 			nrf_gpio_pin_clear(MOTOR_PIN_NUMBER);
-//			str cStatus = "Strobe Vibro Motor";
+//			char cStatus[] = "Strobe Vibro Motor";
 			}
 		break;
 		
 		case 'D':
 			if ( MenuLevel == 80) 						// Start Background Timer
 			{
-//			cStatus="System Spare D";
+//			char cStatus[] = "System Spare D";
 			}
 		break;
 		
 		case 'E':
 			if ( MenuLevel == 80) 						// LED Red Test
 			{
-//			cStatus="System Spare E";
+//			char cStatus[] = "System Spare E";
 			}
 		break;
 		
 		case 'F':
 			if ( MenuLevel == 80) 						// PWM Tone Test
 			{
-//			cStatus="System Spare F";
+//			char cStatus[] = "System Spare F";
 			}
 		break;
 		
 		case 'G':
 			if ( MenuLevel == 80) 						// Spare G
 			{
-//			cStatus="System Spare G";
+//			char cStatus[] = "System Spare G";
 			}
 		break;
 		
 		case 'H':
 			if ( MenuLevel == 80) 						// Spare H
 			{
-//			cStatus="System Spare H";
+//			char cStatus[] = "System Spare H";
 			}
 		break;
 		} 
@@ -983,50 +921,77 @@ static void Load_VT100_All_Menues()		    			// $$$$$$  LOAD ALL VT100 IMMEDIATE 
 			
 		switch (MenuLevel)								//Load UART Reresh data based on current Menu Level
 		{
-		case 00:									//Main Menu
+		case 00:										//Main Menu
 			UART_VT100_Display_Data_Main_Menu();
 		break;		
 		
-		case 10:									//All Sensors
+		case 10:										//All Sensors
 			UART_VT100_Display_Data_All_Sensors();
 		break;		
 			
-		case 20:									//GPS Global Position
+		case 20:										//GPS Global Position
 			UART_VT100_Display_Data_GPS();
 		break;	
 
-		case 30:									//Inertial Sensors
+		case 30:										//Inertial Sensors
 			UART_VT100_Display_Data_Inertial();
 		break;
 
-		case 40:									//Altitude Pressure and Temperature
+		case 40:										//Altitude Pressure and Temperature
 			UART_VT100_Display_Data_Altitude();
 		break;		
 			
-		case 50:									//Memory Functions
+		case 50:										//Memory Functions
 			UART_VT100_Display_Data_Memory();
 		break;		
 		
-		case 60:									//Power Management
+		case 60:										//Power Management
 			UART_VT100_Display_Data_Power();
 		break;	
 
-		case 70:									//Cane Diagnostcs
+		case 70:										//Cane Diagnostcs
 			UART_VT100_Display_Data_Cane();
 		break;		
 		
-		case 80:									//System Diagnostcs - Including Error Counters
+		case 80:										// System Diagnostcs - Including Error Counters
 			UART_VT100_Display_Data_System();
 		break;				
 		}	
 		
-		printf("\x1B[35;45H STATUS: %c", cStatus);		//Display System Status Message
+		printf("\x1B[35;45H STATUS: %c", cStatus);		// Display System Status Message
 		
-		printf("\x1B[01;78H");							//Park VT100 cursor at row 01 column 75
+		printf("\x1B[01;78H");							// Park VT100 cursor at row 01 column 75
 		
 		nrf_delay_ms(5);
 	}
 	}
+
+/** @brief 		Function to read internal nrf51822 temperature. */
+int32_t readNRF_TEMP() 
+{
+	int32_t ret = 0;
+    while (true)
+    {
+        NRF_TEMP->TASKS_START = 1; /** Start the temperature measurement. */
+
+        /* Busy wait while temperature measurement is not finished, you can skip waiting if you enable interrupt for DATARDY event and read the result in the interrupt. */
+        /*lint -e{845} // A zero has been given as right argument to operator '|'" */
+        while (NRF_TEMP->EVENTS_DATARDY == 0)
+        {
+            // $$$$$$$$$$$$$$ WARNING Need to monitor this trap or setup a countdown and exit ---> Do nothing.  $$$$$$$$$
+        }
+        NRF_TEMP->EVENTS_DATARDY = 0;
+
+        /**@note Workaround for PAN_028 rev2.0A anomaly 29 - TEMP: Stop task clears the TEMP register. */
+        ret = (nrf_temp_read() / 4);
+
+        /**@note Workaround for PAN_028 rev2.0A anomaly 30 - TEMP: Temp module analog front end does not power down when DATARDY event occurs. */
+        NRF_TEMP->TASKS_STOP = 1; /** Stop the temperature measurement. */
+
+        return ret;
+    }
+}
+
 
 	
 /** @brief 		Function for MAIN application entry.
@@ -1065,11 +1030,13 @@ int main(void)
 	
 	uint8_t status = 0;	  
 	while(!status)  status = I2C_Init();
-	
+
+	  
 	ltc294x_init();							// Power Battery Gauge I2C
 	MPL3115A2_init();						// Pressure, Altitude and Temperature I2C
-	initMPU9150();							// Gyro, Accelerometer, Magnetometer (Compass) and Temperature I2C
-
+	MPU9150_init();							// Gyro, Accelerometer, Magnetometer (Compass) and Temperature I2C
+//	initMPU9150_Alt();						// Test Initalised Accel and Gyro ---> Magtemoter returns zeros
+	  
 	UART_VT100_Main_Menu();					//Initialise Default UART VT100 Menu
 
 	  

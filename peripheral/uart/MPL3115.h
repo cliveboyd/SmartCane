@@ -83,7 +83,6 @@ THE SOFTWARE.
 	#define MPL3115A2_CTRL_REG1_RAW 				0x40
 	#define MPL3115A2_CTRL_REG1_ALT 				0x80
 	#define MPL3115A2_CTRL_REG1_BAR 				0x00
-	
 	#define MPL3115A2_CTRL_REG2                     (0x27)
 	#define MPL3115A2_CTRL_REG3                     (0x28)
 	#define MPL3115A2_CTRL_REG4                     (0x29)
@@ -93,12 +92,9 @@ THE SOFTWARE.
 /*=========================================================================*/
 
 bool MPL3115A2_init(void);
-
 float MPL3115A2_getPressure(void);
 float MPL3115A2_getAltitude(void);
 float MPL3115A2_getTemperature(void);
-
-float MPL3115A2_getPressureSeaLevel(void);
 
 uint8_t MPL3115A2_read8(uint8_t a);
 bool MPL3115A2_write8(uint8_t a, uint8_t d);

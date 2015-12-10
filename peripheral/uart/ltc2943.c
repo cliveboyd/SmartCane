@@ -704,6 +704,7 @@ static enum power_supply_property ltc294x_properties[] = {
         POWER_SUPPLY_PROP_TEMP,
 };
 
+
 int ltc294x_init(void)
 {
 
