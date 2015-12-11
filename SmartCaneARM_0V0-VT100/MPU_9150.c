@@ -307,9 +307,8 @@ void resetMPU9150() {
 	
   }
     
-void initMPU9150()		//Inertial Sensor
-{  
-	unsigned char status = 0;
+void initMPU9150() {		//Inertial Sensor
+//	unsigned char status = 0;
     uint8_t c, temp;
     uint8_t chkRegs[] = {SMPLRT_DIV, CONFIG, GYRO_CONFIG, ACCEL_CONFIG, FIFO_EN, I2C_MST_CTRL, I2C_SLV0_ADDR, 
 						I2C_SLV0_REG, I2C_SLV0_CTRL, I2C_SLV4_REG, I2C_SLV4_DO, I2C_SLV4_CTRL, I2C_SLV4_DI, 

@@ -48,7 +48,7 @@ void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p
 #define APP_ERROR_HANDLER(ERR_CODE)                         \
     do                                                      \
     {                                                       \
-        app_error_handler((ERR_CODE), 0, 0);  \
+        app_error_handler((ERR_CODE), 0, 0);  				\
     } while (0)
 #endif
 /**@brief Macro for calling error handler function if supplied error code any other than NRF_SUCCESS. 

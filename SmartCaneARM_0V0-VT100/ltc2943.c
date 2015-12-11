@@ -431,13 +431,14 @@ static int i2c_transfer(struct i2c_msg* pMsg, int numOfMsg)
 	}
 	return 0;
 }
-static int i2c_smbus_write_i2c_block_data(struct i2c_client *client, 
-		u8 reg_start, int num_regs, const u8 *buf)
-{
-	if(I2C_Write(client->addr, (unsigned char*)buf, num_regs, true))
-		return 0;
-	return -1;
-}
+
+//static int i2c_smbus_write_i2c_block_data(struct i2c_client *client, 
+//		u8 reg_start, int num_regs, const u8 *buf)
+//{
+//	if(I2C_Write(client->addr, (unsigned char*)buf, num_regs, true))
+//		return 0;
+//	return -1;
+//}
 
 static int ltc294x_read_regs(struct i2c_client *client,
         enum ltc294x_reg reg, u8 *buf, int num_regs)

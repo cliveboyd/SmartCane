@@ -198,7 +198,7 @@ static void UART_VT100_Menu_1()							// $$$$$$  ALL SENSORS  $$$$$$
 		printf("\x1B[07;05H ACC-Z = ");
 		printf("\x1B[08;05H ACC-M = ");
 
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 
 		printf("\x1B[04;30H GYROSCOPE deg");
 		printf("\x1B[05;30H GYRO-X = ");
@@ -206,7 +206,7 @@ static void UART_VT100_Menu_1()							// $$$$$$  ALL SENSORS  $$$$$$
 		printf("\x1B[07;30H GYRO-Z = ");
 		printf("\x1B[08;30H GYRO-M = ");
 	
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 
 		printf("\x1B[04;55H COMPASS ");
 		printf("\x1B[05;55H Compass-X = ");
@@ -214,14 +214,14 @@ static void UART_VT100_Menu_1()							// $$$$$$  ALL SENSORS  $$$$$$
 		printf("\x1B[07;55H Compass-Z = ");
 		printf("\x1B[08;55H Compass-M = ");
 
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 		 
 		printf("\x1B[11;05H GPS");
 		printf("\x1B[12;05H Latitude   = ");
 		printf("\x1B[13;05H Longditude = ");
 		printf("\x1B[14;05H Time       = ");
 
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 		 
 		printf("\x1B[11;30H TEMPERATURE");
 		printf("\x1B[12;30H ProcessorT = ");
@@ -229,13 +229,14 @@ static void UART_VT100_Menu_1()							// $$$$$$  ALL SENSORS  $$$$$$
 		printf("\x1B[14;30H PressureT  = ");
 		printf("\x1B[15;30H GasGaugeT  = ");
 		
+		nrf_delay_ms(15);
 		
 		printf("\x1B[11;55H HEIGHT");
 		printf("\x1B[12;55H Pressure  = ");
 		printf("\x1B[13;55H Altitude  = ");
 		
 
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 			
 		printf("\x1B[24;05H  X... exit    ?...Help");
 }	
@@ -258,7 +259,7 @@ static void UART_VT100_Menu_2()							// $$$$$$  GPS GLOBAL POSITION MENU  $$$$$
 		printf("\x1B[07;05H Height     = ");
 		printf("\x1B[08;05H Time       = ");
 
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 		 
 		printf("\x1B[05;30H SatNumber = ");
 		printf("\x1B[06;30H Spare     = ");
@@ -266,7 +267,7 @@ static void UART_VT100_Menu_2()							// $$$$$$  GPS GLOBAL POSITION MENU  $$$$$
 		printf("\x1B[08;30H Spare     = ");
 		printf("\x1B[09;30H Spare     = ");
 		
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
     	    
 	  printf("\x1B[24;05H  X... exit    ?...Help");
 }	
@@ -291,7 +292,7 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 		printf("\x1B[10;05H Magxxy= ");
 	
 	
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 		 
 		printf("\x1B[05;30H GRAVITY g");
 		printf("\x1B[06;30H Grav-X  = ");
@@ -299,7 +300,7 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 		printf("\x1B[08;30H Grav-Z  = ");
 		printf("\x1B[09;30H Grav-M  = ");
 
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 
 		printf("\x1B[05;55H GYROSCOPE deg/sec");
 		printf("\x1B[06;55H Pitch  = ");
@@ -307,7 +308,7 @@ static void UART_VT100_Menu_3()							// $$$$$$  INERTIAL SENSOR MENU  $$$$$$
 		printf("\x1B[08;55H Yaw    = ");
 
 		
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 		
 		printf("\x1B[12;05H MADGWICK QUATERNION");
 		printf("\x1B[13;05H Quat0 = ");
@@ -340,14 +341,14 @@ static void UART_VT100_Menu_4()							// $$$$$$  ALTITUDE AND PRESSURE MENU  $$$
 		printf("\x1B[07;05H ZeroRef      = ");
 		printf("\x1B[08;05H Temperature  = ");
 
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 		 
 		printf("\x1B[05;40H ALTITUDE");
 		printf("\x1B[06;40H Altitude    = ");
 		printf("\x1B[07;40H ZeroRef     = ");
 		printf("\x1B[08;40H 1HrRelative = ");
 		
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
     	    
 	  printf("\x1B[24;05H  X... exit    ?...Help");
 }	
@@ -408,14 +409,14 @@ static void UART_VT100_Menu_6()		    				// $$$$$$  POWER MANAGEMENT MENU  $$$$$
 		printf("\x1B[09;05H Batt Capacity = ");
 		printf("\x1B[10;05H Batt Temp     = ");
 
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 		 
 		printf("\x1B[05;50H SoC ADC RAILS");
 		printf("\x1B[06;50H Vbatt    = ");
 		printf("\x1B[07;50H 3V3 Rail = ");
 		printf("\x1B[08;50H Spare    = ");
 		
-		nrf_delay_ms(5);
+		nrf_delay_ms(15);
 
 		printf("\x1B[24;05H  X... exit    ?...Help");
 }	
@@ -479,7 +480,7 @@ static void UART_VT100_Menu_8()		    				// $$$$$$  SYSTEM DIAGNOSTIC MENU $$$$$
 		printf("\x1B[13;05H H = Spare");
 	
 
-		nrf_delay_ms(10);
+		nrf_delay_ms(15);
 		 
 		printf("\x1B[05;32H ERROR COUNTERS");
 		printf("\x1B[06;32H ErrorCount 01= ");
@@ -491,14 +492,14 @@ static void UART_VT100_Menu_8()		    				// $$$$$$  SYSTEM DIAGNOSTIC MENU $$$$$
 		printf("\x1B[12;32H ErrorCount 07= ");
 
 
-		nrf_delay_ms(10);
+		nrf_delay_ms(15);
 
 		printf("\x1B[05;58H SPARE");
 		printf("\x1B[06;58H Spare = ");
 		printf("\x1B[07;58H Spare = ");
 		printf("\x1B[08;58H Spare = ");
 
-		nrf_delay_ms(10);		
+		nrf_delay_ms(15);		
 
 		printf("\x1B[24;05H  X... exit    ?...Help");
 }	
@@ -565,7 +566,9 @@ static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU D
 	
 	MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
 	printf("\x1B[08;14H%+2.2f ", MagGravity);
-
+	
+	nrf_delay_ms(15);		
+	
 	readGyroFloatDeg(Acc);								//GYRO
 	printf("\x1B[05;40H%+4.2f ", Acc[0]);
 	printf("\x1B[06;40H%+4.2f ", Acc[1]);
@@ -573,6 +576,8 @@ static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU D
 	
 	Calc = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
 	printf("\x1B[08;40H%+4.2f ", Calc);
+	
+	nrf_delay_ms(15);		
 	
 //	mpu_get_compass_reg(data, &timestamp);
 	readMagFloatUT(data);								//MAGNETIC
@@ -584,12 +589,14 @@ static void UART_VT100_Display_Data_All_Sensors()		// $$$$$$  ALL SENSORS MENU D
 	printf("\x1B[08;68H%+4.2f ", MagCompass);
 	
 //	printf("\x1B[10;19H%10d ",(int)timestamp);
-
+	
+	nrf_delay_ms(15);		
 
 	printf("\x1B[12;68H%+4.2f ", (float)MPL3115A2_getPressure());
 	
  	printf("\x1B[13;68H%+4.2f ", (float)MPL3115A2_getAltitude());
 
+	nrf_delay_ms(15);		
 
 //	TEMPERATURE ---> REAL TIME DEVICE UPDATES
 	
@@ -637,32 +644,41 @@ static void UART_VT100_Display_Data_Inertial()				// $$$$$$  INERTIAL MPU9250 ME
 	
 	MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
 	printf("\x1B[09;41H%+2.4f ", (float) MagGravity);		// MAG X-Y-Z
+	
+	nrf_delay_ms(15);
 
 	readGyroFloatDeg(Acc);									// GYROSCOPE Degrees
 	printf("\x1B[06;65H%+4.2f ", Acc[0]);
 	printf("\x1B[07;65H%+4.2f ", Acc[1]);
 	printf("\x1B[08;65H%+4.2f ", Acc[2]);
 	
-		
+	nrf_delay_ms(15);
+	
 //	mpu_get_compass_reg(data, &timestamp);
 	readMagFloatUT(data);									// MAGNETIC FIELD uTesla
 	printf("\x1B[06;14H%+4.2f ", data[0]);
 	printf("\x1B[07;14H%+4.2f ", data[1]);
 	printf("\x1B[08;14H%+4.2f ", data[2]);
+
+	nrf_delay_ms(15);
 	
 	Magnitude = sqrt(data[0]*data[0] + data[1]*data[1] );   //Total X-Y Magnetic Field Exposure ---> Earth + Other ????
 	printf("\x1B[09;14H%+4.4f ", Magnitude);
 	
+	nrf_delay_ms(15);
 	
 	Magnitude = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);   //Total Magnetic Field Exposure ---> Earth + Other ????
 	printf("\x1B[10;14H%+4.4f ", Magnitude);
 	
-	
+	nrf_delay_ms(15);
+
 	readQuaternion(Quaternion);								// QUARTERNION   ---> NOT UPDATING FILTER
 	printf("\x1B[13;14H%+4.2f ", Quaternion[0]);
 	printf("\x1B[14;14H%+4.2f ", Quaternion[1]);
 	printf("\x1B[15;14H%+4.2f ", Quaternion[2]);
 	printf("\x1B[16;14H%+4.2f ", Quaternion[3]);
+
+	nrf_delay_ms(15);
 	
 	Magnitude = sqrt(	Quaternion[0]*Quaternion[0] + 
 						Quaternion[1]*Quaternion[1] + 
@@ -766,6 +782,8 @@ static void UART_VT100_Display_Data_Power()		    	// $$$$$$  POWER MANAGEMENT ME
 	if (!ltc294x_get_temperature(&value))
 	temp = (float) value/100;	
 	printf("\x1B[10;22H%+4.2f ", temp);				// GasGauge Temperature 
+	
+	nrf_delay_ms(15);	
 
 }	
 

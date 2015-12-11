@@ -1973,19 +1973,19 @@ int mpu_set_bypass(unsigned char bypass_on)
 		
 		return 0;
 		
-        if (i2c_read(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
-            return -1;
-        tmp &= ~BIT_AUX_IF_EN;
-        if (i2c_write(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
-            return -1;
-        delay_ms(2000);
-        tmp = BIT_BYPASS_EN;
-        if (st.chip_cfg.active_low_int)
-            tmp |= BIT_ACTL;
-        if (st.chip_cfg.latched_int)
-            tmp |= BIT_LATCH_EN | BIT_ANY_RD_CLR;
-        if (i2c_write(st.hw->addr, st.reg->int_pin_cfg, 1, &tmp))
-            return -1;
+//        if (i2c_read(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
+//            return -1;
+//        tmp &= ~BIT_AUX_IF_EN;
+//        if (i2c_write(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
+//            return -1;
+//        delay_ms(2000);
+//        tmp = BIT_BYPASS_EN;
+//        if (st.chip_cfg.active_low_int)
+//            tmp |= BIT_ACTL;
+//        if (st.chip_cfg.latched_int)
+//            tmp |= BIT_LATCH_EN | BIT_ANY_RD_CLR;
+//        if (i2c_write(st.hw->addr, st.reg->int_pin_cfg, 1, &tmp))
+//            return -1;
     } else {
 		tmp = 0x00;
 		if (i2c_write(st.hw->addr, st.reg->int_pin_cfg, 1, &tmp))
@@ -2001,29 +2001,29 @@ int mpu_set_bypass(unsigned char bypass_on)
 		delay_ms(2000);
 		st.chip_cfg.bypass_mode = bypass_on;
 		
-		return 0;			//Exiting here Pending Compass ???? ToDo
+		return 0;											//Exiting here Pending Compass ???? ToDo
 		
-        /* Enable I2C master mode if compass is being used. */
-        if (i2c_read(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
-            return -1;
-        if (st.chip_cfg.sensors & INV_XYZ_COMPASS)
-            tmp |= BIT_AUX_IF_EN;
-        else
-            tmp &= ~BIT_AUX_IF_EN;
-        if (i2c_write(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
-            return -1;
-        delay_ms(2000);
-        if (st.chip_cfg.active_low_int)
-            tmp = BIT_ACTL;
-        else
-            tmp = 0;
-        if (st.chip_cfg.latched_int)
-            tmp |= BIT_LATCH_EN | BIT_ANY_RD_CLR;
-        if (i2c_write(st.hw->addr, st.reg->int_pin_cfg, 1, &tmp))
-            return -1;
+//        /* Enable I2C master mode if compass is being used. */
+//        if (i2c_read(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
+//            return -1;
+//        if (st.chip_cfg.sensors & INV_XYZ_COMPASS)
+//            tmp |= BIT_AUX_IF_EN;
+//        else
+//            tmp &= ~BIT_AUX_IF_EN;
+//        if (i2c_write(st.hw->addr, st.reg->user_ctrl, 1, &tmp))
+//            return -1;
+//        delay_ms(2000);
+//        if (st.chip_cfg.active_low_int)
+//            tmp = BIT_ACTL;
+//        else
+//            tmp = 0;
+//        if (st.chip_cfg.latched_int)
+//            tmp |= BIT_LATCH_EN | BIT_ANY_RD_CLR;
+//        if (i2c_write(st.hw->addr, st.reg->int_pin_cfg, 1, &tmp))
+//            return -1;
     }
-    st.chip_cfg.bypass_mode = bypass_on;
-    return 0;
+//    st.chip_cfg.bypass_mode = bypass_on;
+//    return 0;
 }
 
 /**

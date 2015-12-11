@@ -91,8 +91,9 @@ THE SOFTWARE.
 	#define MPL3115A2_REGISTER_STARTCONVERSION      (0x12)
 /*=========================================================================*/
 
-bool MPL3115A2_init(void);
+bool  MPL3115A2_init(void);
 float MPL3115A2_getPressure(void);
+float MPL3115A2_getPressureSeaLevel(void);
 float MPL3115A2_getAltitude(void);
 float MPL3115A2_getTemperature(void);
 
