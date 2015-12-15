@@ -289,8 +289,8 @@ void initAK8975A(float * destination)
 int16_t readTempData()
 {
   uint8_t rawData[2];  // x/y/z gyro register data stored here
-  MPU9150_readBytes(MPU9150_ADDRESS, TEMP_OUT_H, 2, &rawData[0]);  // Read the two raw data registers sequentially into data array 
-  return ((int16_t)rawData[0] << 8) | rawData[1] ;  // Turn the MSB and LSB into a 16-bit value
+  MPU9150_readBytes(MPU9150_ADDRESS, TEMP_OUT_H, 2, &rawData[0]);  			// Read the two raw data registers sequentially into data array 
+  return (((int16_t)rawData[0] << 8) | rawData[1])/100 ;  					// Turn the MSB and LSB into a 16-bit value
 }
  
 void resetMPU9150() {

@@ -133,7 +133,6 @@ bool MPL3115A2_write8(uint8_t a, uint8_t d) {
 		}
 		return true;
 	}
-	
 	return false;
 }
 
@@ -163,41 +162,46 @@ float MPL3115A2_getTemperature() {
 }
 
 float MPL3115A2_getAltitude() {
-	int32_t alt;
 
-	MPL3115A2_write8(MPL3115A2_CTRL_REG1,		// 0x26
-		MPL3115A2_CTRL_REG1_SBYB |
+	MPL3115A2_write8(MPL3115A2_CTRL_REG1, 				// 0x26
+		MPL3115A2_CTRL_REG1_SBYB |						// 0x01???
 		MPL3115A2_CTRL_REG1_OS128 |
-		MPL3115A2_CTRL_REG1_ALT);  				// 0xB9
+		MPL3115A2_CTRL_REG1_ALT);  						// 0xB8
 
+	float altitude;
+	
 	uint8_t sta = 0;
 	sta = MPL3115A2_read8(MPL3115A2_CTRL_REG1);
 	sta = MPL3115A2_read8(MPL3115A2_REGISTER_STATUS);
-	if (! (sta & (MPL3115A2_REGISTER_STATUS_PDR|MPL3115A2_REGISTER_STATUS_PTDR)) ) {
-		//sta = MPL3115A2_read8(MPL3115A2_WHOAMI);
-		nrf_delay_ms(200);
+	
+	while (! (sta & MPL3115A2_REGISTER_STATUS_PDR)) {
 		sta = MPL3115A2_read8(MPL3115A2_REGISTER_STATUS);
-		if (!((sta & (MPL3115A2_REGISTER_STATUS_PDR|MPL3115A2_REGISTER_STATUS_PTDR))) )
-		{
-		MPL3115A2_write8(MPL3115A2_CTRL_REG1, 	// 0x26
+		nrf_delay_ms(15);
+	}
+	
+	if (! (sta & (MPL3115A2_REGISTER_STATUS_PDR|MPL3115A2_REGISTER_STATUS_PTDR)) ) 
+	{
+		MPL3115A2_write8(MPL3115A2_CTRL_REG1, 			// 0x26
 		MPL3115A2_CTRL_REG1_SBYB |
 		MPL3115A2_CTRL_REG1_OS128 |
-		MPL3115A2_CTRL_REG1_ALT);  				// 0xB9
-		sta = MPL3115A2_read8(MPL3115A2_REGISTER_STATUS);
-		}
+		MPL3115A2_CTRL_REG1_ALT);  						// ERROR Should be 0xB8 Loads --> 0xB9
+
+		MPL3115A2_write8(MPL3115A2_CTRL_REG1, 0xB8);	// Test --> No Change to result when loading 0xB9
+		nrf_delay_ms(15);
+//		sta = MPL3115A2_read8(MPL3115A2_REGISTER_STATUS);
 	}
 	uint8_t out[3];
 	MPL3115A2_readBytes_(MPL3115A2_ADDRESS, MPL3115A2_REGISTER_PRESSURE_MSB, 3, out, true);
 
-	alt = (out[0]<<16)|(out[1]<<8)|out[2]; 		// receive DATA
-	alt >>= 4;
+	float tempcsb = (out[2]>>4)/16.0;		//Decimal Point Components of altitude converted to decimal
 
-	if (alt & 0x800000) {
-		alt |= 0xFF000000;
-	}
+	altitude = (float)( (out[0] << 8) | out[1]) + tempcsb;;
 
-	float altitude = alt;
-	altitude /= 16.0;
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+	altitude=altitude/4;						// Cludge factor to get close to +ive altitude of around scaled to generate ~1m change at around 30m above sea level
+	altitude=-1*(altitude-6350);				// ToDo ---> Need to fix this to make it real
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
 	return altitude;
 }
 
@@ -217,7 +221,7 @@ float MPL3115A2_getPressure() {
 	uint8_t sta = 0;
 	while (! (sta & MPL3115A2_REGISTER_STATUS_PDR)) {
 		sta = MPL3115A2_read8(MPL3115A2_REGISTER_STATUS);
-		nrf_delay_ms(10);
+		nrf_delay_ms(15);
 	}
   
   	uint8_t out[3];
@@ -227,7 +231,7 @@ float MPL3115A2_getPressure() {
 	pressure >>= 4;
 
 	float baro = pressure;
-	baro /= 4.0;
+	baro /= 400.0;
 	return baro;
 }
 
@@ -239,15 +243,27 @@ float MPL3115A2_getPressure() {
 //**************************************************************************/
 float MPL3115A2_getPressureSeaLevel() {
 	uint32_t pressure;
+	float baro;
+		
+	MPL3115A2_write8(MPL3115A2_CTRL_REG1, 
+		MPL3115A2_CTRL_REG1_SBYB |
+		MPL3115A2_CTRL_REG1_OS128 |
+		MPL3115A2_CTRL_REG1_BAR);				//B9
+
+	uint8_t sta = 0;
+	while (! (sta & MPL3115A2_REGISTER_STATUS_PDR)) {
+		sta = MPL3115A2_read8(MPL3115A2_REGISTER_STATUS);
+		nrf_delay_ms(15);
+	}
+		
 	uint8_t out[2];
 	MPL3115A2_readBytes_(MPL3115A2_ADDRESS, 0x14, 2, out, true);		// Reg... BAR ---> MSB:14 + LSB:15
 
-	/*	NOTE: Default pressure = 0xC5E70;		*/
+//	pressure = 0xC5E70;		//
 	
 	pressure = (out[0]<<12)|(out[1]<<4); 								// Barometric pressure at Sea Level (used for Altimeter Adjust)
 	pressure >>= 3;
-	
-	float baro = pressure;
+	baro = (float) pressure;
 	baro /= 100.0;
 	return baro;
 }

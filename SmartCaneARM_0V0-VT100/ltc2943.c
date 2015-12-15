@@ -344,26 +344,26 @@ enum ltc294x_reg {
         LTC294X_REG_THRESH_HIGH_LSB     = 0x05,
         LTC294X_REG_THRESH_LOW_MSB      = 0x06,
         LTC294X_REG_THRESH_LOW_LSB      = 0x07,
-        LTC294X_REG_VOLTAGE_MSB = 0x08,
-        LTC294X_REG_VOLTAGE_LSB = 0x09,
-		LTC294X_REG_VOLTAGE_HIGH_MSB = 0x0a,
-		LTC294X_REG_VOLTAGE_HIGH_LSB = 0x0b,
-		LTC294X_REG_VOLTAGE_LOW_MSB = 0x0c,
-		LTC294X_REG_VOLTAGE_LOW_LSB = 0x0d,		
-        LTC294X_REG_CURRENT_MSB = 0x0E,
-        LTC294X_REG_CURRENT_LSB = 0x0F,
-		LTC294X_REG_CURRENT_HIGH_MSB = 0x10,
-		LTC294X_REG_CURRENT_HIGH_LSB = 0x11,
-		LTC294X_REG_CURRENT_LOW_MSB = 0x12,
-		LTC294X_REG_CURRENT_LOW_LSB = 0x13,			
+        LTC294X_REG_VOLTAGE_MSB 		= 0x08,
+        LTC294X_REG_VOLTAGE_LSB 		= 0x09,
+		LTC294X_REG_VOLTAGE_HIGH_MSB 	= 0x0a,
+		LTC294X_REG_VOLTAGE_HIGH_LSB 	= 0x0b,
+		LTC294X_REG_VOLTAGE_LOW_MSB 	= 0x0c,
+		LTC294X_REG_VOLTAGE_LOW_LSB 	= 0x0d,		
+        LTC294X_REG_CURRENT_MSB 		= 0x0E,
+        LTC294X_REG_CURRENT_LSB 		= 0x0F,
+		LTC294X_REG_CURRENT_HIGH_MSB 	= 0x10,
+		LTC294X_REG_CURRENT_HIGH_LSB 	= 0x11,
+		LTC294X_REG_CURRENT_LOW_MSB 	= 0x12,
+		LTC294X_REG_CURRENT_LOW_LSB 	= 0x13,			
         LTC294X_REG_TEMPERATURE_MSB     = 0x14,
         LTC294X_REG_TEMPERATURE_LSB     = 0x15,
 		LTC294X_REG_TEMPERATURE_HIGH 	= 0x16,
 		LTC294X_REG_TEMPERATURE_LOW 	= 0x17
 };
 
-#define EINVAL          22      /* Invalid argument */
-#define EPERM          23      /* Invalid permission */
+#define EINVAL					22      /* Invalid argument */
+#define EPERM					23      /* Invalid permission */
 
 #define BIT(nr)                 (1UL << (nr))
 #define LTC2943_REG_CONTROL_MODE_MASK (BIT(7) | BIT(6))
@@ -382,15 +382,15 @@ enum ltc294x_reg {
 #define LTC2943_NUM_REGS        0x18
 
 struct ltc294x_info {
-        struct i2c_client *client;      /* I2C Client pointer */
-//        struct power_supply *supply;    /* Supply pointer */
+        struct i2c_client *client;      		/* I2C Client pointer */
+//        struct power_supply *supply;    		/* Supply pointer */
         struct power_supply_desc supply_desc;   /* Supply description */
-//        struct delayed_work work;       /* Work scheduler */
-        int num_regs;   /* Number of registers (chip type) */
-        int id;         /* Identifier of ltc294x chip */
-        int charge;     /* Last charge register content */
-        int r_sense;    /* mOhm */
-        int Qlsb;       /* nAh */
+//        struct delayed_work work;       		/* Work scheduler */
+        int num_regs;   						/* Number of registers (chip type) */
+        int id;         						/* Identifier of ltc294x chip */
+        int charge;     						/* Last charge register content */
+        int r_sense;    						/* mOhm */
+        int Qlsb;       						/* nAh */
 };
 
 struct ltc294x_info ltc2943_info;
@@ -399,22 +399,19 @@ struct ltc294x_info ltc2943_info;
 //static DEFINE_MUTEX(ltc294x_lock);
 
 static inline int convert_bin_to_uAh(
-        const struct ltc294x_info *info, int Q)
-{
+        const struct ltc294x_info *info, int Q) {
         return ((Q * (info->Qlsb / 10))) / 100;
 }
 
 static inline int convert_uAh_to_bin(
-        const struct ltc294x_info *info, int uAh)
-{
+        const struct ltc294x_info *info, int uAh) {
         int Q;
 
         Q = (uAh * 100) / (info->Qlsb/10);
         return (Q < LTC294X_MAX_VALUE) ? Q : LTC294X_MAX_VALUE;
 }
 
-static int i2c_transfer(struct i2c_msg* pMsg, int numOfMsg)
-{
+static int i2c_transfer(struct i2c_msg* pMsg, int numOfMsg) {
 	bool stopSign = false;
 	for(int i=0;i<numOfMsg;i++)
 	{
@@ -441,8 +438,7 @@ static int i2c_transfer(struct i2c_msg* pMsg, int numOfMsg)
 //}
 
 static int ltc294x_read_regs(struct i2c_client *client,
-        enum ltc294x_reg reg, u8 *buf, int num_regs)
-{
+        enum ltc294x_reg reg, u8 *buf, int num_regs) {
         int ret;
         struct i2c_msg msgs[2] ;
         u8 reg_start = reg;
@@ -469,8 +465,7 @@ static int ltc294x_read_regs(struct i2c_client *client,
 }
 
 static int ltc294x_write_regs(struct i2c_client *client,
-        enum ltc294x_reg reg, const u8 *buf, int num_regs)
-{
+        enum ltc294x_reg reg, const u8 *buf, int num_regs) {
 	
 //        int ret;
 //        u8 reg_start = reg;
@@ -509,8 +504,7 @@ static int ltc294x_write_regs(struct i2c_client *client,
         return 0;
 }
 
-int ltc294x_reset( int prescaler_exp)
-{
+int ltc294x_reset( int prescaler_exp) {
 		struct ltc294x_info *info = &ltc2943_info;
         int ret;
         u8 value[3];
@@ -557,8 +551,7 @@ error_exit:
         return ret;
 }
 
-int ltc294x_read_charge_register(void)
-{
+int ltc294x_read_charge_register(void) {
 		struct ltc294x_info *info = &ltc2943_info;
         int ret;
         u8 datar[2];
@@ -570,8 +563,7 @@ int ltc294x_read_charge_register(void)
         return (datar[0] << 8) + datar[1];
 }
 
-int ltc294x_get_charge_now(int *val)
-{
+int ltc294x_get_charge_now(int *val) {
 		struct ltc294x_info *info = &ltc2943_info;
         int value = ltc294x_read_charge_register();
 
@@ -584,8 +576,7 @@ int ltc294x_get_charge_now(int *val)
         return 0;
 }
 
-int ltc294x_set_charge_now(int val)
-{
+int ltc294x_set_charge_now(int val) {
 		struct ltc294x_info *info = &ltc2943_info;
         int ret;
         u8 dataw[2];
@@ -626,8 +617,7 @@ error_exit:
         return ret < 0 ? ret : 0;
 }
 
-int ltc294x_get_charge_counter(int *val)
-{
+int ltc294x_get_charge_counter(int *val) {
 		struct ltc294x_info *info = &ltc2943_info;
         int value = ltc294x_read_charge_register();
 
@@ -638,8 +628,7 @@ int ltc294x_get_charge_counter(int *val)
         return 0;
 }
 
-int ltc294x_get_voltage(int *val)
-{
+int ltc294x_get_voltage(int *val) {
 		struct ltc294x_info *info = &ltc2943_info;
         int ret;
         u8 datar[2];
@@ -652,8 +641,7 @@ int ltc294x_get_voltage(int *val)
         return ret;
 }
 
-int ltc294x_get_current( int *val)
-{
+int ltc294x_get_current( int *val) {
 	struct ltc294x_info *info = &ltc2943_info;
     int ret,i;
     u8 datar[2];
@@ -662,15 +650,15 @@ int ltc294x_get_current( int *val)
 	// reset will have manual trigger control flag sent
 	// ltc294x_reset(2);
 	
-	for(i=0;i<5;i++)
-	{
-		nrf_delay_ms(40);
-		ret = ltc294x_read_regs(info->client,
-                LTC294X_REG_CONTROL, &datar[0], 1);
-		if((datar[0]&LTC2943_REG_CONTROL_MODE_MASK)==0)
-			break;
-	}
-	if (i>=5) return -1;
+//	for(i=0;i<5;i++)
+//	{
+//		nrf_delay_ms(40);
+//		ret = ltc294x_read_regs(info->client,
+//                LTC294X_REG_CONTROL, &datar[0], 1);
+//		if((datar[0]&LTC2943_REG_CONTROL_MODE_MASK)==0)
+//			break;
+//	}
+//	if (i>=5) return -1;
 	
 	
 	ret = ltc294x_read_regs(info->client,
@@ -680,12 +668,11 @@ int ltc294x_get_current( int *val)
 	/* Value is in range -32k..+32k, r_sense is usually 10..50 mOhm,
 	 * the formula below keeps everything in s32 range while preserving
 	 * enough digits */
-	*val = 1000 * ((60000 * value) / (info->r_sense * 0x7FFF)); /* in uA */
+	*val = 1000 * ((60000 * value) / (info->r_sense * 0x7FFF)); 			/* in uA */
 	return ret;
 }
 
-int ltc294x_get_temperature(int *val)
-{
+int ltc294x_get_temperature(int *val) {
 		struct ltc294x_info *info = &ltc2943_info;
         int ret;
         u8 datar[2];
@@ -699,8 +686,7 @@ int ltc294x_get_temperature(int *val)
         return ret;
 }
 
-void ltc294x_update(void)
-{
+void ltc294x_update(void) {
 	struct ltc294x_info *info = &ltc2943_info;
 	
 	int charge = ltc294x_read_charge_register();
@@ -719,8 +705,7 @@ static enum power_supply_property ltc294x_properties[] = {
         POWER_SUPPLY_PROP_TEMP,
 };
 
-int ltc294x_init(void)
-{
+int ltc294x_init(void) {
 
 	struct i2c_client *client = &ltc2943_client;
 	
@@ -786,8 +771,7 @@ fail_comm:
 
 #ifdef CONFIG_PM_SLEEP
 
-static int ltc294x_suspend(struct device *dev)
-{
+static int ltc294x_suspend(struct device *dev) {
         struct i2c_client *client = to_i2c_client(dev);
         struct ltc294x_info *info = i2c_get_clientdata(client);
 
@@ -795,8 +779,7 @@ static int ltc294x_suspend(struct device *dev)
         return 0;
 }
 
-static int ltc294x_resume(struct device *dev)
-{
+static int ltc294x_resume(struct device *dev) {
         struct i2c_client *client = to_i2c_client(dev);
         struct ltc294x_info *info = i2c_get_clientdata(client);
 

@@ -79,5 +79,5 @@ THE SOFTWARE.
 #define CTS_PIN_NUMBER 22		//Spare IO Pin
 #define RTS_PIN_NUMBER 22		//Spare IO Pin
 #define HWFC           true
-
+#define NHWFC          false
 #endif

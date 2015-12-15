@@ -757,17 +757,18 @@ static void UART_VT100_Display_Data_Power()		    	// $$$$$$  POWER MANAGEMENT ME
 	if (!ltc294x_get_voltage(&value))				// WARNING GasGauge Intermitent Occassionally Returns 0000
 	temp = (float) value;
 	temp = temp / 1000000;
-	printf("\x1B[6;22H%+4.3f ", temp);				// GasGauge Battery Voltage 
+	printf("\x1B[6;22H%+4.3f ", temp);				// GasGauge Battery Voltage 4V1=Full  3V9=75%  3V8=50%   3V7=25%   3V65 = 12% == (ALARM-->ShutDown)
+	
 
 	if (value>4000000)								// WARNING If battery emoved the Charging Supply Jumps to .GT.4V1 and incorrectly shows as charged
 		printf("\x1B[08;21H CHARGED ");				// Need to base battery of charge counter or on battery reaching correct capacity
-	else if (value>3500000)
+	else if (value>4100000)
 		printf("\x1B[08;21H HIGH    ");
-	else if (value>2500000)
+	else if (value>3900000)
 		printf("\x1B[08;21H MEDIUM  "); 
-	else if (value>2000000)
+	else if (value>3700000)
 		printf("\x1B[08;21H LOW     "); 
-	else if (value<=2000000)
+	else if (value<=3650000)
 		printf("\x1B[08;21H VERY LOW"); 
 	
 	if (!ltc294x_get_current(&value))					
