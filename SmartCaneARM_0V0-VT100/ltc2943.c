@@ -643,7 +643,7 @@ int ltc294x_get_voltage(int *val) {
 
 int ltc294x_get_current( int *val) {
 	struct ltc294x_info *info = &ltc2943_info;
-    int ret,i;
+    int ret;
     u8 datar[2];
     s32 value;
 	

@@ -248,15 +248,17 @@ float MPL3115A2_getPressureSeaLevel() {
 	MPL3115A2_write8(MPL3115A2_CTRL_REG1, 
 		MPL3115A2_CTRL_REG1_SBYB |
 		MPL3115A2_CTRL_REG1_OS128 |
-		MPL3115A2_CTRL_REG1_BAR);				//B9
+		MPL3115A2_CTRL_REG1_BAR);				// B9
 
 	uint8_t sta = 0;
+	
 	while (! (sta & MPL3115A2_REGISTER_STATUS_PDR)) {
 		sta = MPL3115A2_read8(MPL3115A2_REGISTER_STATUS);
 		nrf_delay_ms(15);
 	}
 		
 	uint8_t out[2];
+	
 	MPL3115A2_readBytes_(MPL3115A2_ADDRESS, 0x14, 2, out, true);		// Reg... BAR ---> MSB:14 + LSB:15
 
 //	pressure = 0xC5E70;		//

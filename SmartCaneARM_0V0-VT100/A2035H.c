@@ -88,7 +88,6 @@ void uart_event_handle_withBle(app_uart_evt_t * p_event)	// is setup callback in
 }
 
 
-
 typedef enum
 {
 	Pull_up,
