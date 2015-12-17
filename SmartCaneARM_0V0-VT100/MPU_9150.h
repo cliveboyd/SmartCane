@@ -41,26 +41,26 @@ THE SOFTWARE.
 // the eight-bit device address, so shift seven-bit addresses left by one!
 #define AD0 0
 #if AD0
-#define MPU9150_ADDRESS			0x69  // Device address when AD0 = 1, 1101001
+#define MPU9150_ADDRESS			0x69  		// Device address when AD0 = 1, 1101001
 #else
-#define MPU9150_ADDRESS			0x68  // Device address when AD0 = 0, 1101000
+#define MPU9150_ADDRESS			0x68  		// Device address when AD0 = 0, 1101000
 #endif 
 
-#define AK8975A_ADDRESS			0x0C // deprecated in Rev 4.2
+#define AK8975A_ADDRESS			0x0C 		// deprecated in Rev 4.2
 
 
 //Magnetometer Registers
-#define WHO_AM_I_AK8975A 		0x00 // should return 0x48
+#define WHO_AM_I_AK8975A 		0x00 		// should return 0x48
 #define INFO             		0x01
-#define AK8975A_ST1      		0x02  // data ready status bit 0
-#define AK8975A_XOUT_L   		0x03  // data
+#define AK8975A_ST1      		0x02  		// data ready status bit 0
+#define AK8975A_XOUT_L   		0x03  		// data
 #define AK8975A_XOUT_H   		0x04
 #define AK8975A_YOUT_L   		0x05
 #define AK8975A_YOUT_H  		0x06
 #define AK8975A_ZOUT_L   		0x07
 #define AK8975A_ZOUT_H   		0x08
-#define AK8975A_ST2      		0x09  // Data overflow bit 3 and data read error status bit 2
-#define AK8975A_CNTL     		0x0A  // Power down (0000), single-measurement (0001), self-test (1000) and Fuse ROM (1111) modes on bits 3:0
+#define AK8975A_ST2      		0x09  		// Data overflow bit 3 and data read error status bit 2
+#define AK8975A_CNTL     		0x0A  		// Power down (0000), single-measurement (0001), self-test (1000) and Fuse ROM (1111) modes on bits 3:0
 
 #define AK8975A_CNTL_POWERDOWN_MODE 	0x00
 #define AK8975A_CNTL_SINGLE_MODE 		0x01
@@ -71,22 +71,22 @@ THE SOFTWARE.
 #define AK8975A_CNTL2	 		0x0B
 #define AK8975A_CNTL2_SRESET	0x01
 
-#define AK8975A_ASTC			0x0C  // Self test control
-#define AK8975A_ASTC_NOTEST		0x0 // NORMAL
-#define AK8975A_ASTC_GENTEST	0x40 // NORMAL
+#define AK8975A_ASTC			0x0C  		// Self test control
+#define AK8975A_ASTC_NOTEST		0x0 		// NORMAL
+#define AK8975A_ASTC_GENTEST	0x40 		// NORMAL
 
-#define AK8975A_ASAX			0x10  // Fuse ROM x-axis sensitivity adjustment value
-#define AK8975A_ASAY			0x11  // Fuse ROM y-axis sensitivity adjustment value
-#define AK8975A_ASAZ			0x12  // Fuse ROM z-axis sensitivity adjustment value
+#define AK8975A_ASAX			0x10  		// Fuse ROM x-axis sensitivity adjustment value
+#define AK8975A_ASAY			0x11  		// Fuse ROM y-axis sensitivity adjustment value
+#define AK8975A_ASAZ			0x12  		// Fuse ROM z-axis sensitivity adjustment value
  
 // deprecated in Rev 4.2
-//#define XGOFFS_TC        		0x00 // Bit 7 PWR_MODE, bits 6:1 XG_OFFS_TC, bit 0 OTP_BNK_VLD                 
+//#define XGOFFS_TC        		0x00 		// Bit 7 PWR_MODE, bits 6:1 XG_OFFS_TC, bit 0 OTP_BNK_VLD                 
 //#define YGOFFS_TC        		0x01                                                                          
 //#define ZGOFFS_TC        		0x02
-//#define X_FINE_GAIN      		0x03 // [7:0] fine gain
+//#define X_FINE_GAIN      		0x03 		// [7:0] fine gain
 //#define Y_FINE_GAIN      		0x04
 //#define Z_FINE_GAIN      		0x05
-//#define XA_OFFSET_H      		0x06 // User-defined trim values for accelerometer
+//#define XA_OFFSET_H      		0x06 		// User-defined trim values for accelerometer
 //#define XA_OFFSET_L_TC   		0x07
 //#define YA_OFFSET_H      		0x08
 //#define YA_OFFSET_L_TC   		0x09
@@ -98,12 +98,12 @@ THE SOFTWARE.
 #define SELF_TEST_Y				0x0E    
 #define SELF_TEST_Z				0x0F
 #define SELF_TEST_A				0x10
-//#define XG_OFFS_USRH			0x13  // User-defined trim values for gyroscope, populate with calibration routine
-//#define XG_OFFS_USRL			0x14 // deprecated in Rev 4.2
-//#define YG_OFFS_USRH			0x15 // deprecated in Rev 4.2
-//#define YG_OFFS_USRL			0x16 // deprecated in Rev 4.2
-//#define ZG_OFFS_USRH			0x17 // deprecated in Rev 4.2
-//#define ZG_OFFS_USRL			0x18 // deprecated in Rev 4.2
+//#define XG_OFFS_USRH			0x13  		// User-defined trim values for gyroscope, populate with calibration routine
+//#define XG_OFFS_USRL			0x14 		// deprecated in Rev 4.2
+//#define YG_OFFS_USRH			0x15 		// deprecated in Rev 4.2
+//#define YG_OFFS_USRL			0x16 		// deprecated in Rev 4.2
+//#define ZG_OFFS_USRH			0x17 		// deprecated in Rev 4.2
+//#define ZG_OFFS_USRL			0x18 		// deprecated in Rev 4.2
 #define SMPLRT_DIV				0x19
 #define CONFIG					0x1A
 #define GYRO_CONFIG				0x1B
@@ -136,7 +136,7 @@ THE SOFTWARE.
 #define I2C_MST_STATUS			0x36
 #define INT_PIN_CFG				0x37
 #define INT_ENABLE				0x38
-#define DMP_INT_STATUS			0x39  // Check DMP interrupt
+#define DMP_INT_STATUS			0x39  		// Check DMP interrupt
 #define INT_STATUS				0x3A
 #define ACCEL_XOUT_H			0x3B
 #define ACCEL_XOUT_L			0x3C
@@ -214,6 +214,11 @@ typedef enum  {
   GFS_1000DPS,
   GFS_2000DPS
 } Gscale_t;
+
+typedef enum  {
+  MFS_14BITS = 0,
+  MFS_16BITS
+} Mscale_t;
 
 
 void readAccelFloatMG(float *xyz);
