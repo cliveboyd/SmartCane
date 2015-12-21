@@ -49,7 +49,7 @@ THE SOFTWARE.
 #define AK8975A_ADDRESS			0x0C 		// deprecated in Rev 4.2
 
 
-//Magnetometer Registers
+// Magnetometer Registers
 #define WHO_AM_I_AK8975A 		0x00 		// should return 0x48
 #define INFO             		0x01
 #define AK8975A_ST1      		0x02  		// data ready status bit 0
@@ -80,40 +80,41 @@ THE SOFTWARE.
 #define AK8975A_ASAZ			0x12  		// Fuse ROM z-axis sensitivity adjustment value
  
 // deprecated in Rev 4.2
-//#define XGOFFS_TC        		0x00 		// Bit 7 PWR_MODE, bits 6:1 XG_OFFS_TC, bit 0 OTP_BNK_VLD                 
-//#define YGOFFS_TC        		0x01                                                                          
-//#define ZGOFFS_TC        		0x02
-//#define X_FINE_GAIN      		0x03 		// [7:0] fine gain
-//#define Y_FINE_GAIN      		0x04
-//#define Z_FINE_GAIN      		0x05
-//#define XA_OFFSET_H      		0x06 		// User-defined trim values for accelerometer
-//#define XA_OFFSET_L_TC   		0x07
-//#define YA_OFFSET_H      		0x08
-//#define YA_OFFSET_L_TC   		0x09
-//#define ZA_OFFSET_H      		0x0A
-//#define ZA_OFFSET_L_TC   		0x0B
+#define XGOFFS_TC        		0x00 		// Bit 7 PWR_MODE, bits 6:1 XG_OFFS_TC, bit 0 OTP_BNK_VLD                 
+#define YGOFFS_TC        		0x01                                                                          
+#define ZGOFFS_TC        		0x02
+#define X_FINE_GAIN      		0x03 		// [7:0] fine gain
+#define Y_FINE_GAIN      		0x04
+#define Z_FINE_GAIN      		0x05
+#define XA_OFFSET_H      		0x06 		// User-defined trim values for accelerometer
+#define XA_OFFSET_L_TC   		0x07
+#define YA_OFFSET_H      		0x08
+#define YA_OFFSET_L_TC   		0x09
+#define ZA_OFFSET_H      		0x0A
+#define ZA_OFFSET_L_TC   		0x0B
 
 // Gyro and Acc registers
 #define SELF_TEST_X				0x0D
 #define SELF_TEST_Y				0x0E    
 #define SELF_TEST_Z				0x0F
 #define SELF_TEST_A				0x10
-//#define XG_OFFS_USRH			0x13  		// User-defined trim values for gyroscope, populate with calibration routine
-//#define XG_OFFS_USRL			0x14 		// deprecated in Rev 4.2
-//#define YG_OFFS_USRH			0x15 		// deprecated in Rev 4.2
-//#define YG_OFFS_USRL			0x16 		// deprecated in Rev 4.2
-//#define ZG_OFFS_USRH			0x17 		// deprecated in Rev 4.2
-//#define ZG_OFFS_USRL			0x18 		// deprecated in Rev 4.2
+#define XG_OFFSET_H				0x13	// User-defined trim values for gyroscope, populate with calibration routine
+#define XG_OFFSET_L				0x14	// deprecated in Rev 4.2
+#define YG_OFFSET_H				0x15	// deprecated in Rev 4.2
+#define YG_OFFSET_L				0x16	// deprecated in Rev 4.2
+#define ZG_OFFSET_H				0x17	// deprecated in Rev 4.2
+#define ZG_OFFSET_L				0x18	// deprecated in Rev 4.2
 #define SMPLRT_DIV				0x19
 #define CONFIG					0x1A
 #define GYRO_CONFIG				0x1B
 #define ACCEL_CONFIG			0x1C
-//#define FF_THR				0x1D  // Free-fall // deprecated in Rev 4.2
-//#define FF_DUR				0x1E  // Free-fall // deprecated in Rev 4.2
-//#define MOT_THR				0x1F  // deprecated in Rev 4.2 // Motion detection threshold bits [7:0]
-//#define MOT_DUR				0x20  // deprecated in Rev 4.2 // Duration counter threshold for motion interrupt generation, 1 kHz rate, LSB = 1 ms
-//#define ZMOT_THR				0x21  // deprecated in Rev 4.2 // Zero-motion detection threshold bits [7:0]
-//#define ZRMOT_DUR				0x22  // deprecated in Rev 4.2 // Duration counter threshold for zero motion interrupt generation, 16 Hz rate, LSB = 64 ms
+#define ACCEL_CONFIG2			0x1D
+#define FF_THR					0x1D	// Free-fall // deprecated in Rev 4.2
+#define FF_DUR					0x1E	// Free-fall // deprecated in Rev 4.2
+#define MOT_THR					0x1F	// deprecated in Rev 4.2 // Motion detection threshold bits [7:0]
+#define MOT_DUR					0x20	// deprecated in Rev 4.2 // Duration counter threshold for motion interrupt generation, 1 kHz rate, LSB = 1 ms
+#define ZMOT_THR				0x21	// deprecated in Rev 4.2 // Zero-motion detection threshold bits [7:0]
+#define ZRMOT_DUR				0x22	// deprecated in Rev 4.2 // Duration counter threshold for zero motion interrupt generation, 16 Hz rate, LSB = 64 ms
 #define FIFO_EN					0x23
 #define I2C_MST_CTRL			0x24   
 #define I2C_SLV0_ADDR			0x25
@@ -136,7 +137,7 @@ THE SOFTWARE.
 #define I2C_MST_STATUS			0x36
 #define INT_PIN_CFG				0x37
 #define INT_ENABLE				0x38
-#define DMP_INT_STATUS			0x39  		// Check DMP interrupt
+#define DMP_INT_STATUS			0x39	// Check DMP interrupt
 #define INT_STATUS				0x3A
 #define ACCEL_XOUT_H			0x3B
 #define ACCEL_XOUT_L			0x3C
@@ -177,49 +178,50 @@ THE SOFTWARE.
 #define EXT_SENS_DATA_22		0x5F
 #define EXT_SENS_DATA_23		0x60
 
-//#define MOT_DETECT_STATUS 0x61 // deprecated in Rev 4.2
+//#define MOT_DETECT_STATUS 0x61 		// deprecated in Rev 4.2
 #define I2C_SLV0_DO				0x63
 #define I2C_SLV1_DO				0x64
 #define I2C_SLV2_DO				0x65
 #define I2C_SLV3_DO				0x66
 #define I2C_MST_DELAY_CTRL		0x67
 #define SIGNAL_PATH_RESET		0x68
-//#define MOT_DETECT_CTRL		0x69 // deprecated in Rev 4.2
+//#define MOT_DETECT_CTRL		0x69	// deprecated in Rev 4.2
 #define USER_CTRL				0x6A  
-#define PWR_MGMT_1       		0x6B // Device defaults to the SLEEP mode
+#define PWR_MGMT_1       		0x6B	// Device defaults to the SLEEP mode
 #define PWR_MGMT_2       		0x6C
-//#define DMP_BANK        		0x6D  // deprecated in Rev 4.2// Activates a specific bank in the DMP
-//#define DMP_RW_PNT       		0x6E  // deprecated in Rev 4.2// Set read/write pointer to a specific start address in specified DMP bank
-//#define DMP_REG       		0x6F  // deprecated in Rev 4.2// Register in DMP from which to read or to which to write
+//#define DMP_BANK        		0x6D	// deprecated in Rev 4.2// Activates a specific bank in the DMP
+//#define DMP_RW_PNT       		0x6E	// deprecated in Rev 4.2// Set read/write pointer to a specific start address in specified DMP bank
+//#define DMP_REG       		0x6F	// deprecated in Rev 4.2// Register in DMP from which to read or to which to write
 //#define DMP_REG_1        		0x70
 //#define DMP_REG_2        		0x71
 #define FIFO_COUNTH      		0x72
 #define FIFO_COUNTL      		0x73
 #define FIFO_R_W         		0x74
-#define WHO_AM_I_MPU9150 		0x75 // Should return 0x68, 0x0 110100 0 , as device address
+#define WHO_AM_I_MPU9150 		0x75	// Should return 0x68, 0x0 110100 0 , as device address
  
  
  
 // Set initial input parameters
-typedef enum  {
+typedef enum {
   AFS_2G = 0,
   AFS_4G,
   AFS_8G,
   AFS_16G
 } Ascale_t;
  
-typedef enum  {
+typedef enum {
   GFS_250DPS = 0,
   GFS_500DPS,
   GFS_1000DPS,
   GFS_2000DPS
 } Gscale_t;
 
-typedef enum  {
+typedef enum {
   MFS_14BITS = 0,
   MFS_16BITS
 } Mscale_t;
 
+//uint8_t Mmode = 0x02;        						// 2 for 8 Hz, 6 for 100 Hz continuous magnetometer data read
 
 void readAccelFloatMG(float *xyz);
 void readGyroFloatDeg(float *xyz);

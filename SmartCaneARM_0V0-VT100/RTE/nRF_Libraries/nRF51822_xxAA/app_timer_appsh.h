@@ -33,10 +33,9 @@
     APP_TIMER_INIT(PRESCALER, MAX_TIMERS, OP_QUEUES_SIZE,                                          \
                                 (USE_SCHEDULER) ? app_timer_evt_schedule : NULL)
 
-typedef struct
-{
+typedef struct {
     app_timer_timeout_handler_t timeout_handler;
-    void *                      p_context;
+    void * p_context;
 } app_timer_event_t;
 
 uint32_t app_timer_evt_schedule(app_timer_timeout_handler_t timeout_handler,
