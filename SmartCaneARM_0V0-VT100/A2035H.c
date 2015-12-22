@@ -124,7 +124,8 @@ void initA2035H(void)
 	nrf_delay_us(1000000); // delay 1s 
 	pullupdown_gpio_cfg_output(A2035H_ON_OFF_PIN_NUMBER, Pull_down);
 	pullupdown_gpio_cfg_output(A2035H_NRST_PIN_NUMBER, Pull_up);
-	pullupdown_gpio_cfg_output(A2035H_RX_PIN_NUMBER, Pull_up);
+	pullupdown_gpio_cfg_output(A2035H_NEN_PIN_NUMBER, Pull_up);
+	pullupdown_gpio_cfg_output(A2035H_INT_PIN_NUMBER, Pull_down);
 	
 //	pullupdown_gpio_cfg_output(A2035H_TX_PIN_NUMBER, Pull_down);
 	
@@ -132,38 +133,48 @@ void initA2035H(void)
 //	nrf_gpio_cfg_output(A2035H_NRST_PIN_NUMBER);
 //	nrf_gpio_cfg_output(A2035H_RX_PIN_NUMBER);
 //	nrf_gpio_cfg_output(A2035H_TX_PIN_NUMBER);
-	nrf_gpio_pin_clear(A2035H_NRST_PIN_NUMBER);
-	nrf_delay_us(100000); // delay 100ms 
+
+	nrf_gpio_pin_set(A2035H_NEN_PIN_NUMBER);			// Enable Aux 3V3 regulator
+	nrf_gpio_pin_clear(A2035H_NRST_PIN_NUMBER);			// Toggle NRST
+	nrf_delay_us(100000); 								// Delay 100ms 
 	nrf_gpio_pin_set(A2035H_NRST_PIN_NUMBER);
-	nrf_delay_us(50000); // delay 50ms 
-	nrf_gpio_pin_set(A2035H_ON_OFF_PIN_NUMBER);
-	nrf_gpio_pin_set(A2035H_RX_PIN_NUMBER);
-	nrf_delay_us(200000); // delay 200ms 
-	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);
-	nrf_gpio_pin_clear(A2035H_RX_PIN_NUMBER);
-
-	nrf_delay_us(1000);
+	nrf_delay_us(100000); 								// Delay 100ms 
 	
-	uint32_t err_code;
-    const app_uart_comm_params_t comm_params =
-      {
-          A2035H_TX_PIN_NUMBER,  // need to swap RX / TX at controller side
-          A2035H_RX_PIN_NUMBER,
-          0U,
-          0U,
-          APP_UART_FLOW_CONTROL_DISABLED,
-          false,  // no parity
-          UART_BAUDRATE_BAUDRATE_Baud4800
-      };
+	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);		// Assert ON_OFF Pin Low
+	nrf_delay_us(100000); 								// Delay 100ms 
+	nrf_gpio_pin_set(A2035H_ON_OFF_PIN_NUMBER);			// Assert ON_OFF Pin High
+	nrf_delay_us(200000); 								// delay 200ms 
+	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);		// Assert ON_OFF Pin Low
+	nrf_delay_us(100000); 								// Delay 100ms 
+	
+//	nrf_gpio_pin_clear(A2035H_RX_PIN_NUMBER);
+//	nrf_gpio_pin_set(A2035H_TX_PIN_NUMBER);
+	nrf_delay_us(1000);
 
-    APP_UART_FIFO_INIT(&comm_params,
-                         UART_RX_BUF_SIZE,
-                         UART_TX_BUF_SIZE,
-                         uart_event_handle_withBle,
-                         APP_IRQ_PRIORITY_LOW,
-                         err_code);
+//	Note as of Smartcane 1V0 the A2035H configured as SPI Slave ---> UART no longer used.
+//	ToDo Sort out SPI and parse string
 
-    APP_ERROR_CHECK(err_code);
+
+//	uint32_t err_code;
+//    const app_uart_comm_params_t comm_params =
+//      {
+//          A2035H_TX_PIN_NUMBER,  // need to swap RX / TX at controller side
+//          A2035H_RX_PIN_NUMBER,
+//          0U,
+//          0U,
+//          APP_UART_FLOW_CONTROL_DISABLED,
+//          false,  // no parity
+//          UART_BAUDRATE_BAUDRATE_Baud4800
+//      };
+
+//    APP_UART_FIFO_INIT(&comm_params,
+//                         UART_RX_BUF_SIZE,
+//                         UART_TX_BUF_SIZE,
+//                         uart_event_handle_withBle,
+//                         APP_IRQ_PRIORITY_LOW,
+//                         err_code);
+
+//    APP_ERROR_CHECK(err_code);
 	  
 //	printf("\n\rStart: \n\r");
 //	

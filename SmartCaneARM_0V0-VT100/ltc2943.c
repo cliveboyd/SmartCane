@@ -721,7 +721,8 @@ int ltc294x_init(void) {
 
 	/* r_sense can be negative, when sense+ is connected to the battery
 	 * instead of the sense-. This results in reversed measurements. */
-    info->r_sense = 20; // in mOhm
+    
+	info->r_sense = 20; 				// in mOhm
 	
 	prescaler_exp = LTC2943_MAX_PRESCALER_EXP;
 
@@ -742,6 +743,7 @@ int ltc294x_init(void) {
 
 	info->supply_desc.type = POWER_SUPPLY_TYPE_BATTERY;
 	info->supply_desc.properties = ltc294x_properties;
+	
 	if (info->num_regs >= LTC294X_REG_TEMPERATURE_LSB)
 			info->supply_desc.num_properties =
 					ARRAY_SIZE(ltc294x_properties);
@@ -761,7 +763,6 @@ int ltc294x_init(void) {
                 dev_err(&client->dev, "Communication with chip failed\n");
                 goto fail_comm;
         }
-
 
         return 0;
 

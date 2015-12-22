@@ -261,7 +261,7 @@ float MPL3115A2_getPressureSeaLevel() {
 	
 	MPL3115A2_readBytes_(MPL3115A2_ADDRESS, 0x14, 2, out, true);		// Reg... BAR ---> MSB:14 + LSB:15
 
-//	pressure = 0xC5E70;		//
+//	pressure = 0xC5E70;		Factory Default Value //
 	
 	pressure = (out[0]<<12)|(out[1]<<4); 								// Barometric pressure at Sea Level (used for Altimeter Adjust)
 	pressure >>= 3;

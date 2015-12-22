@@ -211,16 +211,16 @@ THE SOFTWARE.
 #define GPS_INT_PIN_NUMBER		(14U)				// INPUT (INT) GPS External Interupt A2035-H.pin19
 
 
-static uint16_t m_conn_handle =  BLE_CONN_HANDLE_INVALID;			/**< Handle of the current connection. */
-static dm_application_instance_t	m_app_handle;					/**< Application identifier allocated by device manager */
+static uint16_t m_conn_handle =  BLE_CONN_HANDLE_INVALID;			/** < Handle of the current connection. */
+static dm_application_instance_t	m_app_handle;					/** < Application identifier allocated by device manager */
 
-static app_timer_id_t	m_cap_timer_id;								/**<  timer. */
-static app_timer_id_t	m_temp_timer_id;							/**<  timer. */
-static app_timer_id_t	m_sys_timer_id;								/**<  timer. */
+static app_timer_id_t	m_cap_timer_id;								/** <  timer. */
+static app_timer_id_t	m_temp_timer_id;							/** <  timer. */
+static app_timer_id_t	m_sys_timer_id;								/** <  timer. */
 
-#define MAX_TEST_DATA_BYTES (4U)									/**< max number of test bytes per TX Burst to be used for tx and rx. was 55 */
-#define UART_TX_BUF_SIZE 	256										/**< UART TX buffer size. Note 512 causes error in xxAA target*/
-#define UART_RX_BUF_SIZE 	16										/**< UART RX buffer size. */
+#define MAX_TEST_DATA_BYTES (4U)									/** < max number of test bytes per TX Burst to be used for tx and rx. was 55 */
+#define UART_TX_BUF_SIZE 	256										/** < UART TX buffer size. Note 512 causes error in xxAA target*/
+#define UART_RX_BUF_SIZE 	16										/** < UART RX buffer size. */
 
 char	DS2401_ID[16];												// String to hold ---> DS2401 (4bits) + Device_ID
 uint8_t MenuLevel=0;												// Initalise Default Menu Level to 00 --> Main Menu
@@ -231,6 +231,7 @@ float	ErrorCount[16];												// Background Error Counters
 uint32_t TimeTick=0;												// Time Tick Counter Loaded from Timer Interupt ---> SYSTEM_TIMER_INTERVAL 200ms
 uint32_t DogCount=0;												// DogCount ---> Background Heartbeat 
 static bool finishedADC;
+
 
 int Process_0 = 0;													/* Initalise Bit Flags Process_0
 	Process_0.0	= 
@@ -318,17 +319,17 @@ int Process_7 = 0;													/* Initalise Bit Flags Process_7
 	Process_7.7	= 
 */
 
-int setbit(int Addr, uint8_t Operator) {							// function set bit 0-7 Operator ---> Single bit 
+int setbit(int Addr, uint8_t Operator) {							// Set   bit at Process_x bassed on Operator (0..7)---> Single bit
 	Addr = Addr | (int) pow(2, Operator);							// Bitwise OR
 	return Addr;
 } 
 
-int clrbit(int Addr, uint8_t Operator) {							// Operator ---> Single bit 
+int clrbit(int Addr, uint8_t Operator) {							// Clear bit at Process_x bassed on Operator (0..7)---> Single bit 
 	Addr = Addr & ~((int)(pow(2, Operator)));						// Bitwise AND of inverted Operator
 	return Addr;
 }
 
-bool testbit(int Process, uint8_t Operator) {						// Test for operator bit set (Operator 0-7)
+bool testbit(int Process, uint8_t Operator) {						// Test  bit at Process_x bassed on Operator (0..7)---> Single bit return true/false
 	
 	
 	if (Process & (int) pow(2,Operator)) {
@@ -934,7 +935,7 @@ static void UART_VT100_Display_Data_All_Sensors() {					// $$$$$$ ALL SENSORS ME
 	
 //	TEMPERATURE ---> REAL TIME DEVICE UPDATES
 	
-//	printf("\x1B[12;44H%+4.1f  ", (float) readNRF_TEMP());					// Processor Temperature  // ERROR Causes LOCKUP !!!!!!
+//	printf("\x1B[12;44H%+4.1f  ", (float) readNRF_TEMP());					// ERROR ERROR ERROR Processor Temperature  // ERROR Causes LOCKUP !!!!!!
 	
 	printf("\x1B[13;44H%+4.1f  ", (float) readTempData()); 					// Inertial Temperature
 	
@@ -1359,42 +1360,44 @@ void someother_module_init() {										// $$$$$$ Miscelaneouse Test Routines --
 	ltc294x_get_charge_counter(&temp);
 	ltc294x_get_charge_counter(&temp);
 }
-static void capmeasure_timer_handler(void * p_context) {			// $$$$$$ Diff Capacitor Sensor Timer Handler (Not used in SmartCane
-/**	@brief 		Function to test and initalise miscellanous routines setup by Leo ---> ????@details 	
+/**	static void capmeasure_timer_handler(void * p_context) {		// $$$$$$ Diff Capacitor Sensor Timer Handler (Not used in SmartCane)
+	@brief 		Function to test and initalise miscellanous routines setup by Leo ---> ????@details 	
 	@note  		
-	@ref 		*/	
+	@ref 			
 	
     UNUSED_PARAMETER(p_context);
 
-}
+}*/
 
 int32_t readNRF_TEMP() {											// ERROR  ToDo Causes System to Hang !!!!!
 /** @brief 		Function to read internal nrf51822 temperature. */
+	
 	int32_t ret = 0;
-    while (true)
-    {
-        NRF_TEMP->TASKS_START = 1; /** Start the temperature measurement. */
+	int32_t count = 255;
 
+	NRF_TEMP->TASKS_START = 1; 					/** ERRRRRROR ---> Fires hard Fault Handler Start the temperature measurement. */
+	while (true)
+    {
         /* Busy wait while temperature measurement is not finished, you can skip waiting if you enable interrupt for DATARDY event and read the result in the interrupt. */
-        /*lint -e{845} // A zero has been given as right argument to operator '|'" */
-        while (NRF_TEMP->EVENTS_DATARDY == 0)
+        /* lint -e{845} // A zero has been given as right argument to operator '|'" */
+        while ((NRF_TEMP->EVENTS_DATARDY == 0) && (count != 0))
         {
-            // $$$$$$$$$$$$$$ WARNING Need to monitor this trap or setup a countdown and exit ---> Do nothing.  $$$$$$$$$
-        }
+            count -= 1;			// $$$$$$$$$$$$$$ WARNING Need to monitor this trap or setup a countdown and exit ---> Do nothing.  $$$$$$$$$
+		}
         NRF_TEMP->EVENTS_DATARDY = 0;
 
         /**@note Workaround for PAN_028 rev2.0A anomaly 29 - TEMP: Stop task clears the TEMP register. */
         ret = (nrf_temp_read() / 4);
 
         /**@note Workaround for PAN_028 rev2.0A anomaly 30 - TEMP: Temp module analog front end does not power down when DATARDY event occurs. */
-        NRF_TEMP->TASKS_STOP = 1; /** Stop the temperature measurement. */
+        NRF_TEMP->TASKS_STOP = 1; 					/** Stop the temperature measurement. */
 
         return ret;
     }
 }
 
 
-/*	static void bar(float * Rxx) { 									// ToDo   Function Under Develeopement Force a reference to Register Rxx pointer ??
+/**	static void bar(float * Rxx) { 									// ToDo   Function Under Develeopement Force a reference to Register Rxx pointer ??
 }
 
 int stack_pointer(int x) {											// ToDo Test Function to access ARM processor Stack Pointer SP via virtual register r13
@@ -1419,18 +1422,19 @@ int stack_pointer(int x) {											// ToDo Test Function to access ARM process
 
 #define MEASURESIZE 128
 static float dataToSend[MEASURESIZE];
-static void blockSend(float *Data, unsigned int len) {				// ToDo: Why doesn't bluetooth send notify in this callback? ---> Leo
+/*static void blockSend(float *Data, unsigned int len) {			// ToDo:  Bluetooth fails to send notify in this callback? ---> Leo
 //	
-///* 		if (m_AD7746.conn_handle != BLE_CONN_HANDLE_INVALID) {
+// 		if (m_AD7746.conn_handle != BLE_CONN_HANDLE_INVALID) {
 ////			for(unsigned int i=0; i<len; i++) {
 ////			dataToSend[i] = Data[i];
 ////		}
 ////		finishedADC = true;
-////	}*/
-}
+////	}
+}*/
 
 
 typedef enum  {
+	
 	DataTypeNone = 0,
 	DataTypeTEMP = 1,
 }	SendDataType;
@@ -1495,7 +1499,7 @@ unsigned int resumeSendData() {  									// Only called by on_ble_evt when BLE_
 
 
 
-static void tempmeasure_timer_handler(void * p_context) {
+static void bluetooth_timer_handler(void * p_context) {				// Timer event to prime Bluetooth data transmission
 /** @brief 		Function to service background timer interupt originally targeting transmission of AD7746 differential capacitance measurement
     @details 	This routine is currently being used to prime data to send via bluetooth if available
     @note  		The routine is a cludge that redirects data to an existing IOS iPhone Antigen Capacitor Sensor application.
@@ -1583,44 +1587,19 @@ static void tempmeasure_timer_handler(void * p_context) {
     return ;
 }
 
-static void system_timer_handler(void * p_context) {
+static void system_timer_handler(void * p_context) {				// Timer event to prime quaternion inertial filter @ 200 msec rate
 /** @brief 		Function to service background timer interupt 
     @details 	This routine is designed primarilly to monitor inertial sensor MPU9250 
     @note  		
     @ref  																			*/		
 	    
 	TimeTick += 200;
-	readQuaternion(Quaternion);												// MPU9250 QUARTERNION   ---> NOT UPDATING FILTER
-
-	
-	
-//	UNUSED_PARAMETER(p_context);
-//	uint32_t err_code = NRF_SUCCESS;
-
-	
-//	short data[3];
-//	unsigned long timestamp;
-//	int16_t temp; // = readTempData();
-	
-//	float Acc[3];
-//	readAccelFloatMG(Acc);			//[0]==Left=+ive    Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
-//	readGyroFloatDeg(Acc);			//[0]==Pitch Up=+ive Down=-ive		[1]==Roll CW=+ive   ACW=-ive		[2]==Yaw Right=+ive  Left=-ive
-//	readMagFloatUT(Acc);			//[0]==Front=+ive    Rear=-ive		[1]==Right=+ive     Left=-ive		[2]==Z Down=+ive     Z Up=-ive
-	
-
-//	mpu_get_compass_reg(data, &timestamp);
-//		tempf = temp/340.0+35;
-//		tempf = sizeof(short);
-
-// real onboard temp data
-//		float tempf;
-//		tempf = readNRF_TEMP(); // using internal temp sensor
-
+	readQuaternion(Quaternion);										// MPU9250 QUARTERNION   ---> NOT UPDATING FILTER
 
     return ;
 }
 
-static void timers_init(void) {
+static void timers_init(void) {										// Initalise Timers and setup event handlers
 /**	@brief Function for the Timer initialization.
 	@details Initializes the timer module. This creates and starts application timers.*/
 
@@ -1630,14 +1609,14 @@ static void timers_init(void) {
     APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_OP_QUEUE_SIZE, false);
 
     // Create timers.
-    err_code = app_timer_create(&m_cap_timer_id,
-                                APP_TIMER_MODE_REPEATED,
-                                capmeasure_timer_handler);
-    APP_ERROR_CHECK(err_code);
+//    err_code = app_timer_create(&m_cap_timer_id,
+//                                APP_TIMER_MODE_REPEATED,
+//                                capmeasure_timer_handler);
+//    APP_ERROR_CHECK(err_code);
 
     err_code = app_timer_create(&m_temp_timer_id,
                                 APP_TIMER_MODE_REPEATED,
-                                tempmeasure_timer_handler);
+                                bluetooth_timer_handler);
     APP_ERROR_CHECK(err_code);
 
 	err_code = app_timer_create(&m_sys_timer_id,
@@ -1646,7 +1625,7 @@ static void timers_init(void) {
     APP_ERROR_CHECK(err_code);
 }
 
-static void application_timers_start(void) {
+static void application_timers_start(void) {						// Start background Timers 
 /**	@brief Function for starting application timers*/   
 	uint32_t err_code;
 
@@ -1687,22 +1666,22 @@ void app_on_disconnect(ble_evt_t* p_ble_evt) {
 }
 
 void app_on_adv_timeout(ble_evt_t* p_ble_evt) {
+	
 		uint32_t err_code = NRF_SUCCESS;
 
 		if (p_ble_evt->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_ADVERTISING)
 		{
-        err_code = bsp_indication_set(BSP_INDICATE_USER_STATE_1);
-        APP_ERROR_CHECK(err_code);
-			// Configure buttons with sense level low as wakeup source.
-			nrf_gpio_cfg_sense_input(BSP_BUTTON_0,
-									BUTTON_PULL,
-									NRF_GPIO_PIN_SENSE_LOW);
-			// use STM6601 chip to turn power off completely
-		 	NRF_GPIO->OUTCLR = (1UL << PSHOLD_PIN_NUMBER); 
-
-			// Go to system-off mode (this function will not return; wakeup will cause a reset)                
-			err_code = sd_power_system_off();
+			err_code = bsp_indication_set(BSP_INDICATE_USER_STATE_1);
 			APP_ERROR_CHECK(err_code);
+			
+//			nrf_gpio_cfg_sense_input(BSP_BUTTON_0,
+//									BUTTON_PULL,
+//									NRF_GPIO_PIN_SENSE_LOW);			// Configure buttons with sense level low as wakeup source.
+			
+//			err_code = sd_power_system_off();							// Go to system-off mode (this function will not return; wakeup will cause a reset)     
+//			APP_ERROR_CHECK(err_code);
+//		 	NRF_GPIO->OUTCLR = (1UL << PSHOLD_PIN_NUMBER); 				// Use STM6601 chip to turn power off completely
+			
 		}
 }
 
@@ -1924,7 +1903,7 @@ static void services_init(void) {
 //	err_code = ble_nus_init(&m_nus, &nus_init);
 //	APP_ERROR_CHECK(err_code);
 }
-static void advertising_init(void) {
+static void advertising_init(void) {								// initalise bluetooth ble advertising 
 /**	@brief 		Function for initializing the Advertising functionality.
 	@details	Encodes the required advertising data and passes it to the stack.
 				Also builds a structure to be passed to the stack when starting advertising.*/
@@ -2022,7 +2001,7 @@ static void scheduler_init(void) {
 
 static uint32_t device_manager_evt_handler(dm_handle_t const * p_handle,
                                            dm_event_t  const * p_event,
-                                           ret_code_t        event_result) {
+                                           ret_code_t          event_result) {
 /**	@brief		Function for handling the Device Manager events.
 	@param[in]	p_evt  Data associated to the device manager event.*/											   
     
@@ -2174,8 +2153,65 @@ void PatTheDog() {													// ToDo Pat The Dog and WatchDog Timer Happy --->
 }
 
 
-int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
+void GPIO_config_all_init() {										// Configure nRF51 GPIO Pins as required.
+/**	@brief		Function GPIO_config_all_init() Configures GPIO Pins.
+
+	@details	
+	@note  		
+	@ref		
+*/	
+
+//	Configure PSU Hold as Output
+	NRF_GPIO->PIN_CNF[PSHOLD_PIN_NUMBER] =     						\
+		(GPIO_PIN_CNF_SENSE_Disabled 	<< GPIO_PIN_CNF_SENSE_Pos)	\
+	  | (GPIO_PIN_CNF_DRIVE_S0S1     	<< GPIO_PIN_CNF_DRIVE_Pos)	\
+	  | (GPIO_PIN_CNF_PULL_Pullup    	<< GPIO_PIN_CNF_PULL_Pos) 	\
+	  | (GPIO_PIN_CNF_INPUT_Disconnect  << GPIO_PIN_CNF_INPUT_Pos)	\
+	  | (GPIO_PIN_CNF_DIR_Output      	<< GPIO_PIN_CNF_DIR_Pos);
+
+	NRF_GPIO->DIRSET = (1UL << PSHOLD_PIN_NUMBER);
+	NRF_GPIO->OUTSET = (1UL << PSHOLD_PIN_NUMBER);
+
+//	Configure SMARTRST as Output
+	NRF_GPIO->PIN_CNF[SMART_RST_PIN_NUMBER] =     					\
+		(GPIO_PIN_CNF_SENSE_Disabled 	<< GPIO_PIN_CNF_SENSE_Pos)	\
+	  | (GPIO_PIN_CNF_DRIVE_S0S1     	<< GPIO_PIN_CNF_DRIVE_Pos)	\
+	  | (GPIO_PIN_CNF_PULL_Pulldown    	<< GPIO_PIN_CNF_PULL_Pos) 	\
+	  | (GPIO_PIN_CNF_INPUT_Disconnect  << GPIO_PIN_CNF_INPUT_Pos)	\
+	  | (GPIO_PIN_CNF_DIR_Output      	<< GPIO_PIN_CNF_DIR_Pos);
+
+	NRF_GPIO->DIRSET = (1UL << SMART_RST_PIN_NUMBER);
+//	NRF_GPIO->OUTSET = (1UL << SMART_RST_PIN_NUMBER);				// Needs to be Low --> Asserted High forces Shutdown vir SMART RESET
 	
+	nrf_gpio_cfg_sense_input(BSP_BUTTON_0,
+						BUTTON_PULL,
+						NRF_GPIO_PIN_SENSE_LOW);					// Configure button-0 with sense level low as wakeup source.
+	
+	nrf_gpio_cfg_sense_input(BSP_BUTTON_1,
+						BUTTON_PULL,
+						NRF_GPIO_PIN_SENSE_LOW);					// Configure button-1 with sense level low as wakeup source.
+
+
+//	pullupdown_gpio_cfg_output(A2035H_ON_OFF_PIN_NUMBER, Pull_down);
+//	pullupdown_gpio_cfg_output(A2035H_NRST_PIN_NUMBER, Pull_up);
+//	pullupdown_gpio_cfg_output(A2035H_RX_PIN_NUMBER, Pull_up);
+
+/* TODO
+	Pressure  Sensor interupts PRESS1 and PRESS2
+	Speaker Audio Output Source and Audio Control
+	Auxillary Motor Haptic
+	LED_Red
+	GPS interupt
+	MPU interupt
+
+
+
+*/
+
+}
+
+int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
+
 /**	@brief		Function main() application entry.
 	@details	
 	@note  		
@@ -2186,9 +2222,7 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	uint8_t status = 0;
 	
 	GrabDeviceID(DS2401_ID,16);										// Grab and store 8-bit Hex Device ID
-
 /*																	// A short test routine to debug process flag subroutines
-	
 	Process_0 = setbit(Process_0, 2);								// Need to redo as pointers !!!!
 	if (testbit(Process_0, 4)) {
 		Process_2 = setbit(Process_2, 7);	
@@ -2200,16 +2234,7 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	
 	ble_stack_init();												// Initialize softdevice stack.
 
-	NRF_GPIO->PIN_CNF[PSHOLD_PIN_NUMBER] =     						\
-		(GPIO_PIN_CNF_SENSE_Disabled 	<< GPIO_PIN_CNF_SENSE_Pos)	\
-	  | (GPIO_PIN_CNF_DRIVE_S0S1     	<< GPIO_PIN_CNF_DRIVE_Pos)	\
-	  | (GPIO_PIN_CNF_PULL_Pullup    	<< GPIO_PIN_CNF_PULL_Pos) 	\
-	  | (GPIO_PIN_CNF_INPUT_Disconnect  << GPIO_PIN_CNF_INPUT_Pos)	\
-	  | (GPIO_PIN_CNF_DIR_Output      	<< GPIO_PIN_CNF_DIR_Pos);	
-
-	NRF_GPIO->DIRSET = (1UL << PSHOLD_PIN_NUMBER); 
-	NRF_GPIO->OUTSET = (1UL << PSHOLD_PIN_NUMBER); 
-
+	GPIO_config_all_init();											// Initialise GPIO Pins as Required
 
 //	Initialize Common modules
 	scheduler_init();												// Initialise Scheduler
@@ -2222,7 +2247,8 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	conn_params_init();												// Initialise connection parameters
 	application_timers_start();										// Start Timers
 
-	if (false) advertising_start();	// Start Advertising			// Starts Bluetooth advertising however also shuts down power to board after 180sec if no connection
+//	Start Advertising
+	if (false) advertising_start();									// Starts Bluetooth advertising however also shuts down power to board after 180sec if no connection
 																	// Note... Moved to VT100 System Menu 
 	
 	const app_uart_comm_params_t comm_params =	{					// Load UART Parameters ... USB UART Virtual COM port BAUD==11500
@@ -2236,22 +2262,26 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	  };
 
 	
-	  APP_UART_FIFO_INIT(&comm_params,								// Initalise UART FIFO with defined setup parameters
-							 UART_RX_BUF_SIZE,
-							 UART_TX_BUF_SIZE,
-							 uart_error_handle,
-							 APP_IRQ_PRIORITY_LOW,
-							 err_code);
+	APP_UART_FIFO_INIT(&comm_params,								// Initalise UART FIFO with defined setup parameters
+		UART_RX_BUF_SIZE,
+		UART_TX_BUF_SIZE,
+		uart_error_handle,
+		APP_IRQ_PRIORITY_LOW,
+		err_code);
 	  
-//	APP_ERROR_CHECK(err_code);										// Application Error Checker ---> error.h
+	APP_ERROR_CHECK(err_code);										// Application Error Checker ---> error.h
 
 	while(!status)  status = I2C_Init();							// Initalise I2C 
 
-	ltc294x_init();													// Initalise Gas Gauge Lio Battery Monitor
-		  
-	UART_VT100_Main_Menu();											// Initialise Default UART VT100 Menu
+	ltc294x_init();													// Initalise Gas Gauge LiPo Battery Monitor
+	
+
+
+	  
+	UART_VT100_Main_Menu();											// Initialise Default UART VT100 Main Menu
 	
 	int TSA_Count=0;												// Base TSA Initialisation Start Count = 0 of  TSA_Count 0..25	
+	  
 	while (true) {													// Endless Loop within main() ---> TSA Time Slot Assigner
 /**	@brief 		MASTER TIME SLOT ASSIGNER --> TSA
 	@details 	This routine operates as a never ending loop within 
@@ -2262,10 +2292,8 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 		
 		app_sched_execute();										// Execute Task Scheduler per loop
 		
-		err_code = sd_app_evt_wait();								// BYPASS Menu not working possible TRAP pending unknowns !!!!!!!
+//		err_code = sd_app_evt_wait();								// BYPASS --> Not working TRAP pending unknowns !!!!!!!
 
-		APP_ERROR_CHECK(err_code);									// ToDo Need to Follow this Function Call !!!!!!
-		
 		TSA_Count=TSA_Count+1;
 		
 		if (TSA_Count>=26) TSA_Count=0;								// Reset the TSA Count
@@ -2324,11 +2352,11 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 			
 			break;
 			
-		case 25:													// End of background tasker ---> delay if necessary
+		case 25:													// Pat the Dog every 50 loops of TSA
 			DogCount += 1;	
 			if (DogCount >= 50) 
 				DogCount=0;
-				PatTheDog();										// Pat the Dog every 50 loops of TSA
+				PatTheDog();
 			break;
 
 		}
