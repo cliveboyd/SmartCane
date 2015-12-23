@@ -72,16 +72,16 @@ nrf_radio_signal_callback_return_param_t *nrf_radio_signal_callback(uint8_t sign
     return_params.callback_action = NRF_RADIO_SIGNAL_CALLBACK_ACTION_END;
     switch(signal_type)
     {
-        case NRF_RADIO_CALLBACK_SIGNAL_TYPE_START:            /**< This signal indicates the start of the radio timeslot. */
+        case NRF_RADIO_CALLBACK_SIGNAL_TYPE_START:					/**< This signal indicates the start of the radio timeslot. */
             PWM_IRQHandler();
             break;
-        case NRF_RADIO_CALLBACK_SIGNAL_TYPE_TIMER0:            /**< This signal indicates the NRF_TIMER0 interrupt. */
+        case NRF_RADIO_CALLBACK_SIGNAL_TYPE_TIMER0:					/**< This signal indicates the NRF_TIMER0 interrupt. */
             break;
-        case NRF_RADIO_CALLBACK_SIGNAL_TYPE_RADIO:             /**< This signal indicates the NRF_RADIO interrupt. */
+        case NRF_RADIO_CALLBACK_SIGNAL_TYPE_RADIO:					/**< This signal indicates the NRF_RADIO interrupt. */
             break;
-        case NRF_RADIO_CALLBACK_SIGNAL_TYPE_EXTEND_FAILED:     /**< This signal indicates extend action failed. */
+        case NRF_RADIO_CALLBACK_SIGNAL_TYPE_EXTEND_FAILED:			/**< This signal indicates extend action failed. */
             break;
-        case NRF_RADIO_CALLBACK_SIGNAL_TYPE_EXTEND_SUCCEEDED:   /**< This signal indicates extend action succeeded. */
+        case NRF_RADIO_CALLBACK_SIGNAL_TYPE_EXTEND_SUCCEEDED:		/**< This signal indicates extend action succeeded. */
             break;
     }
     return &return_params;
@@ -94,33 +94,36 @@ uint32_t nrf_pwm_init(nrf_pwm_config_t *config)
     
     switch(config->mode)
     {
-        case PWM_MODE_LED_100:   // 0-100 resolution, 321Hz PWM frequency, 32kHz timer frequency (prescaler 9)
+        case PWM_MODE_LED_100:					// 0-100 resolution, 321Hz PWM frequency, 32kHz timer frequency (prescaler 9)
             PWM_TIMER->PRESCALER = 9; 
             pwm_max_value = 100;
             break;
-        case PWM_MODE_LED_255:   // 8-bit resolution, 122Hz PWM frequency, 32kHz timer frequency (prescaler 9)
+        case PWM_MODE_LED_255:					// 8-bit resolution, 122Hz PWM frequency, 32kHz timer frequency (prescaler 9)
             PWM_TIMER->PRESCALER = 9;
             pwm_max_value = 255;  
             break;
-        case PWM_MODE_LED_1000:  // 0-1000 resolution, 250Hz PWM frequency, 250kHz timer frequency (prescaler 6)
+        case PWM_MODE_LED_1000:					// 0-1000 resolution, 250Hz PWM frequency, 250kHz timer frequency (prescaler 6)
             PWM_TIMER->PRESCALER = 6;
             pwm_max_value = 1000;
             break;
-        case PWM_MODE_MTR_100:   // 0-100 resolution, 20kHz PWM frequency, 2MHz timer frequency (prescaler 3)
+
+
+        case PWM_MODE_MTR_100:					// 0-100 resolution, 20kHz PWM frequency, 2MHz timer frequency (prescaler 3)
             PWM_TIMER->PRESCALER = 3;
             pwm_max_value = 100;
             break;
-        case PWM_MODE_MTR_255:    // 8-bit resolution, 31kHz PWM frequency, 8MHz timer frequency (prescaler 1)	
+        case PWM_MODE_MTR_255:					// 8-bit resolution, 31kHz PWM frequency, 8MHz timer frequency (prescaler 1)	
             PWM_TIMER->PRESCALER = 1;
             pwm_max_value = 255;
             break;
-        case PWM_MODE_BUZZER_255:  // 8-bit resolution, 62.5kHz PWM frequency, 16MHz timer frequency (prescaler 0)
+        case PWM_MODE_BUZZER_255:				// 8-bit resolution, 62.5kHz PWM frequency, 16MHz timer frequency (prescaler 0)
             PWM_TIMER->PRESCALER = 0;
             pwm_max_value = 255;
             break;
         default:
             return 0xFFFFFFFF;
     }
+	
     pwm_cc_update_margin_ticks = pwm_cc_margin_by_prescaler[PWM_TIMER->PRESCALER];
     pwm_num_channels = config->num_channels;
     for(int i = 0; i < pwm_num_channels; i++)
@@ -160,6 +163,7 @@ uint32_t nrf_pwm_init(nrf_pwm_config_t *config)
         ppi_enable_channel(config->ppi_channel[i*2+1],&PWM_TIMER2->EVENTS_COMPARE[2], &NRF_GPIOTE->TASKS_OUT[pwm_gpiote_channel[i]]);  
         pwm_modified[i] = false;        
     }
+	
 #if(USE_WITH_SOFTDEVICE == 1)
     sd_radio_session_open(nrf_radio_signal_callback);
 #else
@@ -180,6 +184,7 @@ void nrf_pwm_set_value(uint32_t pwm_channel, uint32_t pwm_value)
 {
     pwm_next_value[pwm_channel] = pwm_value;
     pwm_modified[pwm_channel] = true;
+
 #if(USE_WITH_SOFTDEVICE == 1)
     nrf_radio_request_t radio_request;
     radio_request.request_type = NRF_RADIO_REQ_TYPE_EARLIEST;
@@ -200,6 +205,7 @@ void nrf_pwm_set_values(uint32_t pwm_channel_num, uint32_t *pwm_values)
         pwm_next_value[i] = pwm_values[i];
         pwm_modified[i] = true;
     }
+	
 #if(USE_WITH_SOFTDEVICE == 1)
     nrf_radio_request_t radio_request;
     radio_request.request_type = NRF_RADIO_REQ_TYPE_EARLIEST;
@@ -231,7 +237,7 @@ void nrf_pwm_set_enabled(bool enabled)
         if(pwm_num_channels > 2) PWM_TIMER2->TASKS_STOP = 1;
         for(uint32_t i = 0; i < pwm_num_channels; i++)
         {
-//            nrf_gpiote_unconfig(pwm_gpiote_channel[i]);  // should not unconfig gpiote, otherwise can't enable again.
+//			nrf_gpiote_unconfig(pwm_gpiote_channel[i]);			// should not unconfig gpiote, otherwise can't enable again.
             nrf_gpio_pin_write(pwm_io_ch[i], 0); 
             pwm_running[i] = 0;
         }       
@@ -244,8 +250,8 @@ void set_frequency_and_duty_cycle(uint32_t frequency, uint32_t duty_cycle_percen
     nrf_pwm_set_value(0, (16000000 / frequency) * duty_cycle_percent / 100);
 }
 
-void PWM_IRQHandler(void)
-{
+void PWM_IRQHandler(void) {
+	
     static uint32_t i, new_capture, old_capture;
     PWM_TIMER->CC[2] = pwm_max_value = pwm_next_max_value;
     if(pwm_num_channels > 2) PWM_TIMER2->CC[2] = pwm_max_value;

@@ -24,8 +24,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
- */
+*/
  
 #ifndef BLE_AD7746_H__
 #define BLE_AD7746_H__
@@ -33,10 +32,10 @@ THE SOFTWARE.
 #include <string.h>
 #include "service_maker.h"
 #include "ble.h"
-#include "nordic_common.h"  // for UNUSED_PARAMETER
+#include "nordic_common.h"									// For UNUSED_PARAMETER
 
 
-#define SERV_BASE AD7746  //TODO:  set the service base name
+#define SERV_BASE AD7746									// TODO: Set the service base name
 #define CHAR1 CONFIG
 #define CHAR2 CAP
 #define CHAR3 TEMP
@@ -45,40 +44,39 @@ THE SOFTWARE.
 MAKE_UUID_BASE(SERV_BASE) = {0x23, 0xD1, 0xBC, 0xEA, 0x5F, 0x78, 0x23, 0x15, 0xDE, 0xEF, 0x12, 0x12, 0x00, 0x00, 0x00, 0x00};
 
 typedef enum {
-	MAKE_UUID_SERVICE(SERV_BASE, 0x3456),   //TODO:  set the service UUID
+	MAKE_UUID_SERVICE(SERV_BASE, 0x3456),					// TODO:  set the service UUID
 	MAKE_UUID_CHAR_NOVALUE(SERV_BASE,CHAR1),
-		MAKE_UUID_CHAR_NOVALUE(SERV_BASE,CHAR2)	,
-		MAKE_UUID_CHAR_NOVALUE(SERV_BASE,CHAR3)	,
-}MAKE_UUID_ENUM(SERV_BASE);
+	MAKE_UUID_CHAR_NOVALUE(SERV_BASE,CHAR2),
+	MAKE_UUID_CHAR_NOVALUE(SERV_BASE,CHAR3),
+} MAKE_UUID_ENUM(SERV_BASE);
 
-MAKE_SERVICE_STRUCT(SERV_BASE);  // forward declaration for service struct ble_AD7746_t
+MAKE_SERVICE_STRUCT(SERV_BASE);								// Forward declaration for service struct ble_AD7746_t
 
 MAKE_SERVICE_INIT_STRUCT(SERV_BASE);
 
-typedef struct CONFIG_bytes_s
-{
+typedef struct CONFIG_bytes_s {
 	unsigned char configs[12];
-}CONFIG_bytes_t;
+} CONFIG_bytes_t;
+
 typedef void (*on_char_write_callback_t) (MAKE_SERVICE_STRUCT_NAME(SERV_BASE) *, CONFIG_bytes_t*, uint8_t len);
 
 
 MAKE_SERVICE_STRUCT_CONTENT(SERV_BASE, { \
 	uint16_t service_handle; \
 	uint8_t  uuid_type;  \
-  uint16_t conn_handle; \
+	uint16_t conn_handle; \
 	ble_gatts_char_handles_t MAKE_CHAR_HANDLEID(CHAR1); \
 	ble_gatts_char_handles_t MAKE_CHAR_HANDLEID(CHAR2); \
 	ble_gatts_char_handles_t MAKE_CHAR_HANDLEID(CHAR3); \
-	// TODO: add your customized struct contents below:
-	on_char_write_callback_t on_write_config_callback;
+
+	on_char_write_callback_t on_write_config_callback;				// TODO: add your customized struct contents below:
 });
 
 static MAKE_SERVICE_STRUCT_NAME(SERV_BASE) m_AD7746;
 
 
-MAKE_SERVICE_INIT_STRUCT_CONTENT(SERV_BASE, { \
-	// TODO: add your customized init struct contents below:
-	on_char_write_callback_t on_write_config_callback;
+MAKE_SERVICE_INIT_STRUCT_CONTENT( SERV_BASE, { \
+	on_char_write_callback_t on_write_config_callback;				// TODO: add your customized init struct contents below:
 });
 
 /**@brief Function for initializing the Service.
@@ -100,30 +98,25 @@ static unsigned char AD7746_UUID_BASE[] = {0x23, 0xD1, 0xBC, 0xEA, 0x5F, 0x78, 0
 typedef enum {
 	AD7746_UUID_SERVICE = 0x3456,   
 	AD7746_UUID_CONFIG_CHAR,
-		AD7746_UUID_CAP_CHAR	,
-		AD7746_UUID_TEMP_CHAR	,
+	AD7746_UUID_CAP_CHAR,
+	AD7746_UUID_TEMP_CHAR,
 }AD7746_UUID_t;
 
 typedef struct ble_AD7746_s ble_AD7746_t;
 typedef struct ble_AD7746_init_s ble_AD7746_init_t;
 
-typedef struct CONFIG_bytes_s
-{
+typedef struct CONFIG_bytes_s {
 	unsigned char configs[12];
 }CONFIG_bytes_t;
-typedef void (*on_char_write_callback_t) (ble_AD7746_t *, CONFIG_bytes_t*);
 
+typedef void (*on_char_write_callback_t) (ble_AD7746_t *, CONFIG_bytes_t*);
 
 #line 64 "ble_ad7746.h"
 
 typedef struct ble_AD7746_s { uint16_t service_handle; uint8_t uuid_type; uint16_t conn_handle; ble_gatts_char_handles_t CONFIG_char_handleID; ble_gatts_char_handles_t CAP_char_handleID; ble_gatts_char_handles_t TEMP_char_handleID; on_char_write_callback_t on_write_config_callback; } ble_AD7746_t;
 
-
-
 typedef struct ble_AD7746_init_s { on_char_write_callback_t on_write_config_callback; } ble_AD7746_init_t;
 
-
 */
-
 
 #endif // BLE_AD7746_H__

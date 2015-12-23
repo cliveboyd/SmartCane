@@ -8,7 +8,7 @@
 #define PWM_MAX_CHANNELS        4
 
 // Set this to 1 if the application uses a SoftDevice, 0 otherwise
-#define USE_WITH_SOFTDEVICE     0
+#define USE_WITH_SOFTDEVICE     1								// Softdevice being used s110
 
 // To change the timer used for the PWM library replace the three defines below
 #define PWM_TIMER               NRF_TIMER2
@@ -19,10 +19,10 @@
 // For 3-4 PWM channels a second timer is necessary
 #define PWM_TIMER2              NRF_TIMER1
 
-#define PWM_DEFAULT_CONFIG  {.num_channels   = 2,                \
-                             .gpio_num       = {8,9,10,11},         \
-                             .ppi_channel    = {0,1,2,3,4,5,6,7},    \
-                             .gpiote_channel = {2,3,0,1},          \
+#define PWM_DEFAULT_CONFIG  {.num_channels   = 2,					\
+                             .gpio_num       = {8,9,10,11},			\
+                             .ppi_channel    = {0,1,2,3,4,5,6,7},	\
+                             .gpiote_channel = {2,3,0,1},			\
                              .mode           = PWM_MODE_LED_100};
 
 typedef enum

@@ -17,98 +17,92 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
- */
+*/
  
 
-
 #include "sensorADC.h"
-#include "app_error.h"  // for APP_ERROR_CHECK
+#include "app_error.h"															// for APP_ERROR_CHECK
 #include "nrf_adc.h"
-#include "nrf_soc.h" // for NRF_APP_PRIORITY_HIGH
+#include "nrf_soc.h"															// for NRF_APP_PRIORITY_HIGH
 
-#define ADCDATASIZE   10  // max256, 8192 bytes onchip ram limits
+#define ADCDATASIZE 10															// Note: max256, 8192 bytes onchip ram limits
 static const float ADCREFVALUE = 1.2; 
-static float adcData[ADCDATASIZE];  // 4*SIZE bytes
+static float adcData[ADCDATASIZE];												// 4*SIZE bytes
 
 unsigned int currStoreIndex;
 unsigned int maxSeqSamples;
 
-nrf_adc_config_input_t currentMeasureInput;
+nrf_adc_config_input_t BattVoltageMeasureInput;
 didGetADCSequenceBlock_callback_t blockFinishCallback;
 
+
+void sensorADC_config(void) {
 /**
- * @brief ADC initialization.
- */
-void sensorADC_config(void)
-{
-    nrf_adc_config_t nrf_adc_config = NRF_ADC_CONFIG_DEFAULT;  // 10bit, 1/3 scaling, internal VBG
-		
-		nrf_adc_config.scaling = NRF_ADC_CONFIG_SCALING_INPUT_ONE_THIRD;
-		nrf_adc_config.reference = NRF_ADC_CONFIG_REF_EXT_REF0;
+*	@brief ADC initialization.
+*/	
+	nrf_adc_config_t nrf_adc_config = NRF_ADC_CONFIG_DEFAULT;					// 10bit, 1/3 scaling, internal VBG
+
+	nrf_adc_config.scaling = NRF_ADC_CONFIG_SCALING_INPUT_ONE_THIRD;
+	nrf_adc_config.reference = NRF_ADC_CONFIG_REF_EXT_REF0;
 	
-    // Initialize and configure ADC
-    nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
+    nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);					// Initialize and configure ADC
 	
-		currentMeasureInput = NRF_ADC_CONFIG_INPUT_2;
+	BattVoltageMeasureInput = NRF_ADC_CONFIG_INPUT_6;							// Battery Voltage Input Scalled by 150k/(150k+680k) Voltage Divider
+
+	blockFinishCallback = NULL;   												// initially no callback
 	
-		blockFinishCallback = NULL;   // initially no callback
-	
-//    nrf_adc_input_select(NRF_ADC_CONFIG_INPUT_2);  // after select, it will be enabled
+//    nrf_adc_input_select(NRF_ADC_CONFIG_INPUT_2);  							// after select, it will be enabled
 //    nrf_adc_int_enable(ADC_INTENSET_END_Enabled << ADC_INTENSET_END_Pos);
 //    NVIC_SetPriority(ADC_IRQn, NRF_APP_PRIORITY_HIGH);
 //    NVIC_EnableIRQ(ADC_IRQn);
 }
 
 /**
- * @brief ADC single point measurement
- */
-float sensorADC_singleMeasure(void) 
-{
-		
-		return (float)nrf_adc_convert_single(currentMeasureInput);
+*	@brief ADC single point measurement
+*/
+float sensorADC_singleMeasure(void) {
+	return (float)nrf_adc_convert_single(BattVoltageMeasureInput);
 }
 
-void sensorADC_startSequenceMeasure(unsigned int numSamples, didGetADCSequenceBlock_callback_t blockCallback) 
-{
+void sensorADC_startSequenceMeasure(unsigned int numSamples, didGetADCSequenceBlock_callback_t blockCallback) {
 		maxSeqSamples = numSamples;
-		for (int i=0; i<ADCDATASIZE; i++) {  // clear buffer
+		for (int i=0; i<ADCDATASIZE; i++) {  									// clear buffer
 			adcData[i] = 0;
 		}
 		
-		blockFinishCallback = blockCallback;  // set to new callback for each sequence measure 
+		blockFinishCallback = blockCallback;  									// set to new callback for each sequence measure 
 		
-		nrf_adc_input_select(NRF_ADC_CONFIG_INPUT_2);  // after select, it will be enabled
+		nrf_adc_input_select(NRF_ADC_CONFIG_INPUT_2);							// after select, it will be enabled
 		nrf_adc_int_enable(ADC_INTENSET_END_Enabled << ADC_INTENSET_END_Pos);
 		NVIC_SetPriority(ADC_IRQn, NRF_APP_PRIORITY_HIGH);
 		NVIC_EnableIRQ(ADC_IRQn);
-		currStoreIndex = 0;  // starting from position 0 to store the data
+		currStoreIndex = 0;														// starting from position 0 to store the data
 		nrf_adc_start();
 }
 
+
+void ADC_IRQHandler(void) {
 /**
- * @brief ADC interrupt handler.
- */
-void ADC_IRQHandler(void)
-{
-    nrf_adc_conversion_event_clean();
+* 	@brief ADC interrupt handler.
+*/	
+	nrf_adc_conversion_event_clean();
 
-    int32_t adc_sample = nrf_adc_result_get();
+	int32_t adc_sample = nrf_adc_result_get();
 
-		adcData[(currStoreIndex)%ADCDATASIZE] = (adc_sample*ADCREFVALUE/1023.0)+currStoreIndex;  // cycle back to start to filling
-		currStoreIndex++;
+	adcData[(currStoreIndex)%ADCDATASIZE] = (adc_sample*ADCREFVALUE/1023.0)+currStoreIndex;  // cycle back to start to filling
+	currStoreIndex++;
 
-		unsigned int newstoreIndex = currStoreIndex%ADCDATASIZE;
+	unsigned int newstoreIndex = currStoreIndex%ADCDATASIZE;
+
+	if (newstoreIndex==0 || currStoreIndex >= maxSeqSamples) {
+			if (blockFinishCallback!=NULL) {
+					blockFinishCallback(adcData, (currStoreIndex)%ADCDATASIZE);
+			}
+	}
 		
-		if (newstoreIndex==0 || currStoreIndex >= maxSeqSamples) {
-				if (blockFinishCallback!=NULL) {
-						blockFinishCallback(adcData, (currStoreIndex)%ADCDATASIZE);
-				}
-		}
-		// trigger next ADC conversion
-		if (currStoreIndex < maxSeqSamples) {
-				nrf_adc_start();
-		}else {
-				nrf_adc_stop();
-		}
+	if (currStoreIndex < maxSeqSamples) {													// trigger next ADC conversion
+			nrf_adc_start();
+	} else {
+			nrf_adc_stop();
+	}
 }

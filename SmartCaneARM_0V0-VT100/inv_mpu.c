@@ -583,6 +583,7 @@ const struct gyro_reg_s reg = {
     .bank_sel       = 0x6D,
     .mem_start_addr = 0x6E,
     .prgm_start_h   = 0x70
+	
 #ifdef AK89xx_SECONDARY
     ,.raw_compass   = 0x49,
     .yg_offs_tc     = 0x01,
@@ -598,6 +599,7 @@ const struct gyro_reg_s reg = {
     .i2c_delay_ctrl = 0x67
 #endif
 };
+
 const struct hw_s hw = {
     .addr           = 0x68,
     .max_fifo       = 1024,
@@ -632,6 +634,7 @@ static struct gyro_state_s st = {
     .hw = &hw,
     .test = &test
 };
+
 #elif defined MPU6500
 const struct gyro_reg_s reg = {
     .who_am_i       = 0x75,
@@ -664,6 +667,7 @@ const struct gyro_reg_s reg = {
     .bank_sel       = 0x6D,
     .mem_start_addr = 0x6E,
     .prgm_start_h   = 0x70
+	
 #ifdef AK89xx_SECONDARY
     ,.raw_compass   = 0x49,
     .s0_addr        = 0x25,
@@ -678,6 +682,7 @@ const struct gyro_reg_s reg = {
     .i2c_delay_ctrl = 0x67
 #endif
 };
+
 const struct hw_s hw = {
     .addr           = 0x68,
     .max_fifo       = 1024,
@@ -692,21 +697,21 @@ const struct hw_s hw = {
 
 const struct test_s test = {
     .gyro_sens      = 32768/250,
-    .accel_sens     = 32768/2,  //FSR = +-2G = 16384 LSB/G
-    .reg_rate_div   = 0,    /* 1kHz. */
-    .reg_lpf        = 2,    /* 92Hz low pass filter*/
-    .reg_gyro_fsr   = 0,    /* 250dps. */
-    .reg_accel_fsr  = 0x0,  /* Accel FSR setting = 2g. */
-    .wait_ms        = 200,   //200ms stabilization time
-    .packet_thresh  = 200,    /* 200 samples */
-    .min_dps        = 20.f,  //20 dps for Gyro Criteria C
-    .max_dps        = 60.f, //Must exceed 60 dps threshold for Gyro Criteria B
-    .max_gyro_var   = .5f, //Must exceed +50% variation for Gyro Criteria A
-    .min_g          = .225f, //Accel must exceed Min 225 mg for Criteria B
-    .max_g          = .675f, //Accel cannot exceed Max 675 mg for Criteria B
-    .max_accel_var  = .5f,  //Accel must be within 50% variation for Criteria A
-    .max_g_offset   = .5f,   //500 mg for Accel Criteria C
-    .sample_wait_ms = 10    //10ms sample time wait
+    .accel_sens     = 32768/2,		//	FSR = +-2G = 16384 LSB/G
+    .reg_rate_div   = 0,			/*	1kHz. */
+    .reg_lpf        = 2,			/*	92Hz low pass filter*/
+    .reg_gyro_fsr   = 0,			/*	250dps. */
+    .reg_accel_fsr  = 0x0,			/*	Accel FSR setting = 2g. */
+    .wait_ms        = 200,			//	200ms stabilization time
+    .packet_thresh  = 200,			/*	200 samples */
+    .min_dps        = 20.f,			//	20 dps for Gyro Criteria C
+    .max_dps        = 60.f,			//	Must exceed 60 dps threshold for Gyro Criteria B
+    .max_gyro_var   = .5f,			//	Must exceed +50% variation for Gyro Criteria A
+    .min_g          = .225f,		//	Accel must exceed Min 225 mg for Criteria B
+    .max_g          = .675f,		//	Accel cannot exceed Max 675 mg for Criteria B
+    .max_accel_var  = .5f,			//	Accel must be within 50% variation for Criteria A
+    .max_g_offset   = .5f,			//	500 mg for Accel Criteria C
+    .sample_wait_ms = 10 			//	10ms sample time wait
 };
 
 static struct gyro_state_s st = {
@@ -717,6 +722,7 @@ static struct gyro_state_s st = {
 #endif
 
 #define MAX_PACKET_LENGTH (12)
+
 #ifdef MPU6500
 #define HWST_MAX_PACKET_LENGTH (512)
 #endif
@@ -728,8 +734,8 @@ static int setup_compass(void);
 
 /**
  *  @brief      Enable/disable data ready interrupt.
- *  If the DMP is on, the DMP interrupt is enabled. Otherwise, the data ready
- *  interrupt is used.
+ *  			If the DMP is on, the DMP interrupt is enabled. Otherwise, the data ready
+ *  			interrupt is used.
  *  @param[in]  enable      1 to enable interrupt.
  *  @return     0 if successful.
  */
@@ -844,6 +850,7 @@ int mpu_init(struct int_param_s *int_param)
     st.chip_cfg.sample_rate = 0xFFFF;
     st.chip_cfg.fifo_enable = 0xFF;
     st.chip_cfg.bypass_mode = 0xFF;
+	
 #ifdef AK89xx_SECONDARY
     st.chip_cfg.compass_sample_rate = 0xFFFF;
 #endif
@@ -932,6 +939,7 @@ int mpu_lp_accel_mode(unsigned short rate)
      * Any register read will clear the interrupt.
      */
     mpu_set_int_latched(1);
+	
 #if defined MPU6050
     tmp[0] = BIT_LPA_CYCLE;
     if (rate == 1) {
@@ -950,6 +958,7 @@ int mpu_lp_accel_mode(unsigned short rate)
     tmp[1] = (tmp[1] << 6) | BIT_STBY_XYZG;
     if (i2c_write(st.hw->addr, st.reg->pwr_mgmt_1, 2, tmp))
         return -1;
+	
 #elif defined MPU6500
     /* Set wake frequency. */
     if (rate == 1)
@@ -1115,11 +1124,13 @@ int mpu_read_6500_gyro_bias(long *gyro_bias) {
 }
 
 /**
- *  @brief      Push biases to the gyro bias 6500/6050 registers.
- *  This function expects biases relative to the current sensor output, and
- *  these biases will be added to the factory-supplied values. Bias inputs are LSB
- *  in +-1000dps format.
+ *  @brief		Push biases to the gyro bias 6500/6050 registers.
+ *				This function expects biases relative to the current sensor output, and
+ *				these biases will be added to the factory-supplied values. Bias inputs are LSB
+ *				in +-1000dps format.
+
  *  @param[in]  gyro_bias  New biases.
+
  *  @return     0 if successful.
  */
 int mpu_set_gyro_bias_reg(long *gyro_bias)
@@ -1145,13 +1156,16 @@ int mpu_set_gyro_bias_reg(long *gyro_bias)
 }
 
 /**
- *  @brief      Push biases to the accel bias 6050 registers.
- *  This function expects biases relative to the current sensor output, and
- *  these biases will be added to the factory-supplied values. Bias inputs are LSB
- *  in +-16G format.
+ *  @brief		Push biases to the accel bias 6050 registers.
+ * 				This function expects biases relative to the current sensor output, and
+ *				these biases will be added to the factory-supplied values. Bias inputs are LSB
+ *				in +-16G format.
+
  *  @param[in]  accel_bias  New biases.
+
  *  @return     0 if successful.
  */
+
 int mpu_set_accel_bias_6050_reg(const long *accel_bias) {
     unsigned char data[6] = {0, 0, 0, 0, 0, 0};
     long accel_reg_bias[3] = {0, 0, 0};
@@ -1183,10 +1197,11 @@ int mpu_set_accel_bias_6050_reg(const long *accel_bias) {
 
 
 /**
- *  @brief      Push biases to the accel bias 6500 registers.
- *  This function expects biases relative to the current sensor output, and
- *  these biases will be added to the factory-supplied values. Bias inputs are LSB
- *  in +-16G format.
+ *  @brief		Push biases to the accel bias 6500 registers.
+ *				This function expects biases relative to the current sensor output, and
+ *				these biases will be added to the factory-supplied values. Bias inputs are LSB
+ *				in +-16G format.
+
  *  @param[in]  accel_bias  New biases.
  *  @return     0 if successful.
  */
@@ -1495,7 +1510,8 @@ int mpu_get_sample_rate(unsigned short *rate)
 
 /**
  *  @brief      Set sampling rate.
- *  Sampling rate must be between 4Hz and 1kHz.
+ *  			Sampling rate must be between 4Hz and 1kHz.
+
  *  @param[in]  rate    Desired sampling rate (Hz).
  *  @return     0 if successful.
  */
@@ -1559,12 +1575,13 @@ int mpu_get_compass_sample_rate(unsigned short *rate)
 
 /**
  *  @brief      Set compass sampling rate.
- *  The compass on the auxiliary I2C bus is read by the MPU hardware at a
- *  maximum of 100Hz. The actual rate can be set to a fraction of the gyro
- *  sampling rate.
+ *				The compass on the auxiliary I2C bus is read by the MPU hardware at a
+ *				maximum of 100Hz. The actual rate can be set to a fraction of the gyro
+ *				sampling rate.
  *
  *  \n WARNING: The new rate may be different than what was requested. Call
  *  mpu_get_compass_sample_rate to check the actual setting.
+
  *  @param[in]  rate    Desired compass sampling rate (Hz).
  *  @return     0 if successful.
  */
@@ -1641,10 +1658,11 @@ int mpu_get_accel_sens(unsigned short *sens)
 
 /**
  *  @brief      Get current FIFO configuration.
- *  @e sensors can contain a combination of the following flags:
- *  \n INV_X_GYRO, INV_Y_GYRO, INV_Z_GYRO
- *  \n INV_XYZ_GYRO
- *  \n INV_XYZ_ACCEL
+ *  @e 			sensors can contain a combination of the following flags:
+ *  \n 			INV_X_GYRO, INV_Y_GYRO, INV_Z_GYRO
+ *  \n 			INV_XYZ_GYRO
+ *  \n 			INV_XYZ_ACCEL
+
  *  @param[out] sensors Mask of sensors in FIFO.
  *  @return     0 if successful.
  */
@@ -1656,10 +1674,11 @@ int mpu_get_fifo_config(unsigned char *sensors)
 
 /**
  *  @brief      Select which sensors are pushed to FIFO.
- *  @e sensors can contain a combination of the following flags:
- *  \n INV_X_GYRO, INV_Y_GYRO, INV_Z_GYRO
- *  \n INV_XYZ_GYRO
- *  \n INV_XYZ_ACCEL
+ *  @e 			sensors can contain a combination of the following flags:
+ *  \n 			INV_X_GYRO, INV_Y_GYRO, INV_Z_GYRO
+ *  \n 			INV_XYZ_GYRO
+ *  \n 			INV_XYZ_ACCEL
+
  *  @param[in]  sensors Mask of sensors to push to FIFO.
  *  @return     0 if successful.
  */
@@ -1716,11 +1735,12 @@ int mpu_get_power_state(unsigned char *power_on)
 
 /**
  *  @brief      Turn specific sensors on/off.
- *  @e sensors can contain a combination of the following flags:
- *  \n INV_X_GYRO, INV_Y_GYRO, INV_Z_GYRO
- *  \n INV_XYZ_GYRO
- *  \n INV_XYZ_ACCEL
- *  \n INV_XYZ_COMPASS
+ *  @e 			sensors can contain a combination of the following flags:
+ *  \n 			INV_X_GYRO, INV_Y_GYRO, INV_Z_GYRO
+ *  \n			INV_XYZ_GYRO
+ *  \n 			INV_XYZ_ACCEL
+ *  \n			INV_XYZ_COMPASS
+
  *  @param[in]  sensors    Mask of sensors to wake.
  *  @return     0 if successful.
  */
@@ -1770,6 +1790,7 @@ int mpu_set_sensors(unsigned char sensors)
 #else
     if (i2c_read(st.hw->addr, st.reg->user_ctrl, 1, &user_ctrl))
         return -1;
+	
     /* Handle AKM power management. */
     if (sensors & INV_XYZ_COMPASS) {
         data = AKM_SINGLE_MEASUREMENT;
@@ -1814,15 +1835,16 @@ int mpu_get_int_status(short *status)
 
 /**
  *  @brief      Get one packet from the FIFO.
- *  If @e sensors does not contain a particular sensor, disregard the data
- *  returned to that pointer.
- *  \n @e sensors can contain a combination of the following flags:
- *  \n INV_X_GYRO, INV_Y_GYRO, INV_Z_GYRO
- *  \n INV_XYZ_GYRO
- *  \n INV_XYZ_ACCEL
- *  \n If the FIFO has no new data, @e sensors will be zero.
- *  \n If the FIFO is disabled, @e sensors will be zero and this function will
- *  return a non-zero error code.
+ *  If @e 		sensors does not contain a particular sensor, disregard the data
+ *  			returned to that pointer.
+ *  \n @e 		sensors can contain a combination of the following flags:
+ *  \n 			INV_X_GYRO, INV_Y_GYRO, INV_Z_GYRO
+ *  \n			INV_XYZ_GYRO
+ *  \n			INV_XYZ_ACCEL
+ *  \n 			If the FIFO has no new data, @e sensors will be zero.
+ *  \n 			If the FIFO is disabled, @e sensors will be zero and this function will
+ *  			return a non-zero error code.
+
  *  @param[out] gyro        Gyro data in hardware units.
  *  @param[out] accel       Accel data in hardware units.
  *  @param[out] timestamp   Timestamp in milliseconds.
@@ -1906,7 +1928,7 @@ int mpu_read_fifo(short *gyro, short *accel, unsigned long *timestamp,
 
 /**
  *  @brief      Get one unparsed packet from the FIFO.
- *  This function should be used if the packet is to be parsed elsewhere.
+ *  			This function should be used if the packet is to be parsed elsewhere.
  *  @param[in]  length  Length of one FIFO packet.
  *  @param[in]  data    FIFO packet.
  *  @param[in]  more    Number of remaining packets.
@@ -2001,7 +2023,7 @@ int mpu_set_bypass(unsigned char bypass_on)
 		delay_ms(2000);
 		st.chip_cfg.bypass_mode = bypass_on;
 		
-		return 0;											//Exiting here Pending Compass ???? ToDo
+		return 0;											// Exiting here Pending Compass ???? ToDo
 		
 //        /* Enable I2C master mode if compass is being used. */
 //        if (i2c_read(st.hw->addr, st.reg->user_ctrl, 1, &tmp))

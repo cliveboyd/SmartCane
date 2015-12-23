@@ -59,7 +59,7 @@ static const float Kp = 2.0f * 5.0f; 							// Free parameters in the Mahony fil
 static const float Ki = 0.0f ;
  
 float pitch, yaw, roll;
-float deltat = 0.200f;											// Hard set Quaternion filter sample rate called via SYSTEM_TIMER_INTERVAL=200ms via main
+float deltat = 0.100f;											// Hard set Quaternion filter sample rate called via SYSTEM_TIMER_INTERVAL=100ms via main
 // float deltat = 0.0f;                             			// Integration interval for both filter schemes
 //int lastUpdate = 0, firstUpdate = 0, Now = 0;    				// Used to calculate integration interval
 
