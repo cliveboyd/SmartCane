@@ -77,6 +77,7 @@ typedef void (*app_gpiote_input_event_handler_t)(void);
  *       several times as long as it is from the same location, e.g. to do a reinitialization).
  */
 /*lint -emacro(506, APP_GPIOTE_INIT) */ /* Suppress "Constant value Boolean */
+
 #define APP_GPIOTE_INIT(MAX_USERS)                                                                 \
     do                                                                                             \
     {                                                                                              \

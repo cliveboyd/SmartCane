@@ -356,17 +356,12 @@ static uint32_t bsp_led_indication(bsp_indication_t indicate)
             next_delay = (uint32_t)BSP_INDICATE_ALERT_OFF - (uint32_t)indicate;
 
             // a little trick to find out that if it did not fall through ALERT_OFF
-            if (next_delay && (err_code == NRF_SUCCESS))
-            {
-                if (next_delay > 1)
-                {
-                    err_code = app_timer_start(m_alert_timer_id, BSP_MS_TO_TICK(
-                                                   (next_delay * ALERT_INTERVAL)), NULL);
+            if (next_delay && (err_code == NRF_SUCCESS)) {
+                if (next_delay > 1) {
+                    err_code = app_timer_start(m_alert_timer_id, BSP_MS_TO_TICK((next_delay * ALERT_INTERVAL)), NULL);
                 }
                 LEDS_ON(ALERT_LED_MASK);
-            }
-            else
-            {
+            } else {
                 LEDS_OFF(ALERT_LED_MASK);
             }
             break;
@@ -416,8 +411,7 @@ static uint32_t bsp_led_indication(bsp_indication_t indicate)
  *
  * @param[in]   p_context   parameter registered in timer start function.
  */
-static void leds_timer_handler(void * p_context)
-{
+static void leds_timer_handler(void * p_context) {
     UNUSED_PARAMETER(p_context);
 
     if (m_indication_type & BSP_INIT_LED)
@@ -431,8 +425,7 @@ static void leds_timer_handler(void * p_context)
  *
  * @param[in]   p_context   parameter registered in timer start function.
  */
-static void alert_timer_handler(void * p_context)
-{
+static void alert_timer_handler(void * p_context) {
     UNUSED_PARAMETER(p_context);
     LEDS_INVERT(ALERT_LED_MASK);
 }
@@ -441,8 +434,7 @@ static void alert_timer_handler(void * p_context)
 
 /**@brief Configure indicators to required state.
  */
-uint32_t bsp_indication_set(bsp_indication_t indicate)
-{
+uint32_t bsp_indication_set(bsp_indication_t indicate) {
     uint32_t err_code = NRF_SUCCESS;
 
 #if LEDS_NUMBER > 0 && !(defined BSP_SIMPLE)
@@ -456,8 +448,7 @@ uint32_t bsp_indication_set(bsp_indication_t indicate)
     return err_code;
 }
 
-uint32_t bsp_indication_text_set(bsp_indication_t indicate, char const * p_text)
-{
+uint32_t bsp_indication_text_set(bsp_indication_t indicate, char const * p_text) {
     uint32_t err_code = bsp_indication_set(indicate);
 
 #ifdef BSP_UART_SUPPORT
@@ -468,8 +459,7 @@ uint32_t bsp_indication_text_set(bsp_indication_t indicate, char const * p_text)
 }
 
 
-uint32_t bsp_init(uint32_t type, uint32_t ticks_per_100ms, bsp_event_callback_t callback)
-{
+uint32_t bsp_init(uint32_t type, uint32_t ticks_per_100ms, bsp_event_callback_t callback) {
     uint32_t err_code = NRF_SUCCESS;
 
 #if LEDS_NUMBER > 0 && !(defined BSP_SIMPLE)
@@ -483,8 +473,7 @@ uint32_t bsp_init(uint32_t type, uint32_t ticks_per_100ms, bsp_event_callback_t 
     m_registered_callback = callback;
 
     // BSP will support buttons and generate events
-    if (type & BSP_INIT_BUTTONS)
-    {
+    if (type & BSP_INIT_BUTTONS) {
         uint32_t cnt;
 
         for (cnt = 0; ((cnt < BUTTONS_NUMBER) && (err_code == NRF_SUCCESS)); cnt++)
@@ -492,22 +481,19 @@ uint32_t bsp_init(uint32_t type, uint32_t ticks_per_100ms, bsp_event_callback_t 
             err_code = bsp_event_to_button_assign(cnt, (bsp_event_t)(BSP_EVENT_KEY_0 + cnt) );
         }
 
-        if (err_code == NRF_SUCCESS)
-        {
+        if (err_code == NRF_SUCCESS) {
             err_code = app_button_init((app_button_cfg_t *)app_buttons,
                                        BUTTONS_NUMBER,
                                        ticks_per_100ms / 2);
         }
 
-        if (err_code == NRF_SUCCESS)
-        {
+        if (err_code == NRF_SUCCESS) {
             err_code = app_button_enable();
         }
     }
 #elif (BUTTONS_NUMBER > 0) && (defined BSP_SIMPLE)
 
-    if (type & BSP_INIT_BUTTONS)
-    {
+    if (type & BSP_INIT_BUTTONS) {
         uint32_t cnt;
         uint32_t buttons[] = BUTTONS_LIST;
 
@@ -516,29 +502,28 @@ uint32_t bsp_init(uint32_t type, uint32_t ticks_per_100ms, bsp_event_callback_t 
             nrf_gpio_cfg_input(buttons[cnt], BUTTON_PULL);
         }
     }
+	
 #endif // (BUTTONS_NUMBER > 0) && !(defined BSP_SIMPLE)
 
 	
 #if LEDS_NUMBER > 0 && !(defined BSP_SIMPLE)
 
-    if (type & BSP_INIT_LED)
-    {
+    if (type & BSP_INIT_LED) {
         LEDS_OFF(LEDS_MASK);
         NRF_GPIO->DIRSET = LEDS_MASK;
     }
 
     // timers module must be already initialized!
-    if (err_code == NRF_SUCCESS)
-    {
+    if (err_code == NRF_SUCCESS) {
         err_code =
             app_timer_create(&m_leds_timer_id, APP_TIMER_MODE_SINGLE_SHOT, leds_timer_handler);
     }
 
-    if (err_code == NRF_SUCCESS)
-    {
+    if (err_code == NRF_SUCCESS) {
         err_code =
             app_timer_create(&m_alert_timer_id, APP_TIMER_MODE_REPEATED, alert_timer_handler);
     }
+	
 #endif // LEDS_NUMBER > 0 && !(defined BSP_SIMPLE)
 
     return err_code;
@@ -548,14 +533,12 @@ uint32_t bsp_init(uint32_t type, uint32_t ticks_per_100ms, bsp_event_callback_t 
 #ifndef BSP_SIMPLE
 /**@brief Assign specific event to button.
  */
-uint32_t bsp_event_to_button_assign(uint32_t button, bsp_event_t event)
-{
+uint32_t bsp_event_to_button_assign(uint32_t button, bsp_event_t event) {
     uint32_t err_code = NRF_SUCCESS;
 
 #if BUTTONS_NUMBER > 0
 
-    if (button < BUTTONS_NUMBER)
-    {
+    if (button < BUTTONS_NUMBER) {
         m_events_list[button] = event;
     }
     else
@@ -573,20 +556,17 @@ uint32_t bsp_event_to_button_assign(uint32_t button, bsp_event_t event)
 
 /**@brief Enable specified buttons (others are disabled).
  */
-uint32_t bsp_buttons_enable(uint32_t buttons)
-{
+uint32_t bsp_buttons_enable(uint32_t buttons) {
     UNUSED_PARAMETER(buttons);
 
 #if BUTTONS_NUMBER > 0
     uint32_t button_no;
     uint32_t pin_no;
 
-    for (button_no = 0; button_no < BUTTONS_NUMBER; button_no++)
-    {
+    for (button_no = 0; button_no < BUTTONS_NUMBER; button_no++) {
         pin_no = m_buttons_list[button_no];
 
-        if (buttons & (1 << button_no))
-        {
+        if (buttons & (1 << button_no)) {
             NRF_GPIO->PIN_CNF[pin_no] &= ~GPIO_PIN_CNF_SENSE_Msk;
             NRF_GPIO->PIN_CNF[pin_no] |= GPIO_PIN_CNF_SENSE_Low << GPIO_PIN_CNF_SENSE_Pos;
         }
