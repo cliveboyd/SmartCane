@@ -32,10 +32,14 @@
  We are also using the 400 kHz fast I2C mode by setting the TWI_FREQ  to 400000L /twi.h utility file.
  */
 //#include "Wire.h"   
-#include <i2c_t3.h>
-#include <SPI.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_PCD8544.h>
+//#include <i2c_t3.h>
+//#include <SPI.h>
+//#include <Adafruit_GFX.h>
+//#include <Adafruit_PCD8544.h>
+#include <stdbool.h> 
+#include <stdint.h>  					// for uint32_t etc.
+#include <stdio.h>
+#include "math.h"
 
 // Using NOKIA 5110 monochrome 84 x 48 pixel display
 // pin 7 - Serial clock out (SCLK)
@@ -44,7 +48,7 @@
 // pin 3 - LCD chip select (SCE)
 // pin 4 - LCD reset (RST)
 
-Adafruit_PCD8544 display = Adafruit_PCD8544(7, 6, 5, 3, 4);
+//Adafruit_PCD8544 display = Adafruit_PCD8544(7, 6, 5, 3, 4);
 
 #define MS5637_RESET      0x1E	// See MS5637-02BA03 Low Voltage Barometric Pressure Sensor Data Sheet
 #define MS5637_CONVERT_D1 0x40
@@ -204,13 +208,13 @@ Adafruit_PCD8544 display = Adafruit_PCD8544(7, 6, 5, 3, 4);
 // Seven-bit device address is 110100 for ADO = 0 and 110101 for ADO = 1
 #define ADO 0
 #if ADO
-#define MPU9250_ADDRESS 0x69  									// Device address when ADO = 1
-#define AK8963_ADDRESS 0x0C   									// Address of magnetometer
-#define MS5637_ADDRESS 0x76   									// Address of altimeter
+#define MPU9250_ADDRESS	0x69  									// Device address when ADO = 1
+#define AK8963_ADDRESS	0x0C   									// Address of magnetometer
+#define MS5637_ADDRESS	0x76   									// Address of altimeter
 #else
-#define MPU9250_ADDRESS 0x68  									// Device address when ADO = 0
-#define AK8963_ADDRESS 0x0C										// Address of magnetometer
-#define MS5637_ADDRESS 0x76										// Address of altimeter
+#define MPU9250_ADDRESS	0x68  									// Device address when ADO = 0
+#define AK8963_ADDRESS	0x0C									// Address of magnetometer
+#define MS5637_ADDRESS	0x76									// Address of altimeter
 #endif  
 
 #define SerialDebug true  										// set to true to get Serial output for debugging
@@ -265,14 +269,15 @@ int16_t accelCount[3];  											// Stores the 16-bit signed accelerometer sen
 int16_t gyroCount[3];   											// Stores the 16-bit signed gyro sensor output
 int16_t magCount[3];    											// Stores the 16-bit signed magnetometer sensor output
 float magCalibration[3] = {0, 0, 0};								// Factory mag calibration and mag bias
-float gyroBias[3] = {0, 0, 0}										// Bias corrections for gyro 
-float accelBias[3] = {0, 0, 0}										// Bias corrections for accelerometer
-float magBias[3] = {0, 0, 0}										// Bias corrections for magnetometer
+float gyroBias[3] = {0, 0, 0};										// Bias corrections for gyro 
+float accelBias[3] = {0, 0, 0};										// Bias corrections for accelerometer
+float magBias[3] = {0, 0, 0};										// Bias corrections for magnetometer
 float magScale[3]  = {0, 0, 0};
 int16_t tempCount;            										// Temperature raw count output
 float temperature;          										// Stores the MPU9250 gyro internal chip temperature in degrees Celsius
 double Temperature, Pressure; 										// stores MS5637 pressures sensor pressure and temperature
 float SelfTest[6];            										// holds results of gyro and accelerometer self test
+const float PI = 3.14159265358979323846f;
 
 //	Global constants for 9 DoF fusion and AHRS (Attitude and Heading Reference System)
 float GyroMeasError = PI * (40.0f / 180.0f);   						// gyroscope measurement error in rads/s (start at 40 deg/s)
@@ -287,8 +292,8 @@ float GyroMeasDrift = PI * (0.0f  / 180.0f);   						// gyroscope measurement dr
 	the bigger the feedback coefficient, the faster the solution converges, usually at the expense of accuracy. 
 	In any case, this is the free parameter in the Madgwick filtering and fusion scheme. */
 	
-float beta = sqrt(3.0f / 4.0f) * GyroMeasError;   					// compute beta
-float zeta = sqrt(3.0f / 4.0f) * GyroMeasDrift;   					// compute zeta, the other free parameter in the Madgwick scheme usually set to a small or zero value
+float beta = 0.5625 * PI * (40.0f / 180.0f);	//sqrt(3.0f / 4.0f) * GyroMeasError;   					// compute beta
+float zeta = 0.5625 * PI * (0.0f  / 180.0f);	//sqrt(3.0f / 4.0f) * GyroMeasDrift;   					// compute zeta, the other free parameter in the Madgwick scheme usually set to a small or zero value
 #define Kp 2.0f * 5.0f 												// these are the free parameters in the Mahony filter and fusion scheme, Kp for proportional feedback, Ki for integral
 #define Ki 0.0f
 
@@ -316,24 +321,24 @@ void setup() {
 	pinMode(myLed, OUTPUT);
 	digitalWrite(myLed, HIGH);
 
-	display.begin(); 												// Initialize the display
-	display.setContrast(40); 										// Set the contrast
-  
-//	Start device display with ID of sensor
-	display.clearDisplay();
-	display.setTextSize(2);
-	display.setCursor(0,0); display.print("MPU9250");
-	display.setTextSize(1);
-	display.setCursor(0, 20); display.print("9-DOF 16-bit");
-	display.setCursor(0, 30); display.print("motion sensor");
-	display.setCursor(20,40); display.print("60 ug LSB");
-	display.display();
-	delay(1000);
+//	display.begin(); 												// Initialize the display
+//	display.setContrast(40); 										// Set the contrast
+//  
+////	Start device display with ID of sensor
+//	display.clearDisplay();
+//	display.setTextSize(2);
+//	display.setCursor(0,0); display.print("MPU9250");
+//	display.setTextSize(1);
+//	display.setCursor(0, 20); display.print("9-DOF 16-bit");
+//	display.setCursor(0, 30); display.print("motion sensor");
+//	display.setCursor(20,40); display.print("60 ug LSB");
+//	display.display();
+//	delay(1000);
 
 //	Set up for data display
-	display.setTextSize(1); 										// Set text size to normal, 2 is twice normal etc.
-	display.setTextColor(BLACK);									// Set pixel color; 1 on the monochrome screen
-	display.clearDisplay();											// clears the screen and buffer
+//	display.setTextSize(1); 										// Set text size to normal, 2 is twice normal etc.
+//	display.setTextColor(BLACK);									// Set pixel color; 1 on the monochrome screen
+//	display.clearDisplay();											// clears the screen and buffer
 
 	I2Cscan();														// look for I2C devices on the bus
     

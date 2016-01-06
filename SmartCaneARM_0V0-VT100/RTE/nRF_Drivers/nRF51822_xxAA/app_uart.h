@@ -77,18 +77,23 @@ typedef enum
     APP_UART_CONNECTED     /**< State indicating that the UART is connected and ready to receive or transmit bytes. If flow control is disabled, the state will always be connected. */
 } app_uart_connection_state_t;
 
-/**@brief Enumeration which defines events used by the UART module upon data reception or error.
+/**	@brief		Enumeration which defines events used by the UART module upon data reception or error.
  *
- * @details The event type is used to indicate the type of additional information in the event
- * @ref app_uart_evt_t.
+ *	@details	The event type is used to indicate the type of additional information in the event
+ *	@ref 		app_uart_evt_t.
  */
 typedef enum
 {
-    APP_UART_DATA_READY,          /**< An event indicating that UART data has been received. The data is available in the FIFO and can be fetched using @ref app_uart_get. */
-    APP_UART_FIFO_ERROR,          /**< An error in the FIFO module used by the app_uart module has occured. The FIFO error code is stored in app_uart_evt_t.data.error_code field. */
-    APP_UART_COMMUNICATION_ERROR, /**< An communication error has occured during reception. The error is stored in app_uart_evt_t.data.error_communication field. */
-    APP_UART_TX_EMPTY,            /**< An event indicating that UART has completed transmission of all available data in the TX FIFO. */
-    APP_UART_DATA,                /**< An event indicating that UART data has been received, and data is present in data field. This event is only used when no FIFO is configured. */
+    APP_UART_DATA_READY,          /**<	An event indicating that UART data has been received. 
+										The data is available in the FIFO and can be fetched using @ref app_uart_get. */
+    APP_UART_FIFO_ERROR,          /**<	An error in the FIFO module used by the app_uart module has occured. 
+										The FIFO error code is stored in app_uart_evt_t.data.error_code field. */
+    APP_UART_COMMUNICATION_ERROR, /**<	An communication error has occured during reception. 
+										The error is stored in app_uart_evt_t.data.error_communication field. */
+    APP_UART_TX_EMPTY,            /**<	An event indicating that UART has completed transmission of all available data in the TX FIFO. */
+	
+    APP_UART_DATA,                /**<	An event indicating that UART data has been received, and data is present in data field. 
+										This event is only used when no FIFO is configured. */
 } app_uart_evt_type_t;
 
 /**@brief Struct containing events from the UART module.
@@ -96,23 +101,31 @@ typedef enum
  * @details The app_uart_evt_t is used to notify the application of asynchronous events when data
  * are received on the UART peripheral or in case an error occured during data reception.
  */
-typedef struct
-{
-    app_uart_evt_type_t evt_type; /**< Type of event. */
+typedef struct {
+    app_uart_evt_type_t evt_type;		/**<	Type of event. */
     union
     {
-        uint32_t error_communication; /**< Field used if evt_type is: APP_UART_COMMUNICATION_ERROR. This field contains the value in the ERRORSRC register for the UART peripheral. The UART_ERRORSRC_x defines from nrf51_bitfields.h can be used to parse the error code. See also the nRF51 Series Reference Manual for specification. */
-        uint32_t error_code;          /**< Field used if evt_type is: NRF_ERROR_x. Additional status/error code if the error event type is APP_UART_FIFO_ERROR. This error code refer to errors defined in nrf_error.h. */
-        uint8_t  value;               /**< Field used if evt_type is: NRF_ERROR_x. Additional status/error code if the error event type is APP_UART_FIFO_ERROR. This error code refer to errors defined in nrf_error.h. */
+		uint32_t error_communication;	/**<	Field used if evt_type is: APP_UART_COMMUNICATION_ERROR. 
+												This field contains the value in the ERRORSRC register for the UART peripheral. 
+												The UART_ERRORSRC_x defines from nrf51_bitfields.h can be used to parse the error code. 
+												See also the nRF51 Series Reference Manual for specification. */
+		
+		uint32_t error_code;			/**<	Field used if evt_type is: NRF_ERROR_x. 
+												Additional status/error code if the error event type is APP_UART_FIFO_ERROR. 
+												This error code refer to errors defined in nrf_error.h. */
+		
+		uint8_t  value;					/**<	Field used if evt_type is: NRF_ERROR_x. 
+												Additional status/error code if the error event type is APP_UART_FIFO_ERROR. 
+												This error code refer to errors defined in nrf_error.h. */
     } data;
 } app_uart_evt_t;
 
-/**@brief Function for handling app_uart event callback.
+/**	@brief		Function for handling app_uart event callback.
  *
- * @details Upon an event in the app_uart module this callback function will be called to notify
- *          the application about the event.
+ *	@details	Upon an event in the app_uart module this callback function will be called to notify
+ *				the application about the event.
  *
- * @param[in]   p_app_uart_event Pointer to UART event.
+ *	@param[in]   p_app_uart_event Pointer to UART event.
  */
 typedef void (* app_uart_event_handler_t) (app_uart_evt_t * p_app_uart_event);
 
@@ -173,7 +186,8 @@ typedef void (* app_uart_event_handler_t) (app_uart_evt_t * p_app_uart_event);
  *          If single instance usage is needed, the APP_UART_INIT() macro should be used instead.
  *
  * @note Normally single instance initialization should be done using the APP_UART_INIT() or
- *       APP_UART_INIT_FIFO() macro depending on whether the FIFO should be used by the UART, as *       that will allocate the buffers needed by the UART module (including aligning the buffer
+ *       APP_UART_INIT_FIFO() macro depending on whether the FIFO should be used by the UART, as 
+ *       that will allocate the buffers needed by the UART module (including aligning the buffer
  *       correctly).
 
  * @param[in]     p_comm_params     Pin and communication parameters.
@@ -192,6 +206,7 @@ typedef void (* app_uart_event_handler_t) (app_uart_evt_t * p_app_uart_event);
  *
  * The below errors are propagated by the UART module to the caller upon registration when Hardware
  * Flow Control is enabled. When Hardware Flow Control is not used, these errors cannot occur.
+ 
  * @retval      NRF_ERROR_INVALID_STATE   The GPIOTE module is not in a valid state when registering
  *                                        the UART module as a user.
  * @retval      NRF_ERROR_INVALID_PARAM   The UART module provides an invalid callback function when
@@ -268,7 +283,7 @@ uint32_t app_uart_flush(void);
  * @details This function will close any on-going UART transmissions and disable itself in the
  *          GPTIO module.
  *
- * @param[in] app_uart_id  User id for the UART module. The app_uart_uid must be identical to the
+ * @param[in] app_uart_id   User id for the UART module. The app_uart_uid must be identical to the
  *                          UART id returned on initialization and which is currently in use.
 
  * @retval  NRF_SUCCESS             If successfully closed.

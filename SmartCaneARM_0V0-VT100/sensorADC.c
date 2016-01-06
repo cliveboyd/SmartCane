@@ -33,6 +33,7 @@ unsigned int currStoreIndex;
 unsigned int maxSeqSamples;
 
 nrf_adc_config_input_t BattVoltageMeasureInput;
+
 didGetADCSequenceBlock_callback_t blockFinishCallback;
 
 
@@ -45,7 +46,7 @@ void sensorADC_config(void) {
 	nrf_adc_config.scaling = NRF_ADC_CONFIG_SCALING_INPUT_ONE_THIRD;
 	nrf_adc_config.reference = NRF_ADC_CONFIG_REF_EXT_REF0;
 	
-    nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);					// Initialize and configure ADC
+    nrf_adc_configure((nrf_adc_config_t *)&nrf_adc_config);						// Initialize and configure ADC
 	
 	BattVoltageMeasureInput = NRF_ADC_CONFIG_INPUT_6;							// Battery Voltage Input Scalled by 150k/(150k+680k) Voltage Divider
 
@@ -95,14 +96,14 @@ void ADC_IRQHandler(void) {
 	unsigned int newstoreIndex = currStoreIndex%ADCDATASIZE;
 
 	if (newstoreIndex==0 || currStoreIndex >= maxSeqSamples) {
-			if (blockFinishCallback!=NULL) {
-					blockFinishCallback(adcData, (currStoreIndex)%ADCDATASIZE);
-			}
+		if (blockFinishCallback!=NULL) {
+			blockFinishCallback(adcData, (currStoreIndex)%ADCDATASIZE);
+		}
 	}
 		
 	if (currStoreIndex < maxSeqSamples) {													// trigger next ADC conversion
-			nrf_adc_start();
+		nrf_adc_start();
 	} else {
-			nrf_adc_stop();
+		nrf_adc_stop();
 	}
 }

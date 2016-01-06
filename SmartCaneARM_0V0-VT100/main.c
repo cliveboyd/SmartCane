@@ -22,20 +22,22 @@ THE SOFTWARE.
 
 /*
  ERROR...	180seconds Requires ---> Upon Expire Forces Power Down ---> tried to bump 2 Hours and Avoid Advertising Time Out Event however int > 180 causes a shutdown
+ 
  Note		Removed Powerdown option at Adv time Out however still forces shutdown upon event
  Note 		Commented out // advertising_start() to bypass shutdown issue (No bluetooth if NOT started
 
- ERROR		Added app_uart_fifo to run time environment (If buffer fills and not emptied quich enough the FIFO stops outputing and uart hangs)
- ERROR		After a period of time UART Hangs however App keeps working re push button interupt drives motor (REASON UNKNOWN)
- ERROR		Error Agrevated by FIFO Size may also be problem not using nrf51822xAC current processor is _AA
  
- ERROR		UART failure while in ATxx Command Mode. Note ---> No Screen Refresh UART FIFO que still dies after a period of time possibly ble related.
-			Buttom interupt still runs ????
-
-
+ ERRFIX...	UART... Added app_uart_fifo to run time environment
+ ERRFIX...	System Hang including UART --> twi_hw_master.c ---> Included BypassCount within endless "Do Nothing" loops to provide a delayed exit upon unresolved flags etc
+ 
+ DONE...	Expand Error Logging (Count errors) 8 Error Counters displayed at Menu 8
+ DONE...	Display last active err_codes (Bottom of Menu 8)
+ DONE...	Inertial Quaternion updated at timer event handler scheduled with correct MPU_9150. DeltaT hard set at 100msec upadte interval SysTimer = 100msec
+ DONE...	USB-UART Command-Control ATxx Command menu enabled (Access via Menu 8 --> H)
+ 
  TODO...	Calibrate Inertial Sensors especially magnetometer
  
- TODO...	Inertial Quaternion needs to be scheduled with correct MPU_9150.DeltaT upadtes derived from time interval currently hard set to Zero
+ TODO...	Display last active err_codes small 1-5 que of last active errors
 
  TODO...	Run an interative LPF on accellerometer (Gravity=1) scaler ---> Maybe do the same on Magnetometer
  
@@ -49,34 +51,33 @@ THE SOFTWARE.
  
  TODO...	Generate PWM for Audio Tone Prompts
  
+ TODO...	SPI Parsed NEMA stream to UART at 4800Baud (Setup ATxx command for VT100 Overide/Initiation OF NEMA Stream) 
+ 
  TODO...	Define and Store GIS Way Points
  
  TODO...	Fix nRf51 processor Temperature Shutdown error is subroutine called
 
- TODO...	Iniatiate Watch Dog Timer and Pat_the_Dog in main()
+ TODO...	Iniatiate Watch Dog Timer and Pat_the_Dog in main() --> Base structure partially Donefor PatThedog ---> need to envoke nRF51 s110 device driver support
  
  TODO...	Write Driver for SHA-1 EEPROM DS28e02 (Security Option APPLY - Hide from GitHub)
  
  TODO...	Do some further tests on Pressure/Altimeter and incorportae into GIS awarness tracking
  
- TODO...	Command-Control via Aux. USB-UART (Write PC app to Manage GIS and Client data sets)
- 
- TODO...	SPI Parsed NEMA stream to UART at 4800Baud (Setup ATxx command for VT100 Overide/Initiation OF NEMA Stream)
- 
+ TODO...		(Write PC app to Manage GIS and Client data sets)
+  
  TODO...	Write a driver for SHA-1 EEPROM ds28e02
  Note		Security Restriction Apply ---> Keep Away from GitHub 
  
  TODO...	Investigate Bluetooth ble_nus Nordic UART service as alternate command control (Requires Further Applet Develeopement)
  
- TODO...	Expand Error Logging (Count errors) and display last active err_code or possibly show a small 1-5 que of last active errors
- 
  TODO...	sensorADC_singleMeasure Battery Voltage Measurement stabalises after multiple reads --> Should be available upon first read ?????
  
-  TODO...	iPhone Application via bluetooth (Fix up broadcast headers)
+ TODO...	iPhone Application via bluetooth (Fix up broadcast headers)
  
+
  */
   
-//#define DEBUG							// Test to Place Application in DEBUG mode to allow error recording within app_error.h
+#define DEBUG							// Test to Place Application in DEBUG mode to allow error recording within app_error.h
 
 //#define DEBUG_NRF_USER				// WARNING Disable in final product Release --- Forces endless loop trap upon system errors.
 
@@ -95,7 +96,7 @@ THE SOFTWARE.
 
 #include "bsp.h"
 
-#include "nrf_delay.h"					// ToDo Fix this error flag !!!!!!!!!!!!!!!!!!!! What is going on here????
+#include "nrf_delay.h"
 #include "nrf.h"
 #include "nrf_temp.h"
 
@@ -118,14 +119,15 @@ THE SOFTWARE.
 
 #include "ble_ad7746.h"					// Needed for ble functionallity. ---> Needs to be abstracted for general use.
 
-//#include "AD7746.h"					// Differential Capacitor Sensor (Not avilable on this Hardware)
+//#include "AD7746.h"					// Differential Capacitor Sensor (Not avilable on this Hardware Platform)
 
-#include "sensorADC.h"
+#include "sensorADC.h"					// Battery Voltage Monitor via P0.05
 
 #include "ds2401.h"						// Unique 1-Wire 48bit ID
 #include "AT45_Flash.h"					// SPI Serial Flash 16Mbit
 #include "MPU_9150.h"  					// I2C Inertial Sensor 9-Axis Gyro Accel Magnetis + Temperature
 #include "inv_mpu.h"					// Inertial Sensor Drivers
+
 //#include "MPU_9250.h"  				// I2C Inertial Sensor 9-Axis Gyro Accel Magnetis + Temperature (EXTRACT FROM ADRINO SAMPLE CODE INCLUDES  AUX PRESS SENDSOR)
 
 //#include "ble_nus.h"  				// Bluetooth nordic uart service currently not used may use later for GPS NEMA streaming etc
@@ -234,6 +236,9 @@ static app_timer_id_t	m_sys_timer_id;								/** <  timer. */
 #define UART_TX_BUF_SIZE 	256										/** < UART TX buffer size. Note 512 causes error in xxAA target ---> WARNING Must be 2^x */
 #define UART_RX_BUF_SIZE 	16										/** < UART RX buffer size.  ---> WARNING Must be 2^x  */
 
+const float MagReference = 5.125;									// Australian Compass North//magNorth field Compensation for Melbourne Australia
+																	// Note... Melbourne == lat:-24.0000deg Lon:+135.0000deg Elev:0.00km
+
 char	DS2401_ID[16];												// String to hold ---> DS2401 (4bits) + Device_ID
 uint8_t MenuLevel=0;												// Initalise Default Menu Level to 00 --> Main Menu
 float	Quaternion[4];												// Test Global Decleration to test Quaternion filter update operation
@@ -245,8 +250,17 @@ uint32_t DogCount=0;												// DogCount ---> Background Heartbeat
 static bool finishedADC;
 const float PI = 3.14159265358979323846f;
 uint32_t DiagCounter=0;
+
 uint32_t ErrorCounter_UART_FIFO=0;
 uint32_t ErrorCounter_UART_Comms=0;
+
+uint16_t ErrorCounter[9];
+
+
+uint32_t error_code_clone=0;
+uint32_t line_num_clone=0;
+
+
 uint16_t Count_VibroMotor=4;										// Auto Starts vibro motor upon sys timer startup for 400msec
 char	ATxx[4];													// AT Command mode Ascii buffer
 
@@ -283,8 +297,8 @@ int Process_2 = 0;													/* Initalise Bit Flags Process_2
 */
 
 int Process_3 = 0;													/* Initalise Bit Flags Process_3
-	Process_3.0	= 
-	Process_3.1	= 
+	Process_3.0	= Flag to start ble advertising
+	Process_3.1	= Flag to latch ble advertising event as oneshot
 	Process_3.2	= 
 	Process_3.3	= 
 	Process_3.4	= 
@@ -349,9 +363,9 @@ void clrbit(int *Addr, uint8_t Operator) {							// Clear bit at Process_x basse
 
 bool testbit(int *Addr, uint8_t Operator) {							// Test  bit at Process_x bassed on Operator (0..7)---> Single bit return true/false
 	if (*Addr & (int) pow(2,Operator)) {
-		return 1;													// True
+		return true;												// True
 	} else {	
-		return 0;													// False
+		return false;												// False
 	}
 } 
 
@@ -369,11 +383,11 @@ static void button_event_handler(bsp_event_t event) {
 	@note  		Currently two (2) Push buttons enabled on SmartCane_1V0
 	@ref 		*/	
 
-	unsigned long tempData;
+
 	 switch(event) {
 		 case BSP_EVENT_KEY_0:										// SmartCane REAR SWITCH
 						
-			// tempData = AD7746_GetVTData();
+
 			
 			 break;
 		 
@@ -385,32 +399,40 @@ static void button_event_handler(bsp_event_t event) {
 			break;
 		 
 		 default:
+			ErrorCounter[2] += 1;
 			break;
 	 }
-	 UNUSED_VARIABLE(tempData);
+
 }
 
 
-void uart_error_handle(app_uart_evt_t * p_event) {
-	
+void uart_error_handle (app_uart_evt_t * p_event) {					// UART event handler includes non Error Events
 	
 /**	@brief 		Function to handle UART error events 
 	@details 	
 	@note  		ToDo Should include some error counters here 
 	@ref 		*/	
 
-    if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
+    if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {		// UART Communications Error Event
         APP_ERROR_HANDLER(p_event->data.error_communication);
 		ErrorCounter_UART_Comms += 1;
     }
-    else if (p_event->evt_type == APP_UART_FIFO_ERROR) {
+    else if (p_event->evt_type == APP_UART_FIFO_ERROR) {			// UART FIFO Error Event
         APP_ERROR_HANDLER(p_event->data.error_code);
 		ErrorCounter_UART_FIFO += 1;
-
+    }
+	else if (p_event->evt_type == APP_UART_DATA_READY) {			// UART Rx Data Event
+ 	ErrorCounter[3] += 1;
+    }
+	else if (p_event->evt_type == APP_UART_TX_EMPTY) {				// UART Tx Empty Event
+  	ErrorCounter[4] += 1;
+    }
+	else if (p_event->evt_type == APP_UART_DATA) {					// UART Data Rx Event & Data present (NOT used in FIFO Mode)
+  	ErrorCounter[0] += 1;
     }
 }
 
-static void UART_VT100_Main_Menu() {								// $$$$$$ TOP LEVEL MENU  $$$$$$
+static void UART_VT100_Main_Menu() {								// $$$$$$ TOP LEVEL MENU  									$$$$$$
 	
 /**	@brief 		Function to load a single top level VT100 Terminal Menu. 
 	@details 	Transmitts VT100 ESC Sequenceone character to clear screen and load menu data.
@@ -446,7 +468,7 @@ static void UART_VT100_Main_Menu() {								// $$$$$$ TOP LEVEL MENU  $$$$$$
 }
 
 
-static void UART_VT100_Menu_1()	{									// $$$$$$ ALL SENSORS  $$$$$$
+static void UART_VT100_Menu_1()	{									// $$$$$$ ALL SENSORS  										$$$$$$
 	
 /** @brief 		Function to load Top level Main Menu to VT100 Screen. 
 	@details 	Loads VT100 ESC Sequenceone character to clear screen and load menu data.
@@ -508,7 +530,7 @@ static void UART_VT100_Menu_1()	{									// $$$$$$ ALL SENSORS  $$$$$$
 }	
 
 
-static void UART_VT100_Menu_2() {									// $$$$$$ GPS GLOBAL POSITION MENU  $$$$$$
+static void UART_VT100_Menu_2() {									// $$$$$$ GPS GLOBAL POSITION MENU  						$$$$$$
 	
 /** @brief 		Function to load GPS GLOBAL POSITION MENU to VT100 Screen. 
 	@details 	Loads VT100 ESC Sequenceone character to clear screen and load menu data.
@@ -543,7 +565,7 @@ static void UART_VT100_Menu_2() {									// $$$$$$ GPS GLOBAL POSITION MENU  $$
 }	
 
 
-static void UART_VT100_Menu_3()	{									// $$$$$$ INERTIAL SENSOR MENU  $$$$$$
+static void UART_VT100_Menu_3()	{									// $$$$$$ INERTIAL SENSOR MENU  							$$$$$$
 /** @brief 		Function to load INERTIAL SENSOR MENU to VT100 Screen. 
 	@details 	Loads VT100 ESC Sequenceone character to clear screen and load menu data.
 	@note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
@@ -779,32 +801,35 @@ static void UART_VT100_Menu_8() {		    						// $$$$$$ SYSTEM DIAGNOSTIC MENU			
 	printf("\x1B[11;05H F = Strobe PWM Tone");
 	printf("\x1B[12;05H G = Bluetooth ADVERT");
 	printf("\x1B[13;05H H = ATxx Command Menu");
+	printf("\x1B[14;05H J = Clr Error Counters");
 
 	nrf_delay_ms(50);
 	 
 	printf("\x1B[05;34H ERROR COUNTERS");
-	printf("\x1B[06;34H ErrCount 01= ");
-	printf("\x1B[07;34H ErrCount 02= ");
-	printf("\x1B[08;34H ErrCount 03= ");
-
+	printf("\x1B[06;34H ErrCount 00= ");
+	printf("\x1B[07;34H ErrCount 01= ");
+	printf("\x1B[08;34H ErrCount 02= ");
+	printf("\x1B[09;34H ErrCount 03= ");
+	
 	nrf_delay_ms(50);
 
-	printf("\x1B[09;34H ErrCount 04= ");
-	printf("\x1B[10;34H ErrCount 05= ");
-	printf("\x1B[11;34H ErrCount 06= ");
-	printf("\x1B[12;34H ErrCount 07= ");
+	printf("\x1B[10;34H ErrCount 04= ");
+	printf("\x1B[11;34H ErrCount 05= ");
+	printf("\x1B[12;34H ErrCount 06= ");
+	printf("\x1B[13;34H ErrCount 07= ");
+	printf("\x1B[14;34H ErrCount 08= ");
 
 	nrf_delay_ms(50);
-
-	printf("\x1B[13;34H ErrCount 08= ");
-
-
+	
+	printf("\x1B[16;34H UART Err  = ");
+	printf("\x1B[17;34H UART FIFO = ");
+	
 	nrf_delay_ms(50);
-
-	printf("\x1B[05;59H SPARE");
-	printf("\x1B[06;59H Spare = ");
-	printf("\x1B[07;59H Spare = ");
-	printf("\x1B[08;59H Spare = ");
+	
+	printf("\x1B[05;58H SPARE");
+	printf("\x1B[06;58H Spare = ");
+	printf("\x1B[07;58H Spare = ");
+	printf("\x1B[08;58H Spare = ");
 
 	nrf_delay_ms(10);		
 
@@ -915,7 +940,7 @@ static void UART_VT100_Help_Menu() {								// $$$$$$ SCREEN HELP MENU									$
 static void UART_VT100_Display_Data_Main_Menu()	{					// $$$$$$ MAIN MENU DATA REFRESH							$$$$$$
 	
 /** @brief 		Function to load MAIN MENU Refresh Data to VT100 Screen.  */	
-	if (testbit(&Process_1, 0)==0) {
+	if (testbit(&Process_1, 0)==false) {
 		printf("\x1B[01;58H %s %s", DEVICE_NAME, DS2401_ID);				// Device Name + Device ID
 
 		printf("\x1B[02;58H READY");										// Self Test Status ToDo
@@ -930,7 +955,7 @@ static void UART_VT100_Display_Data_All_Sensors() {					// $$$$$$ ALL SENSORS ME
 	
 /** @brief 		Function to load ALL SENSOR Refresh Data MENU-1 to VT100 Screen.  */	
 	
-	if (testbit(&Process_1, 0)==0) {
+	if (testbit(&Process_1, 0)==false) {
 		int value;
 		float Acc[3];
 		double Calc, MagGravity, MagCompass;
@@ -983,10 +1008,10 @@ static void UART_VT100_Display_Data_All_Sensors() {					// $$$$$$ ALL SENSORS ME
 		
 		printf("\x1B[14;44H%+4.1f  ", (float) MPL3115A2_getTemperature());		// Pressure Sensor Temperature	
 
-		if (!ltc294x_get_temperature(&value))
-		temp = value/100;	
-		printf("\x1B[15;44H%+4.1f  ", temp);									// GasGauge Temperature
-		
+		if (ltc294x_get_temperature(&value)) {
+			temp = value/100;	
+			printf("\x1B[15;44H%+4.1f  ", temp);								// GasGauge Temperature
+		}
 		nrf_delay_ms(50);
 	}
 
@@ -1005,7 +1030,7 @@ static void UART_VT100_Display_Data_Inertial() {					// $$$$$$ INERTIAL MENU DAT
 	
 /** @brief 		Function to load INERTIAL MENU Refresh Data MENU-3 to VT100 Screen.  */
 	
-	if (testbit(&Process_1, 0)==0) {
+	if (testbit(&Process_1, 0)==false) {
 		float Acc[3];
 		double MagGravity, Magnitude, Bearing;
 			
@@ -1054,7 +1079,7 @@ static void UART_VT100_Display_Data_Inertial() {					// $$$$$$ INERTIAL MENU DAT
 		
 		nrf_delay_ms(50);
 		
-	//	readQuaternion(Quaternion);												// QUARTERNION   ---> Now Updating via sys Timer 100 msec
+	//	readQuaternion(Quaternion);												// QUARTERNION ---> Updated during sys Timer 100 msec
 		printf("\x1B[13;14H%+4.4f ", Quaternion[0]);
 		printf("\x1B[14;14H%+4.4f ", Quaternion[1]);
 		printf("\x1B[15;14H%+4.4f ", Quaternion[2]);
@@ -1064,11 +1089,13 @@ static void UART_VT100_Display_Data_Inertial() {					// $$$$$$ INERTIAL MENU DAT
 							Quaternion[1]*Quaternion[1] + 
 							Quaternion[2]*Quaternion[2] +
 							Quaternion[3]*Quaternion[3]);						// Magnitude of Quaternion ????
+							
 		printf("\x1B[17;14H%+4.4f  ", Magnitude);
 		
 		nrf_delay_ms(250);
 	
 /*	Define output variables from updated quaternion---these are Tait-Bryan angles, commonly used in aircraft orientation.
+
 	In this coordinate system, the positive z-axis is down toward Earth. 
 	Yaw is the angle between Sensor x-axis and Earth magnetic North (or true North if corrected for local declination, looking down on the sensor positive yaw is counterclockwise.
 	Pitch is angle between sensor x-axis and Earth ground plane, toward the Earth is positive, up toward the sky is negative.
@@ -1110,7 +1137,7 @@ static void UART_VT100_Display_Data_Altitude() {					// $$$$$$ ALTITUDE MENU DAT
 		
 	// Note MPL3115A returns float ---> cast as int 
 
-	if (testbit(&Process_1, 0)==0) {
+	if (testbit(&Process_1, 0)==false) {
 		
 		printf("\x1B[06;21H%+4.2f   ", (float)MPL3115A2_getPressure());
 		
@@ -1127,14 +1154,14 @@ static void UART_VT100_Display_Data_Altitude() {					// $$$$$$ ALTITUDE MENU DAT
 static void UART_VT100_Display_Data_Memory() {						// $$$$$$ Memory MENU DATA REFRESH  MENU-5					$$$$$$
 	
 /** @brief 		Function to load MEMORY MENU Refresh Data MENU-5 to VT100 Screen.  */	
-	if (testbit(&Process_1, 0)==0) {
+	if (testbit(&Process_1, 0)==false) {
 	}
 }	
 
 static void UART_VT100_Display_Data_Power()	{	    				// $$$$$$ POWER MANAGEMENT MENU DATA REFRESH  MENU-6		$$$$$$
 	
 /** @brief 		Function to load POWER MANAGEMENT MENU Refresh Data MENU-6 to VT100 Screen.  */
-	if (testbit(&Process_1, 0)==0) {
+	if (testbit(&Process_1, 0)==false) {
 		int value;
 		float temp;
 			
@@ -1156,9 +1183,9 @@ static void UART_VT100_Display_Data_Power()	{	    				// $$$$$$ POWER MANAGEMENT
 		
 		if (!ltc294x_get_current(&value))					
 		temp = (float) value/1000;
-		printf("\x1B[7;22H%+4.2f    ", temp);										// GasGauge Battery Current  FAULT ---> Not Returning Valid dada ??????????
+		printf("\x1B[7;22H%+4.2f     ", temp);										// GasGauge Battery Current  FAULT ---> Not Returning Valid dada ??????????
 		
-		printf("\x1B[10;22H%+4.2f   ", temp);					
+		printf("\x1B[10;22H%+4.2f    ", temp);					
 		
 		if (!ltc294x_get_charge_counter(&value))
 		temp = (float) value/10;
@@ -1176,17 +1203,36 @@ static void UART_VT100_Display_Data_Power()	{	    				// $$$$$$ POWER MANAGEMENT
 static void UART_VT100_Display_Data_Cane() {						// $$$$$$ CANE DIAGNOSTICS MENU DATA REFRESH  MENU-7		$$$$$$
 	
 /** @brief 		Function to load CANE DIAGNOSTICS MENU Refresh Data MENU-7 to VT100 Terminal Screen.  */	
-	if (testbit(&Process_1, 0)==0) {
+	if (testbit(&Process_1, 0)==false) {
 	}
 }	
-
 
 static void UART_VT100_Display_Data_System() {						// $$$$$$ SYSTEM DIAGNOSTICS MENU DATA REFRESH  MENU-8		$$$$$$
 	
 /** @brief 		Function to load SYSTEM DIAGNOSTICS MENU Refresh Data MENU-8 to VT100 Screen.  */	
-	if (testbit(&Process_1, 0)==0) {
-		printf("\x1B[06;47H %d", ErrorCounter_UART_FIFO);			// System Error Count-1
-		printf("\x1B[07;47H %d", ErrorCounter_UART_Comms);			// System Error Count-2
+	if (testbit(&Process_1, 0)==false) {
+		
+		
+		printf("\x1B[06;47H %d   ", ErrorCounter[0]);					// System Error Counter
+		printf("\x1B[07;47H %d   ", ErrorCounter[1]);					// System Error Counter
+		printf("\x1B[08;47H %d   ", ErrorCounter[2]);					// System Error Counter
+		printf("\x1B[09;47H %d   ", ErrorCounter[3]);					// System Error Counter
+		printf("\x1B[10;47H %d   ", ErrorCounter[4]);					// System Error Counter
+		
+		nrf_delay_ms(100);
+		
+		printf("\x1B[11;47H %d   ", ErrorCounter[5]);					// System Error Counter
+		printf("\x1B[12;47H %d   ", ErrorCounter[6]);					// System Error Counter
+		printf("\x1B[13;47H %d   ", ErrorCounter[7]);					// System Error Counter
+		printf("\x1B[14;47H %d   ", ErrorCounter[8]);					// System Error Counter
+
+		nrf_delay_ms(100);
+		
+		printf("\x1B[16;47H %d   ", ErrorCounter_UART_FIFO);			// System Error Counter
+		printf("\x1B[17;47H %d   ", ErrorCounter_UART_Comms);			// System Error Counter
+		
+		printf("\x1B[22;06H error_code = %d   ", error_code_clone);		// System Error Clone ---> Last captured error_code
+		
 	}
 }	
 
@@ -1194,66 +1240,67 @@ static void UART_VT100_Display_Data_System() {						// $$$$$$ SYSTEM DIAGNOSTICS
 static void UART_VT100_Display_Data_Bluetooth() {					// $$$$$$ BLUETOOTH DIAGNOSTICS MENU DATA REFRESH  MENU-9	$$$$$$
 	
 /** @brief 		Function to load SYSTEM DIAGNOSTICS MENU Refresh Data MENU-8 to VT100 Screen.  */	
-	if (testbit(&Process_1, 0)==0) {
+	if (testbit(&Process_1, 0)==false) {
 	}
 }	
 
-static void Load_VT100_All_Menues()	{	    						// $$$$$$ LOAD ALL VT100 IMMEDIATE AND DATA REFRESH MENU	$$$$$$
+static void VT100_All_Menues()	{	    							// $$$$$$ LOAD ALL VT100 IMMEDIATE AND DATA REFRESH MENU	$$$$$$
 	
 /** @brief 		Function to load ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs to UART Screen.  */
-	if (testbit(&Process_1, 0)==0) {									// Process_1.0 To enable/desiable VT100=0 or ATxx Command Mode=0
+	
+	if (testbit(&Process_1, 0)==false) {											// Process_1.0 VT100 refresh=0 or ATxx Command Mode=1
 		
-		printf("\x1B[01;78H");											// Park VT100 cursor at row 01 column 78
+		printf("\x1B[01;78H");														// Park VT100 cursor at row 01 column 78
 		
 		nrf_delay_ms(50);
 		
 		uint8_t cr;
-		if(app_uart_get(&cr) == NRF_SUCCESS) {							// Test for UART receive character and action if available.
+		if (app_uart_get(&cr) == NRF_SUCCESS) {										// Test for UART receive character and action if available.
 			
 			switch (cr) {
 			
 				case '1':
-					UART_VT100_Menu_1();								// 1... All Sensors
+					UART_VT100_Menu_1();											// 1... All Sensors
 					break;
 				
 				case '2':
-					UART_VT100_Menu_2();								// 2... GPS Global Position
+					UART_VT100_Menu_2();											// 2... GPS Global Position
 				break;
 				
 				case '3':
-					UART_VT100_Menu_3();								// 3... Inertial Sensors
+					UART_VT100_Menu_3();											// 3... Inertial Sensors
 					break;
 				
 				case '4':
-					UART_VT100_Menu_4();								// 4... Altitude and Temperature							
+					UART_VT100_Menu_4();											// 4... Altitude and Temperature							
 					break;
 				
 				case '5':
-					 UART_VT100_Menu_5();								// 5... Memory Functions						
+					 UART_VT100_Menu_5();											// 5... Memory Functions						
 					break;
 				
 				case '6':
-					 UART_VT100_Menu_6();								// 6... Power Management						
+					 UART_VT100_Menu_6();											// 6... Power Management						
 					break;
 				
 				case '7':
-					 UART_VT100_Menu_7();								// 7... Cane Diagnostics					
+					 UART_VT100_Menu_7();											// 7... Cane Diagnostics					
 					break;
 				
 				case '8':
-					 UART_VT100_Menu_8();								// 8... System Diagnostics						
+					 UART_VT100_Menu_8();											// 8... System Diagnostics						
 					break;
 				
 				case '9':
-					 UART_VT100_Menu_9();								// 9... Bluetooth Diagnostics						
+					 UART_VT100_Menu_9();											// 9... Bluetooth Diagnostics						
 					break;
 				
 				case 'x':
-					UART_VT100_Main_Menu();								// 0... Main Menue
+					UART_VT100_Main_Menu();											// 0... Main Menue
 					break;
 				
 				case 'X':
-					UART_VT100_Main_Menu();								// 0... Main Menue
+					UART_VT100_Main_Menu();											// 0... Main Menue
 					break;
 				
 				case 't':
@@ -1271,8 +1318,8 @@ static void Load_VT100_All_Menues()	{	    						// $$$$$$ LOAD ALL VT100 IMMEDIA
 
 				case 'B':
 					if ( MenuLevel == 80) {											// Zero Manual Calibrations
-					gyro_ManualCal[0]=0;   gyro_ManualCal[1]=0;  gyro_ManualCal[2]=0;
-					 accel_ManualCal[0]=0;  accel_ManualCal[1]=0; accel_ManualCal[2]=0;
+					gyro_ManualCal[0]=0;  gyro_ManualCal[1]=0;  gyro_ManualCal[2]=0;
+					accel_ManualCal[0]=0; accel_ManualCal[1]=0; accel_ManualCal[2]=0;
 					
 					printf("\x1B[25;30H SYSMSG: Clr Gyro-Accel Zero         ");
 					}
@@ -1307,27 +1354,44 @@ static void Load_VT100_All_Menues()	{	    						// $$$$$$ LOAD ALL VT100 IMMEDIA
 				
 				case 'G':
 					if (MenuLevel == 80) { 											// Start Bluetooth Advertising will force hardware shutdown after 180sec upon No Connection time out event
-					
-		//			advertising_start();											// Start Advertising --> Starts Bluetooth advertising however also shuts down power to board after 180sec if no connection
-					
-					printf("\x1B[25;30H SYSMSG: Start Bluetooth Advert     ");
+					setbit(&Process_3, 0);											// Signal main() TSA to activate ble advertising
+//					advertising_start();											// Start Advertising --> Starts Bluetooth advertising however also shuts down power to board after 180sec if no connection
+					printf("\x1B[25;30H SYSMSG: Start Bluetooth Advert    ");
 					}
-				break;
+					break;
 				
 				case 'H':
 					if (MenuLevel == 80) { 											// Start ATxx Command Mode return with AT99...... VT100 Refresh Mode Bypassed
-					printf("\x1B[25;30H SYSMSG: Spare H                    ");
-					}
 					setbit(&Process_1, 0);											
-					printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\r");
+					printf("\x1B[2J");												// VT100 CLR SCREEN
+					printf("\x1B[H");												// VT100 CURSOR HOME
 					printf("SmartCane ATxx Command Mode\r\n");
 					printf("Cmd = ");
+					}
 					break;
 				
+				case 'J':
+					if (MenuLevel == 80) { 											// Clear Error Counters
+					printf("\x1B[25;30H SYSMSG: Clear Error Counters      ");										
+					
+					ErrorCounter_UART_FIFO=0;
+					ErrorCounter_UART_Comms=0;
+						
+					ErrorCounter[2]=0;
+					ErrorCounter[3]=0;
+					ErrorCounter[4]=0;
+					ErrorCounter[5]=0;
+					ErrorCounter[6]=0;
+					ErrorCounter[7]=0;
+					ErrorCounter[8]=0;
+					}
+					break;
+					
 				default:
 					break;
 			} 
 		} else {
+			
 			nrf_delay_ms(25);
 						
 			switch (MenuLevel) {												// Load UART Reresh data based on current Menu Level
@@ -1335,62 +1399,56 @@ static void Load_VT100_All_Menues()	{	    						// $$$$$$ LOAD ALL VT100 IMMEDIA
 				case 00:														// Main Menu
 					UART_VT100_Display_Data_Main_Menu();
 					break;		
-				
 				case 10:														// All Sensors
 					UART_VT100_Display_Data_All_Sensors();
 					break;		
-					
 				case 20:														// GPS Global Position
 					UART_VT100_Display_Data_GPS();
 					break;	
-
 				case 30:														// Inertial Sensors
 					UART_VT100_Display_Data_Inertial();	
 					break;
-
 				case 40:														// Altitude Pressure and Temperature
 					UART_VT100_Display_Data_Altitude();
 					break;		
-					
 				case 50:														// Memory Functions
 					UART_VT100_Display_Data_Memory();
 					break;		
-				
 				case 60:														// Power Management
 					UART_VT100_Display_Data_Power();
 					break;	
-
 				case 70:														// Cane Diagnostcs
 					UART_VT100_Display_Data_Cane();
 					break;		
-				
 				case 80:														// System Diagnostcs - Including Error Counters
 					UART_VT100_Display_Data_System();
 					break;	
-				
 				case 90:														// Bluetooth Diagnostcs 
 					UART_VT100_Display_Data_Bluetooth();
 					break;
-
 				default:
 					break;		
 			}
-			if (testbit(&Process_1, 0)==0) {	
+			
+			if (testbit(&Process_1, 0)==false) {	
 				printf("\x1B[01;78H");											// Park VT100 cursor at row 01 column 78
 				nrf_delay_ms(50);
 			}
 		}
 	} else {
 		uint8_t cr;
-		if(app_uart_get(&cr) == NRF_SUCCESS) {									// Test for UART ATxx Cmd Mode Charaters ---> (VT100 Mode Bypassed).
+		if (app_uart_get(&cr) == NRF_SUCCESS) {									// Test for UART ATxx Cmd Mode Charaters ---> (VT100 Mode Bypassed).
+			
 			if (cr == 13){
-				if((ATxx[3]=='A') && (ATxx[2]=='T')){
-					if(ATxx[1]>=48 && ATxx[1]<=57 && ATxx[0]>=48 && ATxx[0]<=57){	// Test for Numeric
-						int8_t code;
-						code=(ATxx[1]-48)*10+ATxx[0]-48;						// convert double ascii into int8 number range 00--99
+				
+				if ((ATxx[3]=='A') && (ATxx[2]=='T')){
+					if (ATxx[1]>=48 && ATxx[1]<=57 && ATxx[0]>=48 && ATxx[0]<=57){	// Test for Numeric
 						
-						switch (code) {											// Load UART Reresh data based on current Menu Level
-							
+						int8_t ATcode;
+						ATcode=(ATxx[1]-48)*10+ATxx[0]-48;						// Convert double ascii into int8 number range 00--99
+						
+						switch (ATcode) {										// Load UART Reresh data based on current Menu Level
+		
 							case 00:											// AT00 (Help)
 								printf("HELP... AT00 to AT99\r\n");
 								printf("AT00 - Help \r\n");
@@ -1409,7 +1467,7 @@ static void Load_VT100_All_Menues()	{	    						// $$$$$$ LOAD ALL VT100 IMMEDIA
 								break;
 							
 							case 80:											// Toggle Flag to Stream NEMA GPS to UART
-								if(testbit(&Process_1, 1)==0) {
+								if(testbit(&Process_1, 1)==false) {
 									setbit(&Process_1, 1);
 								} else {
 									clrbit(&Process_1, 1);
@@ -1428,52 +1486,60 @@ static void Load_VT100_All_Menues()	{	    						// $$$$$$ LOAD ALL VT100 IMMEDIA
 					}
 				}
 				ATxx[3]=0;														// Clear the top Buffer --- Disable for cr cr cr repeats
-				if (testbit(&Process_1, 0)==1) printf("\r\nCmd = ");
+				if (testbit(&Process_1, 0)==true) printf("\r\nCmd = ");
 						
 			} else {
-				ATxx[3]=ATxx[2];												// Load ASCII charcters into 4 char buffer
+				ATxx[3]=ATxx[2];												// Shuffle ASCII charcters into 4 char buffer ---> Expect "ATnn" upon cairrage return
 				ATxx[2]=ATxx[1];
 				ATxx[1]=ATxx[0];
 				ATxx[0]=cr;
 			}
 		}
 	}
+	nrf_delay_ms(100);	
 }
 
-void someother_module_init() {										// $$$$$$ Miscelaneouse Test Routines ---> Leo
-/** @brief 		Function to test miscelaneous debug modules
+void APP_ERROR_CHECK_CSB(uint32_t error_code) {									// $$$$$$ Copy of APP_ERROR_CHECK to allow clone trap of error_code events
+	error_code_clone  = error_code;
+	
+	APP_ERROR_CHECK(error_code);
+}
+
+void someother_module_init() {													// $$$$$$ Miscelaneouse initialisation Routines ---> Leo
+/** @brief 		Function to test miscelaneous modules
     @details 	
     @note  		
     @ref 		*/	
 	
-
-	// LED setup
 	uint32_t err_code;
 	
-	// for button interupt, must be called before 'app_button_init' inside bsp_init
+	// LED setup ToDo
+		
+	// NOTE... for button interupt, must be called before 'app_button_init' inside bsp_init
 	
-	APP_GPIOTE_INIT(1);  											// one user, no use yet unless app_button_enable() is called
-
+	APP_GPIOTE_INIT(1);  											// One user, no use yet unless app_button_enable() is called
 
 	err_code = bsp_init(BSP_INIT_LED | BSP_INIT_BUTTONS,
 					APP_TIMER_TICKS(100, APP_TIMER_PRESCALER),
-					button_event_handler);							// test button handler
-	if (err_code == NRF_ERROR_INVALID_STATE)
-	{
-		err_code = NRF_ERROR_INVALID_STATE;
+					button_event_handler);							// Test button handler
+	if (err_code == NRF_ERROR_INVALID_STATE) {
+		
 	}
-    APP_ERROR_CHECK(err_code);
+    
+		ErrorCounter[4] += 1;
+		
+		APP_ERROR_CHECK_CSB(err_code);
+	
 //		nrf_gpio_cfg_output(BSP_LED_0);
 //		nrf_gpio_cfg_output(BSP_LED_1);
 
-	nrf_gpio_cfg_output(MOTOR_PIN_NUMBER);
+		nrf_gpio_cfg_output(MOTOR_PIN_NUMBER);
 	
 //		AD7746_Init();
 	
 //		nrf_temp_init();
 
-		//nrf_gpio_cfg_output(7);									//Haptic Vibration Motor
-		
+		//nrf_gpio_cfg_output(7);									// Haptic Vibration Motor
 	
 		unsigned char status = 0;
 		while(!status)  status = I2C_Init();
@@ -1482,8 +1548,8 @@ void someother_module_init() {										// $$$$$$ Miscelaneouse Test Routines --
 //		if(mpu_init(NULL));
 //		long gyro,accel;
 //		mpu_run_self_test(&gyro, &accel);
-//		sensorADC_config();  									// sensor adc init
-		finishedADC = false;  									// for sensor_adc only
+//		sensorADC_config();  										// sensor adc init
+		finishedADC = false;  										// for sensor_adc only
 	
 // read compass
 //		short data[3];
@@ -1495,34 +1561,33 @@ void someother_module_init() {										// $$$$$$ Miscelaneouse Test Routines --
 
 //		while(mpu_get_compass_reg(data, &timestamp)) 
 //			nrf_delay_us(1000);
-//		while(1)
-//		{
-//			status = mpu_get_compass_reg(data, &timestamp);
-//			if(data[0]>0 || status == 0)
+//			while(1) {
+//				status = mpu_get_compass_reg(data, &timestamp);
+//				if(data[0]>0 || status == 0)
 //				break;
-//		}
-//	long temperature;
-//	while(mpu_get_temperature(&temperature, &timestamp));
-//	while(mpu_get_accel_reg(data,&timestamp));
-//	while(mpu_get_gyro_reg(data,&timestamp));
+//			}
+//		long temperature;
+//		while(mpu_get_temperature(&temperature, &timestamp));
+//		while(mpu_get_accel_reg(data,&timestamp));
+//		while(mpu_get_gyro_reg(data,&timestamp));
 //	
-//	mpu_run_6500_self_test(&gyro, &accel,0);
+//		mpu_run_6500_self_test(&gyro, &accel,0);
 		timestamp +=1;
 //		initA2035H();
-	MPL3115A2_init();
-	float f = MPL3115A2_getAltitude();
-	
-	
-	ltc294x_init();
-	int temp;
-	ltc294x_get_current(&temp);
-	ltc294x_get_temperature(&temp);
-	ltc294x_get_voltage(&temp);
-	ltc294x_get_charge_counter(&temp);
-	ltc294x_get_charge_counter(&temp);
+		MPL3115A2_init();
+		float f = MPL3115A2_getAltitude();
+		
+		ltc294x_init();
+		int temp;
+		ltc294x_get_current(&temp);
+		ltc294x_get_temperature(&temp);
+		ltc294x_get_voltage(&temp);
+		ltc294x_get_charge_counter(&temp);
+		ltc294x_get_charge_counter(&temp);
 }
 
 /**	static void capmeasure_timer_handler(void * p_context) {		// $$$$$$ Diff Capacitor Sensor Timer Handler (Not used in SmartCane)
+
 	@brief 		Function to test and initalise miscellanous routines setup by Leo ---> ????@details 	
 	@note  		
 	@ref 			
@@ -1538,12 +1603,10 @@ int32_t readNRF_TEMP() {											// ERROR  ToDo Causes System to Hang !!!!!
 	int32_t count = 255;
 
 	NRF_TEMP->TASKS_START = 1; 					/** ERRRRRROR ---> Fires hard Fault Handler Start the temperature measurement. */
-	while (true)
-    {
+	while (true) {
         /* Busy wait while temperature measurement is not finished, you can skip waiting if you enable interrupt for DATARDY event and read the result in the interrupt. */
         /* lint -e{845} // A zero has been given as right argument to operator '|'" */
-        while ((NRF_TEMP->EVENTS_DATARDY == 0) && (count != 0))
-        {
+        while ((NRF_TEMP->EVENTS_DATARDY == 0) && (count != 0)) {
             count -= 1;			// $$$$$$$$$$$$$$ WARNING Need to monitor this trap or setup a countdown and exit ---> Do nothing.  $$$$$$$$$
 		}
         NRF_TEMP->EVENTS_DATARDY = 0;
@@ -1595,7 +1658,7 @@ static float dataToSend[MEASURESIZE];
 }*/
 
 
-typedef enum  {
+typedef enum {
 	
 	DataTypeNone = 0,
 	DataTypeTEMP = 1,
@@ -1607,6 +1670,9 @@ unsigned int lastSendIndex;
 unsigned int resumeSendData() {  									// Only called by on_ble_evt when BLE_EVT_TX_COMPLETE happens
 																	// returns the index to current finished position in 'dataToSend' buffer
 	uint32_t err_code = NRF_SUCCESS;
+	
+	ErrorCounter[5] += 1;
+	
 	if (lastSendIndex==(unsigned int)-1) {
 		return (unsigned int)-1;
 	}
@@ -1643,14 +1709,13 @@ unsigned int resumeSendData() {  									// Only called by on_ble_evt when BLE_
 							APP_ERROR_HANDLER(err_code);
 					}
 				}
-				if (i>=MEASURESIZE) 
-				{
+				if (i>=MEASURESIZE) {
 					finishedADC = false;
 					lastSendIndex = 0;
 				}
 				return lastSendIndex;
 			}
-			break; 													// end of case DataTypeTEMP:
+			break; 													// End of case DataTypeTEMP:
 		case DataTypeNone:
 			break;
 		default:
@@ -1660,8 +1725,7 @@ unsigned int resumeSendData() {  									// Only called by on_ble_evt when BLE_
 }
 
 
-
-static void bluetooth_timer_handler(void * p_context) {				// Timer event to prime Bluetooth data transmission
+static void bluetooth_timer_handler(void * p_context) {				// Timer event to prime Bluetooth data transmission	
 	
 /** @brief 		Function to service background timer interupt originally targeting transmission of AD7746 differential capacitance measurement
     @details 	This routine is currently being used to prime data to send via bluetooth if available
@@ -1764,27 +1828,27 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 	readQuaternion(Quaternion);										// MPU9250 QUARTERNION  UPDATING FILTER AT 100 msec rate
 	
 
-	if(testbit(&Process_0, 0)==1) {									// Background Test for Active Vibro Motor Flag Auto Countdown of 
+	if(testbit(&Process_0, 0)==true) {								// Background Test for Active Vibro Motor Flag Auto Countdown of 
 		Count_VibroMotor = 1;										// 100 msec
 		clrbit(&Process_0, 0);
 	} 
 
-	if(testbit(&Process_0, 1)==1) {									// Background Test for Active Vibro Motor Flag Auto Countdown of 
+	if(testbit(&Process_0, 1)==true) {								// Background Test for Active Vibro Motor Flag Auto Countdown of 
 		Count_VibroMotor = 2;										// 200 msec
 		clrbit(&Process_0, 1);
 	}
 	
-	if(testbit(&Process_0, 2)==1) {									// Background Test for Active Vibro Motor Flag Auto Countdown of 
+	if(testbit(&Process_0, 2)==true) {								// Background Test for Active Vibro Motor Flag Auto Countdown of 
 		Count_VibroMotor = 4;										// 400 msec
 		clrbit(&Process_0, 2);
 	}
 	
-	if(testbit(&Process_0, 3)==1) {									// Background Test for Active Vibro Motor Flag Auto Countdown of 
+	if(testbit(&Process_0, 3)==true) {								// Background Test for Active Vibro Motor Flag Auto Countdown of 
 		Count_VibroMotor = 6;										// 600 msec
 		clrbit(&Process_0, 3);
 	}
 	
-	if(testbit(&Process_0, 4)==1) {									// Background Test for Active Vibro Motor Flag Auto Countdown of 
+	if(testbit(&Process_0, 4)==true) {								// Background Test for Active Vibro Motor Flag Auto Countdown of 
 		Count_VibroMotor = 8;										// 800 msec
 		clrbit(&Process_0, 4);
 	}
@@ -1795,7 +1859,7 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 	} else {
 		nrf_gpio_pin_clear(MOTOR_PIN_NUMBER);
 	}
-	return ;
+	return;
 }
 
 static void timers_init(void) {										// Initalise Timers and setup event handlers
@@ -1804,24 +1868,19 @@ static void timers_init(void) {										// Initalise Timers and setup event han
 
 	uint32_t err_code;
 
-    // Initialize timer module.
+    // Initialize Timer Module.
     APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_OP_QUEUE_SIZE, false);
 
     // Create timers.
-//    err_code = app_timer_create(&m_cap_timer_id,
-//                                APP_TIMER_MODE_REPEATED,
-//                                capmeasure_timer_handler);
-//    APP_ERROR_CHECK(err_code);
-
 	err_code = app_timer_create(&m_sys_timer_id,
                                 APP_TIMER_MODE_REPEATED,
                                 system_timer_handler);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 
 	err_code = app_timer_create(&m_temp_timer_id,
                                 APP_TIMER_MODE_REPEATED,
                                 bluetooth_timer_handler);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 }
 
 static void application_timers_start(void) {						// Start Background Timers Serviced by interupt handlers defined at timers_init()
@@ -1831,13 +1890,13 @@ static void application_timers_start(void) {						// Start Background Timers Ser
 
     // Start application timers.
  	err_code = app_timer_start(m_temp_timer_id, SYSTEM_TIMER_INTERVAL, NULL);		// 200 msec
-    APP_ERROR_CHECK(err_code);   
+    APP_ERROR_CHECK_CSB(err_code);   
 	
 	err_code = app_timer_start(m_cap_timer_id, CAP_MEAS_INTERVAL, NULL);			// 503 msec
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 
     err_code = app_timer_start(m_temp_timer_id, TEMP_MEAS_INTERVAL, NULL);			// 507 msec
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 
 
 
@@ -1848,7 +1907,7 @@ void app_on_connect(ble_evt_t * p_ble_evt) {						// ble Event to detect start o
 	    uint32_t err_code = NRF_SUCCESS;
 
 		err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
-		APP_ERROR_CHECK(err_code);
+		APP_ERROR_CHECK_CSB(err_code);
 //		nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
 //		nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
 
@@ -1857,41 +1916,41 @@ void app_on_connect(ble_evt_t * p_ble_evt) {						// ble Event to detect start o
 		nrf_delay_ms(1000);
 		nrf_gpio_pin_clear(MOTOR_PIN_NUMBER);
 	
-		APP_ERROR_CHECK(err_code);
+		APP_ERROR_CHECK_CSB(err_code);
 
 }
 void app_on_disconnect(ble_evt_t* p_ble_evt) {						// ble Event to detect end   of Bluetooth connection
 	 	    uint32_t err_code = NRF_SUCCESS;
 //          nrf_gpio_pin_clear(CONNECTED_LED_PIN_NO);
 //          err_code = app_button_disable();
-            APP_ERROR_CHECK(err_code);
+            APP_ERROR_CHECK_CSB(err_code);
 }
 
 void app_on_adv_timeout(ble_evt_t* p_ble_evt) {						// Event fired after predefined delay ---> 180sec then initiates power down!!!!
 	
 		uint32_t err_code = NRF_SUCCESS;
 
-		if (p_ble_evt->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_ADVERTISING)
-		{
+		if (p_ble_evt->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_ADVERTISING) {
 			err_code = bsp_indication_set(BSP_INDICATE_USER_STATE_1);
-			APP_ERROR_CHECK(err_code);
+			APP_ERROR_CHECK_CSB(err_code);
 			
 //			nrf_gpio_cfg_sense_input(BSP_BUTTON_0,
 //									BUTTON_PULL,
 //									NRF_GPIO_PIN_SENSE_LOW);			// Configure buttons with sense level low as wakeup source.
 			
 //			err_code = sd_power_system_off();							// Go to system-off mode (this function will not return; wakeup will cause a reset)     
-//			APP_ERROR_CHECK(err_code);
+//			APP_ERROR_CHECK_CSB(err_code);
 //		 	NRF_GPIO->OUTCLR = (1UL << PSHOLD_PIN_NUMBER); 				// Use STM6601 chip to turn power off completely
-			
 		}
+		ErrorCounter[6] += 1;
 }
 
-static void advertising_start(void) {								// Removed for time being --- Required to broadcast bluetooth identification
-/**	@brief Function to start ble advertising.*/    	   
-	uint32_t             err_code;
+static void advertising_start(void) {								// Starts broadcast of bluetooth identification
+/**	@brief 		Function to start ble advertising.*/
+	
+	uint32_t err_code;
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
-		APP_ERROR_CHECK(err_code);
+	APP_ERROR_CHECK_CSB(err_code);
 }
 
 static void on_ble_evt(ble_evt_t * p_ble_evt) {
@@ -1947,16 +2006,16 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt) {
     {
         case BLE_ADV_EVT_FAST:
             err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-            APP_ERROR_CHECK(err_code);
+            APP_ERROR_CHECK_CSB(err_code);
             break;
         case BLE_ADV_EVT_IDLE:
             err_code = bsp_indication_set(BSP_INDICATE_IDLE);
-            APP_ERROR_CHECK(err_code);
+            APP_ERROR_CHECK_CSB(err_code);
 
             // enable buttons to wake-up from power off
             err_code = bsp_buttons_enable( (1 << WAKEUP_BUTTON_ID)
                                          | (1 << BOND_DELETE_ALL_BUTTON_ID));
-            APP_ERROR_CHECK(err_code);
+            APP_ERROR_CHECK_CSB(err_code);
 
 		// use STM6601 chip to turn power off completely
 		 	NRF_GPIO->OUTCLR = (1UL << PSHOLD_PIN_NUMBER); 
@@ -1964,32 +2023,40 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt) {
 		
             // Go to system-off mode. This function will not return; wakeup will cause a reset.
             err_code = sd_power_system_off();
-            APP_ERROR_CHECK(err_code);
+            APP_ERROR_CHECK_CSB(err_code);
             break;
         default:
             break;
     }
 }
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
-/**	@brief Function for dispatching a BLE stack event to all modules with a BLE stack event handler.
-	@details This function is called from the BLE Stack event interrupt handler after a BLE stack
-	event has been received.
-	@param[in] p_ble_evt  Bluetooth stack event*/    
+/**	@brief 		Function for dispatching a BLE stack event to all modules with a BLE stack event handler.
 	
-	dm_ble_evt_handler(p_ble_evt);  				// manages Active and Bonded Peers
+	@details 	This function is called from the BLE Stack event interrupt handler after a BLE stack
+				event has been received.
+	
+	@param[in]	p_ble_evt  Bluetooth stack event*/    
+	
+	dm_ble_evt_handler(p_ble_evt);  								// Manages Active and Bonded Peers
     ble_conn_params_on_ble_evt(p_ble_evt);
-	ble_AD7746_on_ble_evt(&m_AD7746, p_ble_evt);    // TODO: customized service handler
-	on_ble_evt(p_ble_evt); 							// TODO: common application hander for ble event
-		ble_advertising_on_ble_evt(p_ble_evt);   	// it will monitor and restart advertising on Disconnection
+	
+	ble_AD7746_on_ble_evt(&m_AD7746, p_ble_evt);    				// TODO: customized service handler
+	
+	on_ble_evt(p_ble_evt); 											// TODO: common application handler for ble event
+	ble_advertising_on_ble_evt(p_ble_evt);   						// Monitor and restart advertising on Disconnection
+	
+	ErrorCounter[7] += 1;
 }
 static void sys_evt_dispatch(uint32_t sys_evt) {
-/**	@brief Function for dispatching a system event to interested modules.
-	@details This function is called from the System event interrupt handler after a system
-             event has been received.
-	@param[in] sys_evt  System stack event.**/
+/**	@brief 		Function for dispatching a system event to interested modules.
+	@details 	This function is called from the System event interrupt handler after a system
+				event has been received.
+	@param[in] 	sys_evt  System stack event.**/
 
 	pstorage_sys_event_handler(sys_evt);
     ble_advertising_on_sys_evt(sys_evt);
+	
+	ErrorCounter[8] += 1;
 }
 
 
@@ -2008,16 +2075,16 @@ static void ble_stack_init(void) {									// Initalise ble Bluetooth stack
     memset(&ble_enable_params, 0, sizeof(ble_enable_params));
     ble_enable_params.gatts_enable_params.service_changed = IS_SRVC_CHANGED_CHARACT_PRESENT;
     err_code = sd_ble_enable(&ble_enable_params);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 #endif
 
     // Register with the SoftDevice handler module for BLE events.
     err_code = softdevice_ble_evt_handler_set(ble_evt_dispatch);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 
     // Register with the SoftDevice handler module for BLE events.
     err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 }
 
 static void DeviceNameFromID(char* name, int len) {					// Redefine Device name with Device ID + Device Name based on DS2401 Address
@@ -2062,7 +2129,7 @@ static void GrabDeviceID(char* name, int len) {						// DS2401 xxxxxxxx
 	return;
 }
 
-static void gap_params_init(void) {
+static void gap_params_init(void) {									// Initialise ble Generic Access Profile GAP parameters
 /**	@brief 		Function for the GAP initialization.
 	@details 	This function sets up all the necessary GAP (Generic Access Profile) parameters of the
 				device including the device name, appearance, and the preferred connection parameters.*/    
@@ -2077,10 +2144,10 @@ static void gap_params_init(void) {
     err_code = sd_ble_gap_device_name_set(&sec_mode,
                                           (const uint8_t *)IDName,
                                           15);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 
     err_code = sd_ble_gap_appearance_set(DEVICE_APPEARANCE);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 
     memset(&gap_conn_params, 0, sizeof(gap_conn_params));
 
@@ -2090,12 +2157,12 @@ static void gap_params_init(void) {
     gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
 
     err_code = sd_ble_gap_ppcp_set(&gap_conn_params);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 										  
     err_code = sd_ble_gap_tx_power_set(TX_POWER_LEVEL);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 }
-static void services_init(void) {
+static void services_init(void) {									// Initialise Services Used within Application
 /**	@brief Function for initializing services that will be used by the application.
 	@details Initialize the Heart Rate, Battery and Device Information services.*/	
 	
@@ -2106,14 +2173,14 @@ static void services_init(void) {
 	ad7746_init.on_write_config_callback = ad7746_on_write_config_callback;
 	
 	err_code = ble_AD7746_init(&m_AD7746, &ad7746_init);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 	
 //	ble_nus_init_t   nus_init;				//nus == Nordic UART Service
 //	memset(&nus_init, 0, sizeof(nus_init));
 //	nus_init.data_handler = nus_data_handler;
 //   
 //	err_code = ble_nus_init(&m_nus, &nus_init);
-//	APP_ERROR_CHECK(err_code);
+//	APP_ERROR_CHECK_CSB(err_code);
 }
 static void advertising_init(void) {								// Initalise ble Bluetooth Advertising 
 /**	@brief 		Function for initializing the Advertising functionality.
@@ -2149,7 +2216,7 @@ static void advertising_init(void) {								// Initalise ble Bluetooth Advertisi
 	{
 		err_code = NRF_ERROR_DATA_SIZE;
 	}
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 
     ble_adv_modes_config_t options = {0};
     options.ble_adv_fast_enabled  = BLE_ADV_FAST_ENABLED;
@@ -2157,7 +2224,7 @@ static void advertising_init(void) {								// Initalise ble Bluetooth Advertisi
     options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
 
     err_code = ble_advertising_init(&advdata, &options, on_adv_evt, NULL);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 }
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {		// Function to handle ble Bluetooth Connection Events as defined at conn_parms_init()
 /**	@brief		Function for handling the Connection Parameters Module.
@@ -2172,7 +2239,7 @@ static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {		// Function to 
     if (p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)
     {
         err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
-        APP_ERROR_CHECK(err_code);
+        APP_ERROR_CHECK_CSB(err_code);
     }
 }
 
@@ -2202,7 +2269,7 @@ static void conn_params_init(void) {								// Initalise ble Bluetooth Connectio
     cp_init.error_handler                  = conn_params_error_handler;
 
     err_code = ble_conn_params_init(&cp_init);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 }
 
 static void scheduler_init(void) {									// Initalise Scheduler
@@ -2214,14 +2281,14 @@ static void scheduler_init(void) {									// Initalise Scheduler
 static uint32_t device_manager_evt_handler(dm_handle_t const * p_handle,
                                            dm_event_t  const * p_event,
                                            ret_code_t          event_result) {
+				   
 /**	@brief		Function for handling the Device Manager events.
 	@param[in]	p_evt  Data associated to the device manager event.*/											   
     
-	APP_ERROR_CHECK(event_result);
+	APP_ERROR_CHECK_CSB(event_result);
 
 #ifdef BLE_DFU_APP_SUPPORT
-    if (p_event->event_id == DM_EVT_LINK_SECURED)
-    {
+    if (p_event->event_id == DM_EVT_LINK_SECURED) {
         app_context_load(p_handle);
     }
 #endif 												// BLE_DFU_APP_SUPPORT
@@ -2236,14 +2303,14 @@ static void device_manager_init(void) {
     dm_application_param_t register_param;
 
     err_code = pstorage_init();    												// Initialise persistent storage module.
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 
     // Clear all bonded centrals if the Bonds Delete button is pushed.
     err_code = bsp_button_is_pressed(BOND_DELETE_ALL_BUTTON_ID,&(init_data.clear_persistent_data));
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 
     err_code = dm_init(&init_data);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 
     memset(&register_param.sec_param, 0, sizeof(ble_gap_sec_params_t));
 
@@ -2257,7 +2324,7 @@ static void device_manager_init(void) {
     register_param.service_type           = DM_PROTOCOL_CNTXT_GATT_SRVR_ID;
 
     err_code = dm_register(&m_app_handle, &register_param);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_CSB(err_code);
 }
 
 	
@@ -2302,7 +2369,9 @@ void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p
     //                any communication.
     //                Use with care. Un-comment the line below to use.
 
+	
     ble_debug_assert_handler(error_code, line_num, p_file_name);
+
 
     // On assert, the system can only recover with a reset.
     //NVIC_SystemReset();
@@ -2315,6 +2384,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name) {
 //		}
 //    app_error_handler(0xDEADBEAF, line_num, p_file_name);
 }
+
 #endif	//  endif DEBUG_NRF_USER
 
 void Test_LiPo_Battery_for_ALARM_Shutdown() {						// Test Battery Voltage and Force Shutdown if b/n 1V5 and 3V6
@@ -2361,14 +2431,13 @@ void PatTheDog() {													// ToDo Pat The Dog and WatchDog Timer Happy --->
 
 
 void GPIO_config_all_init() {										// Configure nRF51 GPIO Pins as required.
+
 /**	@brief		Function GPIO_config_all_init() Configures GPIO Pins.
 
 	@details	
 	@note  		
 	@ref		
 */	
-
-
 
 //	Configure Outputs.
 	NRF_GPIO->PIN_CNF[PSHOLD_PIN_NUMBER] =     									// Configure PSU Hold as Output
@@ -2406,7 +2475,7 @@ void GPIO_config_all_init() {										// Configure nRF51 GPIO Pins as required.
 	NRF_GPIO->OUTSET = (1UL << AUDIO_CNTRL_PIN_NUMBER);							// Assert HIGH for Standby Powerdown
 	nrf_gpio_pin_set(AUDIO_CNTRL_PIN_NUMBER);									// Alternatae Re-Assert HIGH for Standby Powerdown	
 
-	NRF_GPIO->PIN_CNF[AUDIO_SOURCE_PIN_NUMBER] =									// Configure AUDIO_CNTRL_PIN_NUMBER as Output
+	NRF_GPIO->PIN_CNF[AUDIO_SOURCE_PIN_NUMBER] =								// Configure AUDIO_CNTRL_PIN_NUMBER as Output
 		(GPIO_PIN_CNF_SENSE_Disabled 	<< GPIO_PIN_CNF_SENSE_Pos)
 	  | (GPIO_PIN_CNF_DRIVE_S0S1     	<< GPIO_PIN_CNF_DRIVE_Pos)
 	  | (GPIO_PIN_CNF_PULL_Disabled   	<< GPIO_PIN_CNF_PULL_Pos)
@@ -2444,11 +2513,11 @@ void GPIO_config_all_init() {										// Configure nRF51 GPIO Pins as required.
 //	Configure Inputs with Weak Pullups or pulldowns as required.
 	nrf_gpio_cfg_sense_input(BSP_BUTTON_0,
 						BUTTON_PULL,
-						NRF_GPIO_PIN_SENSE_LOW);					// Configure button-0 with sense level low as wakeup source.
+						NRF_GPIO_PIN_SENSE_LOW);								// Configure button-0 with sense level low as wakeup source.
 	
 	nrf_gpio_cfg_sense_input(BSP_BUTTON_1,
 						BUTTON_PULL,
-						NRF_GPIO_PIN_SENSE_LOW);					// Configure button-1 with sense level low as wakeup source.
+						NRF_GPIO_PIN_SENSE_LOW);								// Configure button-1 with sense level low as wakeup source.
 						
 
 //#define GAUGE_NALCC_PIN_NUMBER	(12U)				// INPUT (INT) Gas Gauge Interupt I2C Programmable Alarm States LTC2943.pin6
@@ -2465,9 +2534,6 @@ void GPIO_config_all_init() {										// Configure nRF51 GPIO Pins as required.
 	LED_Red
 	GPS interupt
 	MPU interupt
-
-
-
 */
 
 }
@@ -2484,16 +2550,7 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	uint8_t status = 0;
 	
 	GrabDeviceID(DS2401_ID,16);										// Grab and store 8-bit Hex Device ID
-/*																	// A short test routine to debug process flag subroutines
-	setbit(&Process_0, 2);											// Short test of process_x bit flags using pointers
-	if (testbit(&Process_0, 4)==1) {
-		setbit(&Process_2, 7);	
-	}
-	if (testbit(Process_0, 2)) {
-		setbit(&Process_3, 2);
-	}
-*/
-	
+
 	ble_stack_init();												// Initialize softdevice stack. ---> s110
 
 	GPIO_config_all_init();											// Initialise GPIO Pins as Required Outputs and Inputs
@@ -2509,11 +2566,12 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	advertising_init();												// Initialise Advertising
 	someother_module_init();										// Initialise application specific modules
 	conn_params_init();												// Initialise connection parameters
+	
 	application_timers_start();										// Start Timers
 
 //	Start Advertising
-	if (false) advertising_start();									// Starts Bluetooth advertising however also shuts down power to board after 180sec if no connection
-																	// Note... Moved to VT100 System Menu 
+//	advertising_start();											// Starts Bluetooth advertising however also shuts down power to board after 180sec if no connection
+																	// Note... Moved to VT100 System Menu 6 ---> G
 	
 	const app_uart_comm_params_t comm_params =	{					// Load UART Parameters ... USB UART Virtual COM port BAUD==11500
 		  RX_PIN_NUMBER,
@@ -2522,7 +2580,7 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 		  CTS_PIN_NUMBER,
 		  APP_UART_FLOW_CONTROL_DISABLED,
 		  false,
-		  UART_BAUDRATE_BAUDRATE_Baud115200							// Was UART_BAUDRATE_Baud38400
+		  UART_BAUDRATE_BAUDRATE_Baud115200
 	  };
 
 	
@@ -2534,7 +2592,7 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 		APP_IRQ_PRIORITY_LOW,
 		err_code);
 	  
-	APP_ERROR_CHECK(err_code);										// Application Error Checker ---> error.h
+	APP_ERROR_CHECK_CSB(err_code);									// Application Error Checker ---> error.h
 
 	while(!status)  status = I2C_Init();							// Initalise I2C 
 
@@ -2543,52 +2601,53 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	UART_VT100_Main_Menu();											// Initialise Default UART VT100 Main Menu
 	
 	int TSA_Count=0;												// Base TSA Initialisation Start Count = 0 of  TSA_Count 0..25	
-	  
-	while (true) {													//  TSA Time Slot Assigner ---> Endless Loop within main()
+	while (true) {													// TSA Time Slot Assigner ---> Endless Loop within main()
 /**	@brief 		MASTER TIME SLOT ASSIGNER --> TSA
 	@details 	This routine operates as a never ending loop within 
 				main() and managers background tasks based on a 
-				rotating counter MainCount.
+				rotating counter TSA_Count.
 	@note  		This while Loop Operates as a Background Task Manager
 		
 */
-		
 		app_sched_execute();										// Execute Task Scheduler per loop
 		
 //		err_code = sd_app_evt_wait();								// BYPASS --> Not working TRAP pending unknowns !!!!!!!
 
-		TSA_Count=TSA_Count+1;
-		
-		if (TSA_Count>=26) TSA_Count=0;								// Reset the TSA Count
+		TSA_Count +=1;												// Increment TSA loop count
+		if (TSA_Count>=26) TSA_Count=0;								// Reset the TSA Count to 0
 
 		switch (TSA_Count) {										// Background Task Scheduler
 		
-		case 0:														// Loads VT100 Static and Rehresh UART Menu (NOTE: msec Time Delays operate within this function)
-			Load_VT100_All_Menues();		
+		case 0:														// Loads VT100 Rehresh Menus and test for UART Rx characters
+			VT100_All_Menues();		
 			break;
 		
 		case 1:														// ToDo Collect GPS Navigation Data and Load Bearing to Next Waypoint
-			
 			break;
 		
 		case 2:														// ToDo Upon Active GPS Waypoint Zone - Use Inertial/Compass Data to Signal Correct Bearing
-			
 			break;
 		
 		case 3:														// ToDo During Active Movement Collect User Parametrics. Walking Pace, Stick Movement, Gestures
-			
 			break;
 		
-		case 4:														// To Be Assigned 
-			
+		case 4:														// Test for Process Flags 
+			if (testbit(&Process_3, 0)==true) {						// Process_3.0 flag to start ble advertising
+				if(testbit(&Process_3, 1)==false) {
+					advertising_start();							// Starts Bluetooth advertising, however,shutdown initiated after 180sec ---> Need to reschedule or STOP
+					setbit(&Process_3, 1);
+					clrbit(&Process_3, 0);					
+				}
+			}
 			break;
 			
 		case 5:														// To Be Assigned 
-			
 			break;
 			
 		case 6:														// To Be Assigned 
-			
+			break;
+		
+		case 18:													// To Be Assigned
 			break;
 		
 		case 19:													// System Monitoring and Health Checking
@@ -2596,23 +2655,18 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 			break;
 		
 		case 20:													// ToDo State Machine to Control Haptic Transducer Vibration States and On-Off Sequences
-			
 			break;
 			
 		case 21:													// ToDo State Machine to Signal Audio Tone Sequences at Various Output Frequencies
-			
 			break;
 		
 		case 22:													// ToDo State Machine to start Audio Tone Sequence at Various Output Frequencies
-			
 			break;
 			
 		case 23:													// ToDo Monitor for physical movement and/or physical activity 
-			
 			break;
 			
 		case 24:													// ToDo Monitor Battery State and System Temperatures
-			
 			break;
 			
 		case 25:													// Pat the Dog every 50 loops of TSA
@@ -2621,7 +2675,6 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 				DogCount=0;
 				PatTheDog();
 			break;
-
 		}
 	}
 }
