@@ -11,52 +11,45 @@
  */
 
 #include "app_uart.h"
-#include "app_fifo.h"
 #include "nrf.h"
 #include "nrf_gpio.h"
 #include "app_error.h"
 #include "app_util.h"
 #include "app_gpiote.h"
 
-static __INLINE uint32_t fifo_length(app_fifo_t * const fifo)
-{
-  uint32_t tmp = fifo->read_pos;
-  return fifo->write_pos - tmp;
-}
-
-#define FIFO_LENGTH(F) fifo_length(&F)              /**< Macro to calculate length of a FIFO. */
-
-
-#define UART_INSTANCE_GPIOTE_BASE  0x00FF                                   /**< Define the base for UART instance ID when flow control is used. The userid from GPIOTE will be used with padded 0xFF at LSB for easy converting the instance id to GPIOTE id. */
-#define UART_INSTANCE_ID_INVALID   0x0000                                   /**< Value 0x0000 is used to indicate an invalid instance id. When 0 is provided as instance id upon initialization, the module will provide a valid id to the caller. */
+#define FIFO_LENGTH(F) (F.write_pos - F.read_pos) /**< Macro to calculate length of a FIFO. */
+#define UART_INSTANCE_GPIOTE_BASE 0x00FF          /**< Define the base for UART instance ID when flow control is used. The userid from GPIOTE will be used with padded 0xFF at LSB for easy converting the instance id to GPIOTE id. */
+#define UART_INSTANCE_ID_INVALID  0x0000          /**< Value 0x0000 is used to indicate an invalid instance id. When 0 is provided as instance id upon initialization, the module will provide a valid id to the caller. */
+#define BYTE_INVALID              0xFFFF          /**< Value 0xFFFF is used to mark the byte in the receive buffer as invalid. */
 
 /** @brief States for the app_uart state machine. */
 typedef enum
 {
-    UART_OFF,                                                               /**< app_uart state OFF, indicating CTS is low. */
-    UART_READY,                                                             /**< app_uart state ON, indicating CTS is high. */
-    UART_ON,                                                                /**< app_uart state TX, indicating UART is ongoing transmitting data. */
-    UART_WAIT_CLOSE,                                                        /**< app_uart state WAIT CLOSE, indicating that CTS is low, but a byte is currently being transmitted on the line. */
+    UART_OFF,        /**< app_uart state OFF, indicating CTS is low. */
+    UART_READY,      /**< app_uart state ON, indicating CTS is high. */
+    UART_ON,         /**< app_uart state TX, indicating UART is ongoing transmitting data. */
+    UART_WAIT_CLOSE, /**< app_uart state WAIT CLOSE, indicating that CTS is low, but a byte is currently being transmitted on the line. */
 } app_uart_states_t;
 
 /** @brief State transition events for the app_uart state machine. */
 typedef enum
 {
-    ON_CTS_HIGH,                                                            /**< Event: CTS gone high. */
-    ON_CTS_LOW,                                                             /**< Event: CTS gone low. */
-    ON_UART_PUT,                                                            /**< Event: Application wants to transmit data. */
-    ON_TX_READY,                                                            /**< Event: Data has been transmitted on the uart and line is available. */
-    ON_UART_CLOSE,                                                          /**< Event: The UART module are being stopped. */
+    ON_CTS_HIGH,   /**< Event: CTS gone high. */
+    ON_CTS_LOW,    /**< Event: CTS gone low. */
+    ON_UART_PUT,   /**< Event: Application wants to transmit data. */
+    ON_TX_READY,   /**< Event: Data has been transmitted on the uart and line is available. */
+    ON_UART_CLOSE, /**< Event: The UART module are being stopped. */
 } app_uart_state_events_t;
 
-static app_fifo_t                  m_rx_fifo;                               /**< RX FIFO buffer for storing data received on the UART until the application fetches them using app_uart_get(). */
-static app_fifo_t                  m_tx_fifo;                               /**< TX FIFO buffer for storing data to be transmitted on the UART when TXD is ready. Data is put to the buffer on using app_uart_put(). */
+static uint8_t  m_tx_byte;                /**< TX Byte placeholder for next byte to transmit. */
+static uint16_t m_rx_byte = BYTE_INVALID; /**< RX Byte placeholder for last received byte. */
 
-static uint8_t                     m_instance_counter = 1;                  /**< Instance counter for each caller using the UART module. The GPIOTE user id is mapped directly for callers using HW Flow Control. */
-static app_gpiote_user_id_t        m_gpiote_uid;                            /**< GPIOTE id for currently active caller to the UART module. */
-static uint32_t                    m_pin_cts_mask;                          /**< CTS pin mask for UART module. */
-static app_uart_event_handler_t    m_event_handler;                         /**< Event handler function. */
-static volatile app_uart_states_t  m_current_state = UART_OFF;              /**< State of the state machine. */
+
+static uint8_t                    m_instance_counter = 1;     /**< Instance counter for each caller using the UART module. The GPIOTE user id is mapped directly for callers using HW Flow Control. */
+static app_gpiote_user_id_t       m_gpiote_uid;               /**< GPIOTE id for currently active caller to the UART module. */
+static uint32_t                   m_pin_cts_mask;             /**< CTS pin mask for UART module. */
+static app_uart_event_handler_t   m_event_handler;            /**< Event handler function. */
+static volatile app_uart_states_t m_current_state = UART_OFF; /**< State of the state machine. */
 
 /**@brief Function for disabling the UART when entering the UART_OFF state.
  */
@@ -72,6 +65,7 @@ static void action_uart_deactivate(void)
 void action_tx_stop()
 {
     app_uart_evt_t app_uart_event;
+
     // No more bytes in FIFO, terminate transmission.
     NRF_UART0->TASKS_STOPTX = 1;
     m_current_state         = UART_READY;
@@ -87,38 +81,20 @@ void action_tx_stop()
  */
 static void action_tx_send()
 {
-    uint8_t tx_byte;
-
     if (m_current_state != UART_ON)
     {
         // Start the UART.
         NRF_UART0->TASKS_STARTTX = 1;
     }
 
-    if (app_fifo_get(&m_tx_fifo, &tx_byte) != NRF_SUCCESS)
-    {
-        action_tx_stop();
-        return;
-    }
-
-    NRF_UART0->INTENCLR = (UART_INTENSET_TXDRDY_Set << UART_INTENSET_TXDRDY_Pos);
-    NRF_UART0->TXD      = tx_byte;
-    m_current_state     = UART_ON;
-    NRF_UART0->INTENSET = (UART_INTENSET_TXDRDY_Set << UART_INTENSET_TXDRDY_Pos);
+    NRF_UART0->TXD  = m_tx_byte;
+    m_current_state = UART_ON;
 }
 
 
 static void action_tx_ready()
 {
-    // Get next byte from FIFO.
-    if (FIFO_LENGTH(m_tx_fifo) != 0)
-    {
-        action_tx_send();
-    }
-    else
-    {
-        action_tx_stop();
-    }
+    action_tx_stop();
 }
 
 
@@ -153,14 +129,7 @@ static void on_cts_low(void)
             NRF_UART0->ENABLE        = (UART_ENABLE_ENABLE_Enabled << UART_ENABLE_ENABLE_Pos);
             NRF_UART0->TASKS_STARTRX = 1;
 
-            if (FIFO_LENGTH(m_tx_fifo) != 0)
-            {
-                action_tx_send();
-            }
-            else
-            {
-                m_current_state = UART_READY;
-            }
+            m_current_state = UART_READY;
             break;
 
         case UART_WAIT_CLOSE:
@@ -215,7 +184,7 @@ static void on_uart_close(void)
 }
 
 
-/**@brief Function for the state machine main event handler.
+/**@brief Function for handling the state machine main event.
  *
  * @param[in]  event    Event that has occurred.
  */
@@ -250,7 +219,7 @@ static void on_uart_event(app_uart_state_events_t event)
 }
 
 
-/**@brief Function for the GPIOTE event handler.
+/**@brief Function for handling the GPIOTE event.
  *
  * @param[in] event_pins_low_to_high   Mask telling which pin(s) generated an event from low->high.
  * @param[in] event_pins_high_to_low   Mask telling which pin(s) generated an event from high->low.
@@ -266,6 +235,7 @@ static void gpiote_uart_event_handler(uint32_t event_pins_low_to_high,
         uint32_t err_code;
 
         err_code = app_gpiote_pins_state_get(m_gpiote_uid, &active_pins);
+
         if (err_code != NRF_SUCCESS)
         {
             // Pin reading was not possible, even though an event from GPIOTE was received that the
@@ -292,7 +262,7 @@ static void gpiote_uart_event_handler(uint32_t event_pins_low_to_high,
 }
 
 
-/**@brief Function for the UART Interrupt handler.
+/**@brief Function for handling the UART Interrupt.
  *
  * @details UART interrupt handler to process TX Ready when TXD is available, RX Ready when a byte
  *          is received, or in case of error when receiving a byte.
@@ -300,37 +270,20 @@ static void gpiote_uart_event_handler(uint32_t event_pins_low_to_high,
 void UART0_IRQHandler(void)
 {
     // Handle reception
-    if (NRF_UART0->EVENTS_RXDRDY != 0)
+    if ((NRF_UART0->EVENTS_RXDRDY != 0) && (NRF_UART0->INTENSET & UART_INTENSET_RXDRDY_Msk))
     {
-        uint32_t err_code;
+        app_uart_evt_t app_uart_event;
 
         // Clear UART RX event flag
-        NRF_UART0->EVENTS_RXDRDY = 0;
-
-        // Write received byte to FIFO
-        err_code = app_fifo_put(&m_rx_fifo, (uint8_t)NRF_UART0->RXD);
-        if (err_code != NRF_SUCCESS)
-        {
-            app_uart_evt_t app_uart_event;
-            app_uart_event.evt_type          = APP_UART_FIFO_ERROR;
-            app_uart_event.data.error_code   = err_code;
-            m_event_handler(&app_uart_event);
-        }
-        // Notify that new data is available if this was first byte put in the buffer.
-        else if (FIFO_LENGTH(m_rx_fifo) == 1)
-        {
-            app_uart_evt_t app_uart_event;
-            app_uart_event.evt_type = APP_UART_DATA_READY;
-            m_event_handler(&app_uart_event);
-        }
-        else
-        {
-            // Do nothing, only send event if first byte was added or overflow in FIFO occurred.
-        }
+        NRF_UART0->EVENTS_RXDRDY  = 0;
+        m_rx_byte                 = (uint8_t)NRF_UART0->RXD;
+        app_uart_event.evt_type   = APP_UART_DATA;
+        app_uart_event.data.value = m_rx_byte;
+        m_event_handler(&app_uart_event);
     }
 
     // Handle transmission.
-    if (NRF_UART0->EVENTS_TXDRDY != 0)
+    if ((NRF_UART0->EVENTS_TXDRDY != 0) && (NRF_UART0->INTENSET & UART_INTENSET_TXDRDY_Msk))
     {
         // Clear UART TX event flag.
         NRF_UART0->EVENTS_TXDRDY = 0;
@@ -338,7 +291,7 @@ void UART0_IRQHandler(void)
     }
 
     // Handle errors.
-    if (NRF_UART0->EVENTS_ERROR != 0)
+    if ((NRF_UART0->EVENTS_ERROR != 0) && (NRF_UART0->INTENSET & UART_INTENSET_ERROR_Msk))
     {
         uint32_t       error_source;
         app_uart_evt_t app_uart_event;
@@ -395,10 +348,10 @@ static void uart_standard_flow_control_init(const app_uart_comm_params_t * p_com
 
 
 uint32_t app_uart_init(const app_uart_comm_params_t * p_comm_params,
-                             app_uart_buffers_t *     p_buffers,
-                             app_uart_event_handler_t event_handler,
-                             app_irq_priority_t       irq_priority,
-                             uint16_t *               p_app_uart_uid)
+                       app_uart_buffers_t           * p_buffers,
+                       app_uart_event_handler_t       event_handler,
+                       app_irq_priority_t             irq_priority,
+                       uint16_t                     * p_app_uart_uid)
 {
     uint32_t err_code;
     uint32_t gpiote_high_pins;
@@ -407,37 +360,21 @@ uint32_t app_uart_init(const app_uart_comm_params_t * p_comm_params,
 
     m_current_state = UART_OFF;
     m_event_handler = event_handler;
+    m_rx_byte       = BYTE_INVALID;
 
-    if (p_buffers == NULL)
-    {
-        return NRF_ERROR_INVALID_PARAM;
-    }
-
-    // Configure buffer RX buffer.
-    err_code = app_fifo_init(&m_rx_fifo, p_buffers->rx_buf, p_buffers->rx_buf_size);
-    if (err_code != NRF_SUCCESS)
-    {
-        // Propagate error code.
-        return err_code;
-    }
-
-    // Configure buffer TX buffer.
-    err_code = app_fifo_init(&m_tx_fifo, p_buffers->tx_buf, p_buffers->tx_buf_size);
-    if (err_code != NRF_SUCCESS)
-    {
-        // Propagate error code.
-        return err_code;
-    }
 
     // Configure RX and TX pins.
+    nrf_gpio_pin_set(p_comm_params->tx_pin_no);
     nrf_gpio_cfg_output(p_comm_params->tx_pin_no);
-    nrf_gpio_cfg_input(p_comm_params->rx_pin_no, NRF_GPIO_PIN_NOPULL);
+    nrf_gpio_cfg_input(p_comm_params->rx_pin_no, NRF_GPIO_PIN_PULLUP);
+
 
     NRF_UART0->PSELTXD = p_comm_params->tx_pin_no;
     NRF_UART0->PSELRXD = p_comm_params->rx_pin_no;
 
     // Configure baud rate and parity.
     NRF_UART0->BAUDRATE = (p_comm_params->baud_rate << UART_BAUDRATE_BAUDRATE_Pos);
+
     if (p_comm_params->use_parity)
     {
         NRF_UART0->CONFIG = (UART_CONFIG_PARITY_Included << UART_CONFIG_PARITY_Pos);
@@ -462,7 +399,9 @@ uint32_t app_uart_init(const app_uart_comm_params_t * p_comm_params,
         // know when to activate/de-activate the TX/RX in the UART.
         // Configure pin.
         m_pin_cts_mask = (1 << p_comm_params->cts_pin_no);
-        nrf_gpio_cfg_sense_input(p_comm_params->cts_pin_no, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_LOW);
+        nrf_gpio_cfg_sense_input(p_comm_params->cts_pin_no,
+                                 NRF_GPIO_PIN_PULLUP,
+                                 NRF_GPIO_PIN_SENSE_LOW);
 
         gpiote_pin_low_high_mask = (1 << p_comm_params->cts_pin_no);
         gpiote_pin_high_low_mask = (1 << p_comm_params->cts_pin_no);
@@ -473,6 +412,7 @@ uint32_t app_uart_init(const app_uart_comm_params_t * p_comm_params,
                                                 gpiote_pin_low_high_mask,
                                                 gpiote_pin_high_low_mask,
                                                 gpiote_uart_event_handler);
+
             if (err_code != NRF_SUCCESS)
             {
                 return err_code;
@@ -489,12 +429,14 @@ uint32_t app_uart_init(const app_uart_comm_params_t * p_comm_params,
         }
 
         err_code = app_gpiote_pins_state_get(m_gpiote_uid, &gpiote_high_pins);
+
         if (err_code != NRF_SUCCESS)
         {
             return err_code;
         }
 
         err_code = app_gpiote_user_enable(m_gpiote_uid);
+
         if (err_code != NRF_SUCCESS)
         {
             return err_code;
@@ -547,17 +489,35 @@ uint32_t app_uart_init(const app_uart_comm_params_t * p_comm_params,
 
 uint32_t app_uart_get(uint8_t * p_byte)
 {
-    return app_fifo_get(&m_rx_fifo, p_byte);
+    uint32_t err_code = NRF_SUCCESS;
+
+    if (m_rx_byte == BYTE_INVALID)
+    {
+      err_code = NRF_ERROR_NOT_FOUND;
+    }
+    else
+    {
+      *p_byte   = m_rx_byte;
+      m_rx_byte = BYTE_INVALID;
+    }
+
+    return err_code;
 }
 
 
 uint32_t app_uart_put(uint8_t byte)
 {
-    uint32_t err_code;
+    uint32_t err_code = NRF_SUCCESS;
 
-    err_code = app_fifo_put(&m_tx_fifo, byte);
-
-    on_uart_event(ON_UART_PUT);
+    if (m_current_state != UART_READY)
+    {
+      err_code = NRF_ERROR_NO_MEM;
+    }
+    else
+    {
+      m_tx_byte = byte;
+      on_uart_event(ON_UART_PUT);
+    }
 
     return err_code;
 }
@@ -565,20 +525,6 @@ uint32_t app_uart_put(uint8_t byte)
 
 uint32_t app_uart_flush(void)
 {
-    uint32_t err_code;
-
-    err_code = app_fifo_flush(&m_rx_fifo);
-    if (err_code != NRF_SUCCESS)
-    {
-        return err_code;
-    }
-
-    err_code = app_fifo_flush(&m_tx_fifo);
-    if (err_code != NRF_SUCCESS)
-    {
-        return err_code;
-    }
-
     return NRF_SUCCESS;
 }
 

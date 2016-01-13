@@ -36,7 +36,8 @@ int16_t accelCount[3];  										// Stores the 16-bit signed accelerometer sens
 int16_t gyroCount[3];   										// Stores the 16-bit signed gyro sensor output
 int16_t magCount[3];    										// Stores the 16-bit signed magnetometer sensor output
 float magCalibration[3] = {0, 0, 0};							// Factory mag calibration 
-float magbias[3] = {0, 0, 0};  									// Factory mag bias
+float magBias[3] = {0, 0, 0};  									// Factory mag bias
+float magScale[3] = {0, 0, 0};
 float gyroBias[3] = {0, 0, 0}, accelBias[3] = {0, 0, 0}; 		// Bias corrections for gyro and accelerometer
 float ax, ay, az, gx, gy, gz, mx, my, mz; 						// Variables to hold latest sensor data values 
 int16_t tempCount;   											// Stores the real internal chip temperature in degrees Celsius
@@ -59,7 +60,7 @@ static const float Kp = 2.0f * 5.0f; 							// Free parameters in the Mahony fil
 static const float Ki = 0.0f ;
  
 float pitch, yaw, roll;
-float deltat = 0.100f;											// Hard set Quaternion filter sample rate called via SYSTEM_TIMER_INTERVAL=100ms via main
+float deltat = 0.500f;											// Hard set Quaternion filter sample rate called via SYSTEM_TIMER_INTERVAL=500ms via main
 // float deltat = 0.0f;                             			// Integration interval for both filter schemes
 //int lastUpdate = 0, firstUpdate = 0, Now = 0;    				// Used to calculate integration interval
 
@@ -205,23 +206,22 @@ void readMagFloatUT(float *xyz) {					 						// in micro tesla
 	int16_t Mag[3];
 	readMagData(Mag);
 	
-	for(int i=0;i<3;i++) 
-		xyz[i] = 1229.0*Mag[i]/4095.0 * magCalibration[i];
-	float x = xyz[2];
-	x+=1;
+	for(int i=0;i<3;i++) {
+		xyz[i] = 1229.0*Mag[i]/4095.0 * 1;	//magCalibration[i];
+	}
 }
 void readAccelData(int16_t * destination) {									// Read Accelerometer
-	uint8_t rawData[6];  													// x/y/z accel register data stored here
-	MPU9150_readBytes(MPU9150_ADDRESS, ACCEL_XOUT_H, 6, &rawData[0]);  		// Read the six raw data registers into data array
-	destination[0] = (int16_t)(((int16_t)rawData[0] << 8) | rawData[1]) ;	// Turn the MSB and LSB into a signed 16-bit value
+	uint8_t rawData[6];  															// xyz accel register data stored here
+	MPU9150_readBytes(MPU9150_ADDRESS, ACCEL_XOUT_H, 6, &rawData[0]);  				// Read the six raw data registers into data array
+	destination[0] = (int16_t)(((int16_t)rawData[0] << 8) | rawData[1]) ;			// Turn the MSB and LSB into a signed 16-bit value
 	destination[1] = (int16_t)(((int16_t)rawData[2] << 8) | rawData[3]) ;  
 	destination[2] = (int16_t)(((int16_t)rawData[4] << 8) | rawData[5]) ; 
 }
  
 void readGyroData(int16_t * destination) {									// Read Gyro
-	uint8_t rawData[6];  													// x/y/z gyro register data stored here
-	MPU9150_readBytes(MPU9150_ADDRESS, GYRO_XOUT_H, 6, &rawData[0]);  		// Read the six raw data registers sequentially into data array
-	destination[0] = (int16_t)(((int16_t)rawData[0] << 8) | rawData[1]) ;	// Turn the MSB and LSB into a signed 16-bit value
+	uint8_t rawData[6];  															// xyz gyro register data stored here
+	MPU9150_readBytes(MPU9150_ADDRESS, GYRO_XOUT_H, 6, &rawData[0]);  				// Read the six raw data registers sequentially into data array
+	destination[0] = (int16_t)(((int16_t)rawData[0] << 8) | rawData[1]) ;			// Turn the MSB and LSB into a signed 16-bit value
 	destination[1] = (int16_t)(((int16_t)rawData[2] << 8) | rawData[3]) ;  
 	destination[2] = (int16_t)(((int16_t)rawData[4] << 8) | rawData[5]) ; 
 }
@@ -229,6 +229,7 @@ void readGyroData(int16_t * destination) {									// Read Gyro
 void readMagData(int16_t * destination) {									// Initalise Magnetometer
 	uint8_t rawData[6];  															// xyz gyro register data stored here
 	uint8_t c;
+	
 	MPU9150_writeByte(AK8975A_ADDRESS, AK8975A_CNTL, AK8975A_CNTL_POWERDOWN_MODE);	// Toggle enable data read from magnetometer, no continuous read mode!
 	
 	wait(0.01);
@@ -289,7 +290,7 @@ void initAK8975A(float * destination) {										// Magnetometer INIT
 //  MPU9150_writeByte(AK8975A_ADDRESS, AK8975A_CNTL, AK8975A_CNTL_FUSEROM_MODE);	// Enter Fuse ROM access mode
  
 	wait(0.01);
-	MPU9150_readBytes(AK8975A_ADDRESS, AK8975A_ASAX, 3, &rawData[0]);				// Read the x-, y-, and z-axis calibration values
+	MPU9150_readBytes(AK8975A_ADDRESS, AK8975A_ASAX, 3, &rawData[0]);				// Read the xyz-axis calibration values
 	destination[0] =  (float)(rawData[0] - 128)/256.0f + 1.0f;						// Return x-axis sensitivity adjustment values
 	destination[1] =  (float)(rawData[1] - 128)/256.0f + 1.0f;  
 	destination[2] =  (float)(rawData[2] - 128)/256.0f + 1.0f; 
@@ -304,7 +305,7 @@ void initAK8963(float * destination) {										// Alternative Magnetometer INIT
 	MPU9150_writeByte(AK8975A_ADDRESS, AK8975A_CNTL, 0x0F); 						// Enter Fuse ROM access mode
 	wait(0.01);
 	
-	MPU9150_readBytes(AK8975A_ADDRESS, AK8975A_CNTL, 3, &rawData[0]);				// Read the x-, y-, and z-axis calibration values
+	MPU9150_readBytes(AK8975A_ADDRESS, AK8975A_CNTL, 3, &rawData[0]);				// Read the xyz-axis calibration values
 	destination[0] =  (float)(rawData[0] - 128)/256. + 1.;							// Return x-axis sensitivity adjustment values, etc.
 	destination[1] =  (float)(rawData[1] - 128)/256. + 1.;  
 	destination[2] =  (float)(rawData[2] - 128)/256. + 1.; 
@@ -321,6 +322,7 @@ void initAK8963(float * destination) {										// Alternative Magnetometer INIT
 	MPU9150_writeByte(AK8975A_ADDRESS, AK8975A_CNTL, Mscale << 4 | 0x02);			// Set magnetometer data resolution and sample ODR
 	wait(0.01);
 }
+
 int16_t readTempData() {													// Read temperature Data from Inertial Sensor
   uint8_t rawData[2];  																// Temperature data stored here
   MPU9150_readBytes(MPU9150_ADDRESS, TEMP_OUT_H, 2, &rawData[0]);  					// Read the two raw data registers sequentially into data array 
@@ -462,11 +464,11 @@ void initMPU9150() {														// Inertial Sensor
 
 void initMPU9250() {  
 //	Wake up device
-	MPU9150_writeByte(MPU9150_ADDRESS, PWR_MGMT_1, 0x00); 				// Clear sleep mode bit (6), enable all sensors 
-	wait(0.100); 													// Wait for all registers to reset 
+	MPU9150_writeByte(MPU9150_ADDRESS, PWR_MGMT_1, 0x00); 					// Clear sleep mode bit (6), enable all sensors 
+	wait(0.100); 															// Wait for all registers to reset 
 
 //	Get stable time source
-	MPU9150_writeByte(MPU9150_ADDRESS, PWR_MGMT_1, 0x01);  				// Auto select clock source to be PLL gyroscope reference if ready else
+	MPU9150_writeByte(MPU9150_ADDRESS, PWR_MGMT_1, 0x01);  					// Auto select clock source to be PLL gyroscope reference if ready else
 	wait(0.200); 
   
 /*	Configure Gyro and Thermometer
@@ -478,22 +480,22 @@ void initMPU9250() {
 	MPU9150_writeByte(MPU9150_ADDRESS, CONFIG, 0x03);  
 
 //	Set sample rate = gyroscope output rate/(1 + SMPLRT_DIV)
-	MPU9150_writeByte(MPU9150_ADDRESS, SMPLRT_DIV, 0x04);  				// Use a 200 Hz rate; a rate consistent with the filter update rate 
-																// determined inset in CONFIG above
+	MPU9150_writeByte(MPU9150_ADDRESS, SMPLRT_DIV, 0x04);  					// Use a 200 Hz rate; a rate consistent with the filter update rate 
+																			// determined inset in CONFIG above
 /*	Set gyroscope full scale range
 	Range selects FS_SEL and AFS_SEL are 0 - 3, so 2-bit values are left-shifted into positions 4:3 */
 	uint8_t c = MPU9150_readByte(MPU9150_ADDRESS, GYRO_CONFIG);
-//  writeRegister(GYRO_CONFIG, c & ~0xE0); 						// Clear self-test bits [7:5] 
-	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG, c & ~0x02);			// Clear Fchoice bits [1:0] 
-	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG, c & ~0x18);			// Clear AFS bits [4:3]
-	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG, c | Gscale << 3); 	// Set full scale range for the gyro
-//	writeRegister(GYRO_CONFIG, c | 0x00); 						// Set Fchoice for the gyro to 11 by writing its inverse to bits 1:0 of GYRO_CONFIG
+//  writeRegister(GYRO_CONFIG, c & ~0xE0); 									// Clear self-test bits [7:5] 
+	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG, c & ~0x02);				// Clear Fchoice bits [1:0] 
+	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG, c & ~0x18);				// Clear AFS bits [4:3]
+	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG, c | Gscale << 3); 		// Set full scale range for the gyro
+//	writeRegister(GYRO_CONFIG, c | 0x00); 									// Set Fchoice for the gyro to 11 by writing its inverse to bits 1:0 of GYRO_CONFIG
   
 //	Set accelerometer full-scale range configuration
 	c = MPU9150_readByte(MPU9150_ADDRESS, ACCEL_CONFIG);
-//  writeRegister(ACCEL_CONFIG, c & ~0xE0);						// Clear self-test bits [7:5] 
-	MPU9150_writeByte(MPU9150_ADDRESS, ACCEL_CONFIG, c & ~0x18); 		// Clear AFS bits [4:3]
-	MPU9150_writeByte(MPU9150_ADDRESS, ACCEL_CONFIG, c | Ascale << 3);	// Set full scale range for the accelerometer 
+//  writeRegister(ACCEL_CONFIG, c & ~0xE0);									// Clear self-test bits [7:5] 
+	MPU9150_writeByte(MPU9150_ADDRESS, ACCEL_CONFIG, c & ~0x18); 			// Clear AFS bits [4:3]
+	MPU9150_writeByte(MPU9150_ADDRESS, ACCEL_CONFIG, c | Ascale << 3);		// Set full scale range for the accelerometer 
 
 /*	Set accelerometer sample rate configuration
 	It is possible to get a 4 kHz sample rate from the accelerometer by choosing 1 for
@@ -510,19 +512,19 @@ void initMPU9250() {
 	clear on read of INT_STATUS, and enable I2C_BYPASS_EN so additional chips 
 	can join the I2C bus and all can be controlled by the Arduino as master */
 	MPU9150_writeByte(MPU9150_ADDRESS, INT_PIN_CFG, 0x22);    
-	MPU9150_writeByte(MPU9150_ADDRESS, INT_ENABLE, 0x01);				// Enable data ready (bit 0) interrupt
+	MPU9150_writeByte(MPU9150_ADDRESS, INT_ENABLE, 0x01);					// Enable data ready (bit 0) interrupt
 	wait(0.100);
 }
 
 /*	Function which accumulates gyro and accelerometer data after device initialization. It calculates the average
 	of the at-rest readings and then loads the resulting offsets into accelerometer and gyro bias registers. */
 void accelgyrocalMPU9250(float * dest1, float * dest2) {  
-	uint8_t data[12];													// data array to hold accelerometer and gyro x, y, z, data
+	uint8_t data[12];														// data array to hold accelerometer and gyro x, y, z, data
 	uint16_t ii, packet_count, fifo_count;
 	int32_t gyro_bias[3]  = {0, 0, 0}, accel_bias[3] = {0, 0, 0};
   
 //	reset device
-	MPU9150_writeByte(MPU9150_ADDRESS, PWR_MGMT_1, 0x80);						// Write a one to bit 7 reset bit; toggle reset device
+	MPU9150_writeByte(MPU9150_ADDRESS, PWR_MGMT_1, 0x80);					// Write a one to bit 7 reset bit; toggle reset device
 	wait(0.100);
    
 /*	Get stable time source; Auto select clock source to be PLL gyroscope reference if ready 
@@ -546,52 +548,55 @@ void accelgyrocalMPU9250(float * dest1, float * dest2) {
 	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG, 0x00);						// Set gyro full-scale to 250 degrees per second, maximum sensitivity
 	MPU9150_writeByte(MPU9150_ADDRESS, ACCEL_CONFIG, 0x00);						// Set accelerometer full-scale to 2 g, maximum sensitivity
  
-	uint16_t  gyrosensitivity  = 131;   								// = 131 LSB/degrees/sec
-	uint16_t  accelsensitivity = 16384;  								// = 16384 LSB/g
+	uint16_t  gyrosensitivity  = 131;   										// = 131 LSB/degrees/sec
+	uint16_t  accelsensitivity = 16384;  										// = 16384 LSB/g
 
 //	Configure FIFO to capture accelerometer and gyro data for bias calculation
 	MPU9150_writeByte(MPU9150_ADDRESS, USER_CTRL, 0x40);   						// Enable FIFO  
 	MPU9150_writeByte(MPU9150_ADDRESS, FIFO_EN, 0x78);     						// Enable gyro and accelerometer sensors for FIFO  (max size 512 bytes in MPU-9150)
-	wait(0.040); 															// accumulate 40 samples in 40 milliseconds = 480 bytes
+	wait(0.040); 																// accumulate 40 samples in 40 milliseconds = 480 bytes
 
 //	At end of sample accumulation, turn off FIFO sensor read
 	MPU9150_writeByte(MPU9150_ADDRESS, FIFO_EN, 0x00);        					// Disable gyro and accelerometer sensors for FIFO
 	MPU9150_readBytes(MPU9150_ADDRESS, FIFO_COUNTH, 2, &data[0]); 				// read FIFO sample count
 	fifo_count = ((uint16_t)data[0] << 8) | data[1];
-	packet_count = fifo_count/12;										// How many sets of full gyro and accelerometer data for averaging
+	packet_count = fifo_count/12;												// How many sets of full gyro and accelerometer data for averaging
 
 	for (ii = 0; ii < packet_count; ii++) {
 		int16_t accel_temp[3] = {0, 0, 0}, gyro_temp[3] = {0, 0, 0};
-		MPU9150_readBytes(MPU9150_ADDRESS, FIFO_R_W, 12, &data[0]);					// read data for averaging
-		accel_temp[0] = (int16_t) (((int16_t)data[0] << 8) | data[1]  );	// Form signed 16-bit integer for each sample in FIFO
-		accel_temp[1] = (int16_t) (((int16_t)data[2] << 8) | data[3]  );
-		accel_temp[2] = (int16_t) (((int16_t)data[4] << 8) | data[5]  );    
-		gyro_temp[0]  = (int16_t) (((int16_t)data[6] << 8) | data[7]  );
-		gyro_temp[1]  = (int16_t) (((int16_t)data[8] << 8) | data[9]  );
+		MPU9150_readBytes(MPU9150_ADDRESS, FIFO_R_W, 12, &data[0]);				// read data for averaging
+		accel_temp[0] = (int16_t) (((int16_t)data[0] << 8)  | data[1] );		// Form signed 16-bit integer for each sample in FIFO
+		accel_temp[1] = (int16_t) (((int16_t)data[2] << 8)  | data[3] );
+		accel_temp[2] = (int16_t) (((int16_t)data[4] << 8)  | data[5] ); 
+		
+		gyro_temp[0]  = (int16_t) (((int16_t)data[6] << 8)  | data[7] );
+		gyro_temp[1]  = (int16_t) (((int16_t)data[8] << 8)  | data[9] );
 		gyro_temp[2]  = (int16_t) (((int16_t)data[10] << 8) | data[11]);
 
-		accel_bias[0] += (int32_t) accel_temp[0]; 							// Sum individual signed 16-bit biases to get accumulated signed 32-bit biases
+		accel_bias[0] += (int32_t) accel_temp[0]; 								// Sum individual signed 16-bit biases to get accumulated signed 32-bit biases
 		accel_bias[1] += (int32_t) accel_temp[1];
 		accel_bias[2] += (int32_t) accel_temp[2];
+		
 		gyro_bias[0]  += (int32_t) gyro_temp[0];
 		gyro_bias[1]  += (int32_t) gyro_temp[1];
 		gyro_bias[2]  += (int32_t) gyro_temp[2];
 	}
 
-	accel_bias[0] /= (int32_t) packet_count; 								// Normalize sums to get average count biases
+	accel_bias[0] /= (int32_t) packet_count; 									// Normalize sums to get average count biases
 	accel_bias[1] /= (int32_t) packet_count;
 	accel_bias[2] /= (int32_t) packet_count;
+	
 	gyro_bias[0]  /= (int32_t) packet_count;
 	gyro_bias[1]  /= (int32_t) packet_count;
 	gyro_bias[2]  /= (int32_t) packet_count;
     
-  if(accel_bias[2] > 0L) {accel_bias[2] -= (int32_t) accelsensitivity;}  			// Remove gravity from the z-axis accelerometer bias calculation
+  if(accel_bias[2] > 0L) {accel_bias[2] -= (int32_t) accelsensitivity;}  		// Remove gravity from the z-axis accelerometer bias calculation
   else {accel_bias[2] += (int32_t) accelsensitivity;}
    
 /*	Construct the gyro biases for push to the hardware gyro bias registers, 
 	which are reset to zero upon device startup */
-	data[0] = (-gyro_bias[0]/4  >> 8) & 0xFF; 										// Divide by 4 to get 32.9 LSB per deg/s to conform to expected bias input format
-	data[1] = (-gyro_bias[0]/4)       & 0xFF; 										// Biases are additive, so change sign on calculated average gyro biases
+	data[0] = (-gyro_bias[0]/4  >> 8) & 0xFF; 									// Divide by 4 to get 32.9 LSB per deg/s to conform to expected bias input format
+	data[1] = (-gyro_bias[0]/4)       & 0xFF; 									// Biases are additive, so change sign on calculated average gyro biases
 	data[2] = (-gyro_bias[1]/4  >> 8) & 0xFF;
 	data[3] = (-gyro_bias[1]/4)       & 0xFF;
 	data[4] = (-gyro_bias[2]/4  >> 8) & 0xFF;
@@ -658,8 +663,10 @@ void accelgyrocalMPU9250(float * dest1, float * dest2) {
 
 /*  MPU9150_writeByte(MPU9150_ADDRESS, XA_OFFSET_H, data[0]);
 	MPU9150_writeByte(MPU9150_ADDRESS, XA_OFFSET_L, data[1]);
+	
 	MPU9150_writeByte(MPU9150_ADDRESS, YA_OFFSET_H, data[2]);
 	MPU9150_writeByte(MPU9150_ADDRESS, YA_OFFSET_L, data[3]);
+	
 	MPU9150_writeByte(MPU9150_ADDRESS, ZA_OFFSET_H, data[4]);
 	MPU9150_writeByte(MPU9150_ADDRESS, ZA_OFFSET_L, data[5]);
 */
@@ -673,11 +680,11 @@ void accelgyrocalMPU9250(float * dest1, float * dest2) {
 
 void magcalMPU9250(float * dest1, float * dest2) {
 	uint16_t ii = 0, sample_count = 0;
-	int32_t mag_bias[3] = {0, 0, 0};
-	int32_t mag_scale[3] = {0, 0, 0};
-	int16_t mag_max[3] = {0xFF, 0xFF, 0xFF};
-	int16_t mag_min[3] = {0x7F, 0x7F, 0x7F};
-	int16_t mag_temp[3] = {0, 0, 0};
+	int32_t mag_bias[3]		= {0, 0, 0};
+	int32_t mag_scale[3]	= {0, 0, 0};
+	int16_t mag_max[3]		= {0xFF, 0xFF, 0xFF};
+	int16_t mag_min[3]		= {0x7F, 0x7F, 0x7F};
+	int16_t mag_temp[3]		= {0, 0, 0};
 
 	wait(4.0);
 
@@ -715,7 +722,7 @@ void magcalMPU9250(float * dest1, float * dest2) {
     dest2[2] = avg_rad/((float)mag_scale[2]);
 }
 
-void calibrateMPU9150(float * dest1, float * dest2) {						// Calibrate Gyro and Accelerometers at While at Rest 
+void calibrateMPU9150(float * dest1, float * dest2) {						// Calibrate Gyro and Accelerometers while at rest 
 	
 /*	Function which accumulates gyro and accelerometer data after device initialization. 
 	It calculates the average of the at-rest readings and then loads the resulting offsets
@@ -736,26 +743,26 @@ void calibrateMPU9150(float * dest1, float * dest2) {						// Calibrate Gyro and
 	wait(0.2);
   
 //	Configure device for bias calculation
-	MPU9150_writeByte(MPU9150_ADDRESS, INT_ENABLE, 0x00);   				// Disable all interrupts
-	MPU9150_writeByte(MPU9150_ADDRESS, FIFO_EN, 0x00);    					// Disable FIFO
-	MPU9150_writeByte(MPU9150_ADDRESS, PWR_MGMT_1, 0x00);    				// Turn on internal clock source
+	MPU9150_writeByte(MPU9150_ADDRESS, INT_ENABLE,   0x00);   				// Disable all interrupts
+	MPU9150_writeByte(MPU9150_ADDRESS, FIFO_EN,      0x00);    				// Disable FIFO
+	MPU9150_writeByte(MPU9150_ADDRESS, PWR_MGMT_1,   0x00);    				// Turn on internal clock source
 	MPU9150_writeByte(MPU9150_ADDRESS, I2C_MST_CTRL, 0x00);  				// Disable I2C master
-	MPU9150_writeByte(MPU9150_ADDRESS, USER_CTRL, 0x00);     				// Disable FIFO and I2C master modes
-	MPU9150_writeByte(MPU9150_ADDRESS, USER_CTRL, 0x0C);     				// Reset FIFO and DMP
+	MPU9150_writeByte(MPU9150_ADDRESS, USER_CTRL,    0x00);     			// Disable FIFO and I2C master modes
+	MPU9150_writeByte(MPU9150_ADDRESS, USER_CTRL,    0x0C);     			// Reset FIFO and DMP
 	wait(0.015);
   
 //	Configure MPU9150 gyro and accelerometer for bias calculation
-	MPU9150_writeByte(MPU9150_ADDRESS, CONFIG, 0x01);      					// Set low-pass filter to 188 Hz
-	MPU9150_writeByte(MPU9150_ADDRESS, SMPLRT_DIV, 0x00);  					// Set sample rate to 1 kHz
-	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG, 0x00);  				// Set gyro full-scale to 250 degrees per second, maximum sensitivity
+	MPU9150_writeByte(MPU9150_ADDRESS, CONFIG,       0x01);    				// Set low-pass filter to 188 Hz
+	MPU9150_writeByte(MPU9150_ADDRESS, SMPLRT_DIV,   0x00);  				// Set sample rate to 1 kHz
+	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG,  0x00);  				// Set gyro full-scale to 250 degrees per second, maximum sensitivity
 	MPU9150_writeByte(MPU9150_ADDRESS, ACCEL_CONFIG, 0x00); 				// Set accelerometer full-scale to 2 g, maximum sensitivity
 
 	uint16_t  gyrosensitivity  = 131;   									// = 131 LSB/degrees/sec
 	uint16_t  accelsensitivity = 16384;  									// = 16384 LSB/g
  
 //	Configure FIFO to capture accelerometer and gyro data for bias calculation
-	MPU9150_writeByte(MPU9150_ADDRESS, USER_CTRL, 0x40);   					// Enable FIFO  , I2C_MST_EN is disabled, and I2C_MST_RESET for once
-	MPU9150_writeByte(MPU9150_ADDRESS, FIFO_EN, 0x78);     					// Enable gyro and accelerometer sensors for FIFO (max size 1024 bytes in MPU9150)
+	MPU9150_writeByte(MPU9150_ADDRESS, USER_CTRL,   0x40);   				// Enable FIFO  , I2C_MST_EN is disabled, and I2C_MST_RESET for once
+	MPU9150_writeByte(MPU9150_ADDRESS, FIFO_EN,     0x78);     				// Enable gyro and accelerometer sensors for FIFO (max size 1024 bytes in MPU9150)
 	wait(0.08); 															// accumulate 80 samples in 80 milliseconds = 960 bytes
  
 //	At end of sample accumulation, turn off FIFO sensor read
@@ -769,7 +776,8 @@ void calibrateMPU9150(float * dest1, float * dest2) {						// Calibrate Gyro and
     MPU9150_readBytes(MPU9150_ADDRESS, FIFO_R_W, 12, &data[0]); 			// Read data for averaging
     accel_temp[0] = (int16_t) (((int16_t)data[0] << 8)  | data[1] );		// Form signed 16-bit integer for each sample in FIFO
     accel_temp[1] = (int16_t) (((int16_t)data[2] << 8)  | data[3] );
-    accel_temp[2] = (int16_t) (((int16_t)data[4] << 8)  | data[5] );    
+    accel_temp[2] = (int16_t) (((int16_t)data[4] << 8)  | data[5] );  
+	
     gyro_temp[0]  = (int16_t) (((int16_t)data[6] << 8)  | data[7] );
     gyro_temp[1]  = (int16_t) (((int16_t)data[8] << 8)  | data[9] );
     gyro_temp[2]  = (int16_t) (((int16_t)data[10] << 8) | data[11]);
@@ -777,6 +785,7 @@ void calibrateMPU9150(float * dest1, float * dest2) {						// Calibrate Gyro and
     accel_bias[0] += (int32_t) accel_temp[0]; 								// Sum individual signed 16-bit biases to get accumulated signed 32-bit biases
     accel_bias[1] += (int32_t) accel_temp[1];
     accel_bias[2] += (int32_t) accel_temp[2];
+	
     gyro_bias[0]  += (int32_t) gyro_temp[0];
     gyro_bias[1]  += (int32_t) gyro_temp[1];
     gyro_bias[2]  += (int32_t) gyro_temp[2];
@@ -850,17 +859,18 @@ void calibrateMPU9150(float * dest1, float * dest2) {						// Calibrate Gyro and
 	data[4] = (accel_bias_reg[2] >> 8) & 0xFF;
 	data[5] = (accel_bias_reg[2])      & 0xFF;
 	data[5] = data[5] | mask_bit[2]; 										// preserve temperature compensation bit when writing back to accelerometer bias registers
- 
+
+	
 //	Apparently this is not working for the acceleration biases in the MPU-9250
 //	Are we handling the temperature correction bit properly?
 	
 //	Push accelerometer biases to hardware registers
-//  MPU9150_writeByte(MPU9150_ADDRESS, XA_OFFSET_H, data[0]);  
-//  MPU9150_writeByte(MPU9150_ADDRESS, XA_OFFSET_L_TC, data[1]);
-//  MPU9150_writeByte(MPU9150_ADDRESS, YA_OFFSET_H, data[2]);
-//  MPU9150_writeByte(MPU9150_ADDRESS, YA_OFFSET_L_TC, data[3]);
-//  MPU9150_writeByte(MPU9150_ADDRESS, ZA_OFFSET_H, data[4]);
-//  MPU9150_writeByte(MPU9150_ADDRESS, ZA_OFFSET_L_TC, data[5]);
+//	MPU9150_writeByte(MPU9150_ADDRESS, XA_OFFSET_H,    data[0]);  
+//	MPU9150_writeByte(MPU9150_ADDRESS, XA_OFFSET_L_TC, data[1]);
+//	MPU9150_writeByte(MPU9150_ADDRESS, YA_OFFSET_H,    data[2]);
+//	MPU9150_writeByte(MPU9150_ADDRESS, YA_OFFSET_L_TC, data[3]);
+//	MPU9150_writeByte(MPU9150_ADDRESS, ZA_OFFSET_H,    data[4]);
+//	MPU9150_writeByte(MPU9150_ADDRESS, ZA_OFFSET_L_TC, data[5]);
  
 //	Output scaled accelerometer biases for manual subtraction in the main program
 	dest2[0] = (float)accel_bias[0]/(float)accelsensitivity; 
@@ -868,9 +878,7 @@ void calibrateMPU9150(float * dest1, float * dest2) {						// Calibrate Gyro and
 	dest2[2] = (float)accel_bias[2]/(float)accelsensitivity;
 }
  
- 
 void MPU9250_Setup () {
-
 	getAres();																// Get sensor resolutions, only need to do this once
 	getGres();
 	getMres();
@@ -891,8 +899,8 @@ void MPU9150SelfTest(float * destination) { 								// Should return percent dev
 	float factoryTrim[6];
    
 //	Configure the accelerometer for self-test
-	MPU9150_writeByte(MPU9150_ADDRESS, ACCEL_CONFIG, 0xF0); 					// Enable self test on all three axes and set accelerometer range to +/- 8 g
-	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG,  0xE0); 					// Enable self test on all three axes and set gyro range to +/- 250 degrees/s
+	MPU9150_writeByte(MPU9150_ADDRESS, ACCEL_CONFIG, 0xF0); 				// Enable self test on all three axes and set accelerometer range to +/- 8 g
+	MPU9150_writeByte(MPU9150_ADDRESS, GYRO_CONFIG,  0xE0); 				// Enable self test on all three axes and set gyro range to +/- 250 degrees/s
 	wait(0.25);  															// Delay a while to let the device execute the self-test
 
 	rawData[0] = MPU9150_readByte(MPU9150_ADDRESS, SELF_TEST_X); 			// X-axis self-test results
@@ -930,7 +938,6 @@ void MPU9150SelfTest(float * destination) { 								// Should return percent dev
 	for (int i = 0; i < 6; i++) {
 		destination[i] = 100.0f + 100.0f*(selfTest[i] - factoryTrim[i])/factoryTrim[i]; 		// Report percent differences
 	}
-   
 }
  
 

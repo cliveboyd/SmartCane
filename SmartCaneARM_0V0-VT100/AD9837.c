@@ -3,6 +3,7 @@
  *   @brief  Implementation of AD9837 Driver.
  *   @author Mihai Bancisor
 ********************************************************************************
+
  * Copyright 2012(c) Analog Devices, Inc.
  *
  * All rights reserved.
@@ -51,27 +52,27 @@
 #include "spi_master.h"
 #include "nrf_delay.h"
 
-
-#include "AD9837.h"		// AD9837 definitions.
+#include "AD9837.h"								// AD9837 definitions.
 
 #define AD9837_CS_PIN (7U)
 #define OTHER_CS_PINS {20U}
+
 #define SPI_TO_USE SPI_MASTER_0
 #define FREQREG_TO_USE AD9837_REG_FREQ0
 #define PHAREG_TO_USE AD9837_REG_PHASE0
 
 #ifdef SPI_MASTER_0_ENABLE
-#define SPIM0_SCK_PIN       (8U)     /**< SPI clock GPIO pin number. */
-#define SPIM0_MOSI_PIN      (9U)     /**< SPI Master Out Slave In GPIO pin number. */
-#define SPIM0_MISO_PIN      (11U)    // dummy pin /**< SPI Master In Slave Out GPIO pin number. */
-#define SPIM0_SS_PIN        AD9837_CS_PIN     /**< SPI Slave Select GPIO pin number. */
+#define SPIM0_SCK_PIN       (8U)     			/**< SPI clock GPIO pin number. */
+#define SPIM0_MOSI_PIN      (9U)     			/**< SPI Master Out Slave In GPIO pin number. */
+#define SPIM0_MISO_PIN      (11U)    			// dummy pin /**< SPI Master In Slave Out GPIO pin number. */
+#define SPIM0_SS_PIN        AD9837_CS_PIN     	/**< SPI Slave Select GPIO pin number. */
 #endif // SPI_MASTER_0_ENABLE
 
 #ifdef SPI_MASTER_1_ENABLE
-#define SPIM1_SCK_PIN       (19U)     /**< SPI clock GPIO pin number. */
-#define SPIM1_MOSI_PIN      (18U)     /**< SPI Master Out Slave In GPIO pin number. */
-#define SPIM1_MISO_PIN      (17U)     /**< SPI Master In Slave Out GPIO pin number. */
-#define SPIM1_SS_PIN        (20U)  	// flash spi instance bus CS     /**< SPI Slave Select GPIO pin number. */
+#define SPIM1_SCK_PIN       (19U)     			/**< SPI clock GPIO pin number. */
+#define SPIM1_MOSI_PIN      (18U)     			/**< SPI Master Out Slave In GPIO pin number. */
+#define SPIM1_MISO_PIN      (17U)     			/**< SPI Master In Slave Out GPIO pin number. */
+#define SPIM1_SS_PIN        (20U)  				// flash spi instance bus CS     /**< SPI Slave Select GPIO pin number. */
 #endif // SPI_MASTER_1_ENABLE
 
 
@@ -106,9 +107,9 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
     // Configure SPI master.
     spi_master_config_t spi_config = SPI_MASTER_INIT_DEFAULT;
 
-    switch (spi_master_instance)
-    {
-        #ifdef SPI_MASTER_0_ENABLE
+    switch (spi_master_instance) {
+        
+		#ifdef SPI_MASTER_0_ENABLE
         case SPI_MASTER_0:
         {
             spi_config.SPI_Pin_SCK  = SPIM0_SCK_PIN;
@@ -128,7 +129,7 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
             spi_config.SPI_Pin_SS   = SPIM1_SS_PIN;
         }
         break;
-        #endif /* SPI_MASTER_1_ENABLE */
+        #endif 	/* SPI_MASTER_1_ENABLE */
 
         default:
             break;
@@ -141,7 +142,8 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
 	spi_config.SPI_PriorityIRQ = APP_IRQ_PRIORITY_HIGH;
 	
     err_code = spi_master_open(spi_master_instance, &spi_config);
-    APP_ERROR_CHECK(err_code);
+    
+	APP_ERROR_CHECK(err_code);
 
     // Register event handler for SPI master.
     spi_master_evt_handler_reg(spi_master_instance, spi_master_event_handler);
@@ -153,8 +155,7 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
  *
  * @return 1.
 *******************************************************************************/
-unsigned char AD9837_Init(u32 freq, u16 phase)
-{
+unsigned char AD9837_Init(u32 freq, u16 phase) {
 	
 	u8 sharedCS[] = OTHER_CS_PINS;
 	
@@ -211,8 +212,7 @@ static void SPI_Write(const spi_master_hw_instance_t spi_master_hw_instance,
  *
  * @return None.
 *******************************************************************************/
-void AD9837_Reset(void)
-{
+void AD9837_Reset(void) {
     AD9837_SetRegisterValue(AD9837_REG_CMD | AD9837_RESET);
 }
 
@@ -221,8 +221,7 @@ void AD9837_Reset(void)
  * i.e. enable the DAC output
  * @return None.
 *******************************************************************************/
-void AD9837_Enable(bool bSq)
-{
+void AD9837_Enable(bool bSq) {
 	if(bSq) 
 		AD9837_SetRegisterValue(AD9837_REG_CMD | AD9837_B28 |AD9837_OPBITEN);
 	else
@@ -235,8 +234,7 @@ void AD9837_Enable(bool bSq)
  *
  * @return  None.    
 *******************************************************************************/
-void AD9837_SetRegisterValue(unsigned short regValue)
-{
+void AD9837_SetRegisterValue(unsigned short regValue) {
 	unsigned char data[2] = {0x00, 0x00};
 	
 	data[0] = (unsigned char)((regValue & 0xFF00) >> 8);
@@ -254,8 +252,7 @@ void AD9837_SetRegisterValue(unsigned short regValue)
  *
  * @return  None.    
 *******************************************************************************/
-void AD9837_SetFrequency(u16 reg, u32 val)
-{
+void AD9837_SetFrequency(u16 reg, u32 val) {
 	unsigned short freqHi = reg;
 	unsigned short freqLo = reg;
 	
@@ -273,8 +270,7 @@ void AD9837_SetFrequency(u16 reg, u32 val)
  *
  * @return  None.    
 *******************************************************************************/
-void AD9837_SetPhase(u16 reg, u16 val)
-{
+void AD9837_SetPhase(u16 reg, u16 val) {
 	unsigned short phase = reg;
 	phase |= val;
 	AD9837_SetRegisterValue(phase);
@@ -287,8 +283,7 @@ void AD9837_SetPhase(u16 reg, u16 val)
  *
  * @return  None.    
 *******************************************************************************/
-void AD9837_SetWave(unsigned short type)
-{
+void AD9837_SetWave(unsigned short type) {
 	AD9837_SetRegisterValue(type);
 }
 

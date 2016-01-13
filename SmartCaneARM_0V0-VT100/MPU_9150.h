@@ -29,16 +29,20 @@ THE SOFTWARE.
  
 #ifndef MPU9150_H
 #define MPU9150_H
-#include <stdint.h>  // for uint32_t etc.
+
+#include <stdint.h>  			// for uint32_t etc.
 #include <stdbool.h>
+
  // Reference: 
  // product spec
- // http://www.inertialelements.com/docs/PS-MPU-9150A-00v4_3.pdf  
+ // http://www.inertialelements.com/docs/PS-MPU-9150A-00v4_3.pdf 
+ 
  // register map
  // http://www.inertialelements.com/docs/RM-MPU-9150A-00v4_2.pdf
 
-// AD0 Pin 
-// the eight-bit device address, so shift seven-bit addresses left by one!
+ // AD0 Pin 
+ // the eight-bit device address, so shift seven-bit addresses left by one!
+
 #define AD0 0
 #if AD0
 #define MPU9150_ADDRESS			0x69  		// Device address when AD0 = 1, 1101001
@@ -47,7 +51,6 @@ THE SOFTWARE.
 #endif 
 
 #define AK8975A_ADDRESS			0x0C 		// deprecated in Rev 4.2
-
 
 // Magnetometer Registers
 #define WHO_AM_I_AK8975A 		0x00 		// should return 0x48
@@ -185,22 +188,24 @@ THE SOFTWARE.
 #define I2C_SLV3_DO				0x66
 #define I2C_MST_DELAY_CTRL		0x67
 #define SIGNAL_PATH_RESET		0x68
+
 //#define MOT_DETECT_CTRL		0x69	// deprecated in Rev 4.2
 #define USER_CTRL				0x6A  
 #define PWR_MGMT_1       		0x6B	// Device defaults to the SLEEP mode
 #define PWR_MGMT_2       		0x6C
+
 //#define DMP_BANK        		0x6D	// deprecated in Rev 4.2// Activates a specific bank in the DMP
 //#define DMP_RW_PNT       		0x6E	// deprecated in Rev 4.2// Set read/write pointer to a specific start address in specified DMP bank
 //#define DMP_REG       		0x6F	// deprecated in Rev 4.2// Register in DMP from which to read or to which to write
 //#define DMP_REG_1        		0x70
 //#define DMP_REG_2        		0x71
+
 #define FIFO_COUNTH      		0x72
 #define FIFO_COUNTL      		0x73
 #define FIFO_R_W         		0x74
 #define WHO_AM_I_MPU9150 		0x75	// Should return 0x68, 0x0 110100 0 , as device address
  
- 
- 
+  
 // Set initial input parameters
 typedef enum {
   AFS_2G = 0,
@@ -221,7 +226,7 @@ typedef enum {
   MFS_16BITS
 } Mscale_t;
 
-//uint8_t Mmode = 0x02;        						// 2 for 8 Hz, 6 for 100 Hz continuous magnetometer data read
+//uint8_t Mmode = 0x02;        			// 2 for 8 Hz, 6 for 100 Hz continuous magnetometer data read
 
 void readAccelFloatMG(float *xyz);
 void readGyroFloatDeg(float *xyz);
@@ -238,8 +243,8 @@ void MPU9150SelfTest(float * destination);
 void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
 void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
 
-
 void calibrateMPU9150(float[],float[]);
+void MPU9250_Setup(void);
 
 #endif
 

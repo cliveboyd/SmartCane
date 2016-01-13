@@ -76,23 +76,23 @@
         )                                                                                          \
     )
 
-/**@brief Convert milliseconds to timer ticks.
+/**@brief 		Convert milliseconds to timer ticks.
  *
- * @note This macro uses 64 bit integer arithmetic, but as long as the macro parameters are
- *       constants (i.e. defines), the computation will be done by the preprocessor.
+ * @note 		This macro uses 64 bit integer arithmetic, but as long as the macro parameters are
+ *       		constants (i.e. defines), the computation will be done by the preprocessor.
  *
  * @param[in]  MS          Milliseconds.
  * @param[in]  PRESCALER   Value of the RTC1 PRESCALER register (must be the same value that was
  *                         passed to APP_TIMER_INIT()). 
  * 
- * @note   When using this macro, it is the responsibility of the developer to ensure that the 
- *         values provided as input result in an output value that is supported by the
- *         @ref app_timer_start function. For example, when the ticks for 1 ms is needed, the
- *         maximum possible value of PRESCALER must be 6, when @ref APP_TIMER_CLOCK_FREQ is 32768.
- *         This will result in a ticks value as 5. Any higher value for PRESCALER will result in a
- *         ticks value that is not supported by this module.
+ * @note   		When using this macro, it is the responsibility of the developer to ensure that the 
+ *         		values provided as input result in an output value that is supported by the
+ *         		@ref app_timer_start function. For example, when the ticks for 1 ms is needed, the
+ *        		maximum possible value of PRESCALER must be 6, when @ref APP_TIMER_CLOCK_FREQ is 32768.
+ *         		This will result in a ticks value as 5. Any higher value for PRESCALER will result in a
+ *         		ticks value that is not supported by this module.
  *
- * @return     Number of timer ticks.
+ * @return		Number of timer ticks.
  */
 #define APP_TIMER_TICKS(MS, PRESCALER)\
             ((uint32_t)ROUNDED_DIV((MS) * (uint64_t)APP_TIMER_CLOCK_FREQ, ((PRESCALER) + 1) * 1000))
@@ -120,11 +120,11 @@ typedef enum
  *          making sure that the buffer is correctly aligned. It will also connect the timer module
  *          to the scheduler (if specified).
  *
- * @note    This module assumes that the LFCLK is already running. If it isn't, the module will 
+ * @note	This module assumes that the LFCLK is already running. If it isn't, the module will 
  *          be non-functional, since the RTC will not run. If you don't use a softdevice, you'll 
- *          have to start the LFCLK manually. See the rtc_example's lfclk_config() function 
- *          for an example of how to do this. If you use a softdevice, the LFCLK is started on 
- *          softdevice init. 
+ *			have to start the LFCLK manually. See the rtc_example's lfclk_config() function 
+ *			for an example of how to do this. If you use a softdevice, the LFCLK is started on 
+ *			softdevice init. 
  *
  *
  * @param[in]  PRESCALER        Value of the RTC1 PRESCALER register. This will decide the

@@ -36,8 +36,8 @@ THE SOFTWARE.
 static ble_nus_t	m_nus;									/**< Structure to identify the Nordic UART Service. */
 
 
-void uart_event_handle_withBle(app_uart_evt_t * p_event)	// is setup callback in initA2035H
-{
+void uart_event_handle_withBle(app_uart_evt_t * p_event) {	// is setup callback in initA2035H
+
 	static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];		// 20 bytes
     static uint8_t index = 0;
     uint32_t err_code;
@@ -88,16 +88,14 @@ void uart_event_handle_withBle(app_uart_evt_t * p_event)	// is setup callback in
 }
 
 
-typedef enum
-{
+typedef enum {
 	Pull_up,
 	Pull_down,
 	Pull_disable
 } PullUpDown_t;
 
 
-static __INLINE void pullupdown_gpio_cfg_output(uint32_t pin_number, PullUpDown_t pull )
-{
+static __INLINE void pullupdown_gpio_cfg_output(uint32_t pin_number, PullUpDown_t pull ) {
 	unsigned char pullset;
 	switch(pull)
 	{
@@ -119,8 +117,7 @@ static __INLINE void pullupdown_gpio_cfg_output(uint32_t pin_number, PullUpDown_
                                             | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
 }
 
-void initA2035H(void)
-{
+void initA2035H(void) {
 	nrf_delay_us(1000000); // delay 1s 
 	pullupdown_gpio_cfg_output(A2035H_ON_OFF_PIN_NUMBER, Pull_down);
 	pullupdown_gpio_cfg_output(A2035H_NRST_PIN_NUMBER, Pull_up);
