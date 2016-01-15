@@ -100,4 +100,6 @@ float MPL3115A2_getTemperature(void);
 uint8_t MPL3115A2_read8(uint8_t a);
 bool MPL3115A2_write8(uint8_t a, uint8_t d);
 
+uint8_t MPL3115A2_WhoAmI (void);
+
 #endif 

@@ -204,7 +204,7 @@ THE SOFTWARE.
 #define FIFO_COUNTL      		0x73
 #define FIFO_R_W         		0x74
 #define WHO_AM_I_MPU9150 		0x75	// Should return 0x68, 0x0 110100 0 , as device address
- 
+#define WHO_AM_I_MPU9250 		0x75	// Should return 0x71, 0x0 110100 0 , as device address
   
 // Set initial input parameters
 typedef enum {
@@ -243,8 +243,13 @@ void MPU9150SelfTest(float * destination);
 void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
 void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
 
+int16_t MPU9150_get_temperature(void);
+
+uint8_t MPU9250_WhoAmI(void);
+
 void calibrateMPU9150(float[],float[]);
 void MPU9250_Setup(void);
+
 
 #endif
 

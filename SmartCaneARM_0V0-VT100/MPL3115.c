@@ -24,6 +24,11 @@ THE SOFTWARE.
 #include "nrf_delay.h"
 #include "Communication.h"
 
+uint8_t MPL3115A2_WhoAmI () {
+	uint8_t d = MPL3115A2_read8(MPL3115A2_WHOAMI);		// Device ID == 0xC4
+	return d;
+}
+
 /****************************************************************************************/
 /*!
     @brief  i2C Altimeter-Pressure Sensor Setups the HW (reads coefficients values, etc.)

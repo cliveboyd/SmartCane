@@ -312,15 +312,15 @@ struct power_supply_desc {
 //#endif
 //};
 
-#define pr_err(format, ...) do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
+#define pr_err(format, ...) do {} while (0)				// fprintf (stderr, format, ## __VA_ARGS__)
 #ifdef DEBUG
-#define pr_debug(format, ...) do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
+#define pr_debug(format, ...) do {} while (0)			// fprintf (stderr, format, ## __VA_ARGS__)
 #else
 #define pr_debug(format, ...) do {} while (0)
 #endif
-#define dev_err(dev, format, ...) do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
-#define dev_warn(dev, format, ...) do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
-#define dev_dbg(dev, format, ...) do {} while (0) //fprintf (stderr, format, ## __VA_ARGS__)
+#define dev_err(dev, format, ...) do {} while (0)		// fprintf (stderr, format, ## __VA_ARGS__)
+#define dev_warn(dev, format, ...) do {} while (0)		// fprintf (stderr, format, ## __VA_ARGS__)
+#define dev_dbg(dev, format, ...) do {} while (0)		// fprintf (stderr, format, ## __VA_ARGS__)
 	 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]) )	
 #define I16_MSB(x)                      ((x >> 8) & 0xFF)
@@ -366,17 +366,17 @@ enum ltc294x_reg {
 #define EPERM					23      /* Invalid permission */
 
 #define BIT(nr)                 (1UL << (nr))
-#define LTC2943_REG_CONTROL_MODE_MASK (BIT(7) | BIT(6))
-#define LTC2943_REG_CONTROL_MODE_SCAN (BIT(7))
-#define LTC2943_REG_CONTROL_MODE_MANUAL (BIT(6))
-#define LTC2943_REG_CONTROL_MODE_AUTO (BIT(7) | BIT(6))
-#define LTC294X_REG_CONTROL_PRESCALER_MASK      (BIT(5) | BIT(4) | BIT(3))
-#define LTC294X_REG_CONTROL_SHUTDOWN_MASK       (BIT(0))
+#define LTC2943_REG_CONTROL_MODE_MASK 						(BIT(7) | BIT(6))
+#define LTC2943_REG_CONTROL_MODE_SCAN 						(BIT(7))
+#define LTC2943_REG_CONTROL_MODE_MANUAL 					(BIT(6))
+#define LTC2943_REG_CONTROL_MODE_AUTO 						(BIT(7) | BIT(6))
+#define LTC294X_REG_CONTROL_PRESCALER_MASK      			(BIT(5) | BIT(4) | BIT(3))
+#define LTC294X_REG_CONTROL_SHUTDOWN_MASK       			(BIT(0))
 #define LTC294X_REG_CONTROL_PRESCALER_SET(x) \
         ((x << 3) & LTC294X_REG_CONTROL_PRESCALER_MASK)
 #define LTC294X_REG_CONTROL_ALCC_CONFIG_DISABLED        0
 #define LTC294X_REG_CONTROL_ALCC_CONFIG_OUTPUT_ALERT        (BIT(2))
-#define LTC294X_REG_CONTROL_ALCC_CONFIG_INPUT_RESET_CHARGE        (BIT(1))
+#define LTC294X_REG_CONTROL_ALCC_CONFIG_INPUT_RESET_CHARGE  (BIT(1))
 
 #define LTC2941_NUM_REGS        0x08
 #define LTC2943_NUM_REGS        0x18
@@ -500,7 +500,6 @@ static int ltc294x_write_regs(struct i2c_client *client,
         dev_dbg(&client->dev, "%s (%#x, %d) -> %#x\n",
                 __func__, reg, num_regs, *buf);
 
-		
         return 0;
 }
 
@@ -544,7 +543,6 @@ int ltc294x_reset( int prescaler_exp) {
 		}
 		while(value[0]!= control);
 		
-
         return 0;
 
 error_exit:

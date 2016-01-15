@@ -548,9 +548,9 @@
           <targetInfo name="ble_app_temp" versionMatchMode="fixed"/>
         </targetInfos>
       </package>
-      <package name="nRF_SoftDevice_S110" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S110/" vendor="NordicSemiconductor" version="8.0.0">
+      <package name="nRF_SoftDevice_S110" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S110/" vendor="NordicSemiconductor" version="8.0.2">
         <targetInfos>
-          <targetInfo name="ble_app_temp" versionMatchMode="fixed"/>
+          <targetInfo name="ble_app_temp"/>
         </targetInfos>
       </package>
     </packages>
@@ -796,14 +796,14 @@
           <targetInfo name="ble_app_temp"/>
         </targetInfos>
       </component>
-      <component Cclass="nRF_SoftDevice" Cgroup="s110" Cvariant="default" Cvendor="NordicSemiconductor" Cversion="8.0.0" condition="s110_default">
-        <package name="nRF_SoftDevice_S110" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S110/" vendor="NordicSemiconductor" version="8.0.0"/>
+      <component Cclass="nRF_SoftDevice" Cgroup="s110" Cvariant="default" Cvendor="NordicSemiconductor" Cversion="8.0.2" condition="s110_default">
+        <package name="nRF_SoftDevice_S110" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S110/" vendor="NordicSemiconductor" version="8.0.2"/>
         <targetInfos>
           <targetInfo name="ble_app_temp"/>
         </targetInfos>
       </component>
-      <component Cclass="nRF_SoftDevice" Cgroup="s110_hex" Cvendor="NordicSemiconductor" Cversion="8.0.0" condition="s110_hex">
-        <package name="nRF_SoftDevice_S110" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S110/" vendor="NordicSemiconductor" version="8.0.0"/>
+      <component Cclass="nRF_SoftDevice" Cgroup="s110_hex" Cvendor="NordicSemiconductor" Cversion="8.0.2" condition="s110_hex">
+        <package name="nRF_SoftDevice_S110" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S110/" vendor="NordicSemiconductor" version="8.0.2"/>
         <targetInfos>
           <targetInfo excluded="1" name="ble_app_temp" versionMatchMode=""/>
         </targetInfos>
