@@ -28,22 +28,40 @@ THE SOFTWARE.
 
  */
  
-#ifndef A2035H_H
-
-#define A2035H_H
-
-#include <stdint.h>  							// for uint32_t etc.
+/******************************************************************************/
+/* Include Files                                                              */
+/******************************************************************************/
+#include <stdint.h>  // for uint32_t etc.
 #include <stdbool.h>
-#include "ble_nus.h"
 
-#define A2035H_ON_OFF_PIN_NUMBER	(13U)
-#define A2035H_NRST_PIN_NUMBER		(10U)
-#define A2035H_NEN_PIN_NUMBER		(04U)
-#define A2035H_INT_PIN_NUMBER		(14U)
-//#define A2035H_TX_PIN_NUMBER		(15U)
+ #ifndef u8
+typedef				uint8_t     u8;
+typedef 			uint16_t    u16;
+typedef 			uint32_t    u32;
+typedef				uint64_t    u64;
 
+typedef volatile	u8			vu8;
+typedef volatile	u32			vu32;
+typedef volatile	u64			vu64;
+#endif
+
+
+/******************************************************************************/
+/* Functions Prototypes                                                       */
+/******************************************************************************/
+
+/* Toggle the Start On-OFF Pin. */
 void initA2035H(void);
 
-static ble_nus_t  m_nus;						/** < Structure to identify the Nordic UART Service. */
+/* Initializes the SPI communication peripheral and reset the part. */
+void A2035H_Init_IO(void);
 
-#endif 											// A2035H_H
+/* Reset the A2035H. */
+void A2035H_Reset(void);
+
+
+/* Writes a 16bit value to the A2035. */
+void A2035H_SetRegisterValue(unsigned short regValue);
+
+
+

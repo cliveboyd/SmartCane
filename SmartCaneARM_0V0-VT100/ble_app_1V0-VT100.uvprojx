@@ -481,6 +481,11 @@
               <FileType>1</FileType>
               <FilePath>.\MPL3115.c</FilePath>
             </File>
+            <File>
+              <FileName>AT45.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\AT45.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -631,7 +636,7 @@
       <component Cclass="nRF_Drivers" Cgroup="app_uart" Cvariant="Fifo" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="app_uart_Fifo">
         <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
         <targetInfos>
-          <targetInfo name="ble_app_temp" versionMatchMode="fixed"/>
+          <targetInfo name="ble_app_temp"/>
         </targetInfos>
       </component>
       <component Cclass="nRF_Drivers" Cgroup="ble_flash" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="ble_flash">

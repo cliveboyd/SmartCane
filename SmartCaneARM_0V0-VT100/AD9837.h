@@ -49,13 +49,14 @@
 #include <stdbool.h>
 
 #ifndef u8
-typedef uint8_t     u8;
-typedef uint16_t    u16;
-typedef uint32_t    u32;
-typedef uint64_t    u64;
-typedef volatile u8     vu8;
-typedef volatile u32    vu32;
-typedef volatile u64    vu64;
+typedef				uint8_t     u8;
+typedef 			uint16_t    u16;
+typedef 			uint32_t    u32;
+typedef				uint64_t    u64;
+
+typedef volatile	u8			vu8;
+typedef volatile	u32			vu32;
+typedef volatile	u64			vu64;
 #endif
 
 /******************************************************************************/
@@ -90,19 +91,26 @@ typedef volatile u64    vu64;
 #define AD9837_OUT_TRIANGLE	((0 << 5) | (1 << 1) | (0 << 3))
 #define AD9837_OUT_MSB		((1 << 5) | (0 << 1) | (1 << 3))
 #define AD9837_OUT_MSB2		((1 << 5) | (0 << 1) | (0 << 3))
+
 /******************************************************************************/
 /* Functions Prototypes                                                       */
 /******************************************************************************/
+
 /* Initializes the SPI communication peripheral and resets the part. */
 unsigned char AD9837_Init(u32 freq, u16 phase);
+
 /* Sets the Reset bit of the AD9837. */
 void AD9837_Reset(void);
+
 /* Clears the Reset bit of the AD9837. */
 void AD9837_Enable(bool bSq);
+
 /* Writes the value to a register. */
 void AD9837_SetRegisterValue(unsigned short regValue);
+
 /* Writes to the frequency registers. */
 void AD9837_SetFrequency(u16 reg, u32 val);
+
 /* Writes to the phase registers. */
 void AD9837_SetPhase(u16 reg, u16 val);
 

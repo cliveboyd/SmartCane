@@ -26,6 +26,9 @@ THE SOFTWARE.
 #include "Communication.h"
 #include "math.h"
 
+
+#define MAX_TIMEOUT_LOOPS (500UL) 								/**< MAX while loops to wait for MPU event */
+
 Ascale_t Ascale = AFS_2G;     									// AFS_2G, AFS_4G, AFS_8G, AFS_16G
 Gscale_t Gscale = GFS_1000DPS; 									// GFS_250DPS, GFS_500DPS, GFS_1000DPS, GFS_2000DPS
 Mscale_t Mscale = MFS_16BITS;
@@ -98,8 +101,7 @@ void MPU9150_readBytes_(uint8_t address, uint8_t subAddress, uint8_t count, uint
 	}
 	if (i>=5) 
 		return;
-	for(i=0;i<5;i++)
-	{
+	for(i=0;i<5;i++) {
 		if(I2C_Read(address,
              dest,
              count,
@@ -248,8 +250,9 @@ void readMagData(int16_t * destination) {											// Initalise Magnetometer
 	
 /*	Only accept a new magnetometer data read if the data ready bit is set and 
 	if there are no sensor overflow or data read errors */
-	while(!(MPU9150_readByte(AK8975A_ADDRESS, AK8975A_ST1) & 0x01)) {				// wait for magnetometer data ready bit to be set
-		nrf_delay_us(1000);
+	uint32_t timeout = MAX_TIMEOUT_LOOPS; 															/* max loops to wait for RXDREADY event*/
+	while(!(MPU9150_readByte(AK8975A_ADDRESS, AK8975A_ST1) & 0x01) && (--timeout)) {				// wait for magnetometer data ready bit to be set
+		nrf_delay_us(100);
 	}
 	
 	MPU9150_readBytes(AK8975A_ADDRESS, AK8975A_XOUT_L, 6, &rawData[0]);  			// Read the six raw data registers sequentially into data array
@@ -268,7 +271,8 @@ void readMagData(int16_t * destination) {											// Initalise Magnetometer
 	if(c&0x0C) {																	// overflow 
 		MPU9150_writeByte(AK8975A_ADDRESS, AK8975A_CNTL, AK8975A_CNTL_SINGLE_MODE); // toggle enable data read from magnetometer, no continuous read mode!
 		
-		while(!(MPU9150_readByte(AK8975A_ADDRESS, AK8975A_ST1) & 0x01)) {
+		timeout = MAX_TIMEOUT_LOOPS; 
+		while(!(MPU9150_readByte(AK8975A_ADDRESS, AK8975A_ST1) & 0x01) && (--timeout)) {
 			nrf_delay_us(1000);}
 		
 		MPU9150_readBytes(AK8975A_ADDRESS, AK8975A_XOUT_L, 6, &rawData[0]);  		// Read the six raw data registers sequentially into data array
@@ -1114,7 +1118,8 @@ void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, fl
 		eInt[0] += ex;										// accumulate integral error
 		eInt[1] += ey;
 		eInt[2] += ez;
-	} else {
+	} 
+	else {
 		eInt[0] = 0.0f;										// prevent integral wind up
 		eInt[1] = 0.0f;
 		eInt[2] = 0.0f;

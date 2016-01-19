@@ -730,7 +730,8 @@ int ltc294x_init(void) {
 					prescaler_exp = LTC2943_MAX_PRESCALER_EXP;
 			info->Qlsb = ((340 * 50000) / r_sense) /
 							(4096 / (1 << (2*prescaler_exp)));
-	} else {
+	} 
+	else {
 			if (prescaler_exp > LTC2941_MAX_PRESCALER_EXP)
 					prescaler_exp = LTC2941_MAX_PRESCALER_EXP;
 			info->Qlsb = ((85 * 50000) / r_sense) /

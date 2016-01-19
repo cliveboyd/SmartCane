@@ -105,7 +105,8 @@ static bool twi_master_read(uint8_t * data, uint8_t data_length, bool issue_stop
     
 	if (data_length == 1) {
         NRF_PPI->CH[0].TEP = (uint32_t)&NRF_TWI1->TASKS_STOP;
-    } else {
+    } 
+	else {
         NRF_PPI->CH[0].TEP = (uint32_t)&NRF_TWI1->TASKS_SUSPEND;
     }
 
@@ -227,7 +228,8 @@ static bool twi_master_clear_bus(void) {
     if ((TWI_SDA_READ() == 1) && (TWI_SCL_READ() == 1)) {
         bus_clear = true;
 		
-    } else {
+    } 
+	else {
         uint_fast8_t i;
         bus_clear = false;
 
@@ -302,7 +304,8 @@ bool twi_master_transfer(uint8_t   address,
 
         if ((address & TWI_READ_BIT)) {
             transfer_succeeded = twi_master_read(data, data_length, issue_stop_condition);
-        } else {
+        } 
+		else {
             transfer_succeeded = twi_master_write(data, data_length, issue_stop_condition);
         }
     }

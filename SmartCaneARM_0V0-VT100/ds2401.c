@@ -87,8 +87,7 @@ unsigned char ds2401_id[8];
 #define udelay(u) nrf_delay_us((u))
 /*---------------------------------------------------------------------------*/
 static uint8_t
-reset(void)
-{
+reset(void) {
   uint8_t result;
   OW_DRIVE();
   udelay(500);     					/* 480 < tH < 640 */
@@ -100,8 +99,7 @@ reset(void)
 }
 /*---------------------------------------------------------------------------*/
 static void
-write_byte(uint8_t byte)
-{
+write_byte(uint8_t byte) {
   uint8_t i = 7;
   do {
     if (byte & 0x01) {
@@ -109,7 +107,8 @@ write_byte(uint8_t byte)
       udelay(tA);
       OW_RELEASE();    				/* Releases the bus */
       udelay(tB);
-    } else {
+    } 
+	else {
       OW_DRIVE();
       udelay(tC);
       OW_RELEASE();    				/* Releases the bus */

@@ -361,7 +361,8 @@ static uint32_t bsp_led_indication(bsp_indication_t indicate)
                     err_code = app_timer_start(m_alert_timer_id, BSP_MS_TO_TICK((next_delay * ALERT_INTERVAL)), NULL);
                 }
                 LEDS_ON(ALERT_LED_MASK);
-            } else {
+            } 
+			else {
                 LEDS_OFF(ALERT_LED_MASK);
             }
             break;

@@ -71,25 +71,25 @@ unsigned char AD7746_Init(void)
 	AD7746_Read(AD7746_REG_CAP_SETUP, &config,1);
 	ASSERT(config == 0);
 		
-		config = config | AD7746_CAPSETUP_CAPEN | AD7746_CAPSETUP_CACHOP;
-	  AD7746_Write(AD7746_REG_CAP_SETUP, &config,1);
-	
+	config = config | AD7746_CAPSETUP_CAPEN | AD7746_CAPSETUP_CACHOP;
+	AD7746_Write(AD7746_REG_CAP_SETUP, &config,1);
+
 	AD7746_Read(AD7746_REG_CAP_SETUP, &config,1);
 	ASSERT(config == (AD7746_CAPSETUP_CAPEN | AD7746_CAPSETUP_CACHOP));
 	// set temp measurement	
-		AD7746_Read(AD7746_REG_VT_SETUP, &config,1);
-		
-		config = config | AD7746_VTSETUP_VTEN | AD7746_VTSETUP_VTCHOP;
-	  AD7746_Write(AD7746_REG_VT_SETUP, &config,1);
-		AD7746_Read(AD7746_REG_VT_SETUP, &config,1);
+	AD7746_Read(AD7746_REG_VT_SETUP, &config,1);
+
+	config = config | AD7746_VTSETUP_VTEN | AD7746_VTSETUP_VTCHOP;
+	AD7746_Write(AD7746_REG_VT_SETUP, &config,1);
+	AD7746_Read(AD7746_REG_VT_SETUP, &config,1);
 	ASSERT(config == (AD7746_VTSETUP_VTEN | AD7746_VTSETUP_VTCHOP));
 	// set config
-		AD7746_Read(AD7746_REG_CFG, &config,1);
-		
+	AD7746_Read(AD7746_REG_CFG, &config,1);
+
 	// single conversion, slow conversion time (120ms for cap and temp)
-		config = AD7746_CONF_MODE_CONT_CONV | AD7746_CONF_VTFS(0) | AD7746_CONF_CAPFS(0);
-	  AD7746_Write(AD7746_REG_CFG, &config,1);
-				AD7746_Read(AD7746_REG_CFG, &config,1);
+	config = AD7746_CONF_MODE_CONT_CONV | AD7746_CONF_VTFS(0) | AD7746_CONF_CAPFS(0);
+	AD7746_Write(AD7746_REG_CFG, &config,1);
+	AD7746_Read(AD7746_REG_CFG, &config,1);
 	ASSERT(config == (AD7746_CONF_MODE_CONT_CONV | AD7746_CONF_VTFS(0) | AD7746_CONF_CAPFS(0)));
 	
     return status;
@@ -104,12 +104,12 @@ unsigned long AD7746_getConfig(void)
 ASSERT(config == (AD7746_CAPSETUP_CAPEN | AD7746_CAPSETUP_CACHOP));
 	ret = config << 16;
 	// set temp measurement	
-		AD7746_Read(AD7746_REG_VT_SETUP, &config,1);
-			ASSERT(config == (AD7746_VTSETUP_VTEN | AD7746_VTSETUP_VTCHOP));
+	AD7746_Read(AD7746_REG_VT_SETUP, &config,1);
+	ASSERT(config == (AD7746_VTSETUP_VTEN | AD7746_VTSETUP_VTCHOP));
 	ret += config << 8;
 	// set config
-		AD7746_Read(AD7746_REG_CFG, &config,1);
-		ASSERT(config == (AD7746_CONF_MODE_CONT_CONV | AD7746_CONF_VTFS(3) | AD7746_CONF_CAPFS(7)));
+	AD7746_Read(AD7746_REG_CFG, &config,1);
+	ASSERT(config == (AD7746_CONF_MODE_CONT_CONV | AD7746_CONF_VTFS(3) | AD7746_CONF_CAPFS(7)));
 
 				return config;
 
@@ -161,6 +161,7 @@ void AD7746_Read(unsigned char subAddr,
               (unsigned char*)&subAddr,
               1,
               0));
+			  
     while(!I2C_Read(AD7746_ADDRESS,
              dataBuffer,
              bytesNumber,
@@ -195,8 +196,7 @@ unsigned long AD7746_GetVTData(void)
     unsigned long vtData = 0;
     
     receiveBuffer[0] = AD7746_STATUS_RDYVT;
-    while(!(receiveBuffer[0] & AD7746_STATUS_RDYVT))
-    {
+    while(!(receiveBuffer[0] & AD7746_STATUS_RDYVT)) {
         AD7746_Read(AD7746_REG_STATUS,
                     receiveBuffer,
                     1);
@@ -223,8 +223,7 @@ unsigned long AD7746_GetCapData(void)
     unsigned long capData = 0;
     
     receiveBuffer[0] = AD7746_STATUS_RDYCAP;
-    while(!(receiveBuffer[0] & AD7746_STATUS_RDYCAP))
-    {
+    while(!(receiveBuffer[0] & AD7746_STATUS_RDYCAP)) {
         AD7746_Read(AD7746_REG_STATUS,
                     receiveBuffer,
                     1);

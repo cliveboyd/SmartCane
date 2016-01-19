@@ -752,7 +752,8 @@ static int set_int_enable(unsigned char enable)
         if (i2c_write(st.hw->addr, st.reg->int_enable, 1, &tmp))
             return -1;
         st.chip_cfg.int_enable = tmp;
-    } else {
+    } 
+	else {
         if (!st.chip_cfg.sensors)
             return -1;
         if (enable && st.chip_cfg.int_enable)
@@ -951,7 +952,8 @@ int mpu_lp_accel_mode(unsigned short rate)
     } else if (rate <= 20) {
         tmp[1] = INV_LPA_20HZ;
         mpu_set_lpf(10);
-    } else {
+    } 
+	else {
         tmp[1] = INV_LPA_40HZ;
         mpu_set_lpf(20);
     }
@@ -1273,7 +1275,8 @@ int mpu_reset_fifo(void)
         data = 0;
         if (i2c_write(st.hw->addr, st.reg->fifo_en, 1, &data))
             return -1;
-    } else {
+    } 
+	else {
         data = BIT_FIFO_RST;
         if (i2c_write(st.hw->addr, st.reg->user_ctrl, 1, &data))
             return -1;
@@ -1795,7 +1798,8 @@ int mpu_set_sensors(unsigned char sensors)
     if (sensors & INV_XYZ_COMPASS) {
         data = AKM_SINGLE_MEASUREMENT;
         user_ctrl |= BIT_AUX_IF_EN;
-    } else {
+    } 
+	else {
         data = AKM_POWER_DOWN;
         user_ctrl &= ~BIT_AUX_IF_EN;
     }
@@ -2008,7 +2012,8 @@ int mpu_set_bypass(unsigned char bypass_on)
 //            tmp |= BIT_LATCH_EN | BIT_ANY_RD_CLR;
 //        if (i2c_write(st.hw->addr, st.reg->int_pin_cfg, 1, &tmp))
 //            return -1;
-    } else {
+    } 
+	else {
 		tmp = 0x00;
 		if (i2c_write(st.hw->addr, st.reg->int_pin_cfg, 1, &tmp))
 			return -1;
@@ -3061,7 +3066,8 @@ int mpu_set_dmp_state(unsigned char enable)
         /* Enable DMP interrupt. */
         set_int_enable(1);
         mpu_reset_fifo();
-    } else {
+    } 
+	else {
         /* Disable DMP interrupt. */
         set_int_enable(0);
         /* Restore FIFO settings. */
@@ -3402,7 +3408,8 @@ int mpu_lp_motion_interrupt(unsigned short thresh, unsigned char time,
         st.chip_cfg.int_motion_only = 1;
         return 0;
 #endif
-    } else {
+    } 
+	else {
         /* Don't "restore" the previous state if no state has been saved. */
         unsigned int ii;
         char *cache_ptr = (char*)&st.chip_cfg.cache;

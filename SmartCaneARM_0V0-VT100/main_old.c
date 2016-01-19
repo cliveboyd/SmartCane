@@ -249,7 +249,7 @@ static dm_application_instance_t m_app_handle;						/** < Application identifier
 static app_timer_id_t	m_sys_timer_id;								/** <  timer. */
 
 #define MAX_TEST_DATA_BYTES		(4U)								/** < max number of test bytes per TX Burst to be used for tx and rx. ---> was 55 */
-#define UART_TX_BUF_SIZE		128									/** < UART TX buffer size. Note 512 causes error in xxAA target ---> WARNING Must be 2^x */
+#define UART_TX_BUF_SIZE		256									/** < UART TX buffer size. Note 512 causes error in xxAA target ---> WARNING Must be 2^x */
 #define UART_RX_BUF_SIZE		16									/** < UART RX buffer size.  ---> WARNING Must be 2^x  */
 
 																	// Note... Melbourne == lat:-24.0000deg Lon:+135.0000deg Elev:0.00km
@@ -262,10 +262,10 @@ const float MagDeclination = -12.000;								// Magnetic declination at Melbourn
 const float EarthMagnetic = 60.00;									// Earths Magnetic field ranges from 25uT to 65uT ---> Melbourne=60uT
 
 //float	Magnetic[3];
-float	MagMeanCal[3];
-float	MagMaxCal[3];												// 
-float	MagMinCal[3];												// 
-float	MagCenterCal[3];											// Mean of (Max-Min)/2 ---> Axis Centroid based on Ambient Field
+//float	MagMeanCal[3];
+//float	MagMaxCal[3];												// 
+//float	MagMinCal[3];												// 
+//float	MagCenterCal[3];											// Mean of (Max-Min)/2 ---> Axis Centroid based on Ambient Field
 
 float	Gyro[3];
 float	GyroIntegrator[3];
@@ -275,14 +275,18 @@ char	DS2401_ID[16];												// String to hold ---> DS2401 (4bits) + Device_ID
 uint8_t MenuLevel=0;												// Initalise Default Menu Level to 00 --> Main Menu
 float	Quaternion[4];												// Test Global Decleration to test Quaternion filter update operation
 float	accel_ManualCal[3];											// The following registers are used within manual Acceleration calibration
+
 float	ErrorCount[16];												// Background Error Counters
+
 uint32_t TimeTick=0;												// Time Tick Counter Loaded within Timer Interupt ---> SYSTEM_TIMER_INTERVAL 
 uint32_t sysLastTime=0;
 uint32_t DogCount=0;												// DogCount ---> Background Heartbeat 
-static bool finishedADC;
-const float pi = 3.14159265358979323846f;
-//uint32_t DiagCounter=0;
 
+static bool finishedADC;
+
+const float pi = 3.14159265358979323846f;
+
+//uint32_t DiagCounter=0;
 uint16_t ErrorCounter_UART_FIFO=0;
 uint16_t ErrorCounter_UART_Comms=0;
 uint16_t ErrorCounter[9];
@@ -291,10 +295,10 @@ uint32_t error_code_clone[3];
 
 uint32_t line_num_clone=0;
 
-uint16_t Count_VibroMotor=4;										// Auto Starts vibro motor upon sys timer startup for 400msec
-char	ATxx[4];													// AT Command mode Ascii buffer
+uint16_t Count_VibroMotor=4;										// Auto Starts vibro motor upon sys timer startup for 4==400msec
+char	ATxx[4];													// AT Command Mode Ascii buffer
 
-int Process_0 = 0;													/* Initalise Bit Flags Process_0
+int16_t Process_0 = 0;												/* Initalise Bit Flags Process_0
 	Process_0.0	= Flag to Activate Vibro Motor at Sys_Timer 200msec 
 	Process_0.1	= Flag to Activate Vibro Motor at Sys_Timer 400msec 
 	Process_0.1	= Flag to Activate Vibro Motor at Sys_Timer 800msec
@@ -304,7 +308,7 @@ int Process_0 = 0;													/* Initalise Bit Flags Process_0
 	Process_0.6	= 
 	Process_0.7	= 
 */
-int Process_1 = 0;													/* Initalise Bit Flags Process_1	
+int16_t Process_1 = 0;												/* Initalise Bit Flags Process_1	
 	Process_1.0	= Flag to bypass VT100 Mode and run ATxx cmd mode 
 	Process_1.1	= Flag to transfer NEMA GPS Stream to UART
 	Process_1.2	= 
@@ -315,7 +319,7 @@ int Process_1 = 0;													/* Initalise Bit Flags Process_1
 	Process_1.7	= 
 */
 
-int Process_2 = 0;													/* Initalise Bit Flags Process_2	
+int16_t Process_2 = 0;												/* Initalise Bit Flags Process_2	
 	Process_2.0	= PWM Tone Test Master Flag				
 	Process_2.1	= PWM Tone Test 100msec
 	Process_2.2	= 
@@ -326,7 +330,7 @@ int Process_2 = 0;													/* Initalise Bit Flags Process_2
 	Process_2.7	= Indicate Valid Revision 3 nRF51 Processor			Note: Should Run with this Processor Revision
 */
 
-int Process_3 = 0;													/* Initalise Bit Flags Process_3
+int16_t Process_3 = 0;												/* Initalise Bit Flags Process_3
 	Process_3.0	= Flag to start ble advertising
 	Process_3.1	= Flag to latch ble advertising event as oneshot
 	Process_3.2	= 
@@ -337,7 +341,7 @@ int Process_3 = 0;													/* Initalise Bit Flags Process_3
 	Process_3.7	= 
 */
 
-int Process_4 = 0;													/* Initalise Bit Flags Process_4	
+int16_t Process_4 = 0;												/* Initalise Bit Flags Process_4	
 	Process_4.0	= Flag to indicate Button 0 Asserted
 	Process_4.1	= Flag to indicate Button 1 Asserted
 	Process_4.2	= 
@@ -348,7 +352,7 @@ int Process_4 = 0;													/* Initalise Bit Flags Process_4
 	Process_4.7	= 
 */
 
-int Process_5 = 0;													/* Initalise Bit Flags Process_5	
+int16_t Process_5 = 0;												/* Initalise Bit Flags Process_5	
 	Process_5.0	= Flag Processor xxAC Flash:256k Ram:32k
 	Process_5.1	= Flag MPU9250 Inertial Sensor Present
 	Process_5.2	= Flag MPL3115 Pressure Sensor Present
@@ -358,7 +362,7 @@ int Process_5 = 0;													/* Initalise Bit Flags Process_5
 	Process_5.6	= Flag EEPROM Present
 	Process_5.7	= Flag System Temperatures OK
 */
-int Process_6 = 0;													/* Initalise Bit Flags Process_6	
+int16_t Process_6 = 0;												/* Initalise Bit Flags Process_6	
 	Process_6.0	= 
 	Process_6.1	= 
 	Process_6.2	= 
@@ -369,7 +373,7 @@ int Process_6 = 0;													/* Initalise Bit Flags Process_6
 	Process_6.7	= 
 */
 
-int Process_7 = 0;													/* Initalise Bit Flags Process_7
+int16_t Process_7 = 0;												/* Initalise Bit Flags Process_7
 
 	Process_7.0	= 
 	Process_7.1	= 
@@ -381,8 +385,7 @@ int Process_7 = 0;													/* Initalise Bit Flags Process_7
 	Process_7.7	= 
 */
 
-int iProcess_0 = 0;													/* Initalise Bit Flags iProcess_0 ---> Reserved for use by INTERUPT service routines
-
+int16_t iProcess_0 = 0;												/* Initalise Bit Flags iProcess_0 ---> Reserved for use by INTERUPT service routines
 
 	iProcess_0.0	= Active System Timer Interupt Handler. Used to trap and bypass multi-entry.
 	iProcess_0.1	= 
@@ -394,20 +397,21 @@ int iProcess_0 = 0;													/* Initalise Bit Flags iProcess_0 ---> Reserved 
 	iProcess_0.7	= 
 */
 
-void setbit(int *Addr, uint8_t Operator) {							// Set   bit at Process_x based on Operator (0..7)---> Single bit
+void setbit(int16_t *Addr, uint8_t Operator) {						// Set   bit at Process_x based on Operator (0..7)---> Single bit
 	*Addr  = *Addr | (int) pow(2, Operator);						// Bitwise OR
 	return;
 } 
 
-void clrbit(int *Addr, uint8_t Operator) {							// Clear bit at Process_x bassed on Operator (0..7)---> Single bit 
+void clrbit(int16_t *Addr, uint8_t Operator) {						// Clear bit at Process_x bassed on Operator (0..7)---> Single bit 
 	*Addr  = *Addr & ~((int)(pow(2, Operator)));					// Bitwise AND of inverted Operator
 	return;
 }
 
-bool testbit(int *Addr, uint8_t Operator) {							// Test  bit at Process_x bassed on Operator (0..7)---> Single bit return true/false
+bool testbit(int16_t *Addr, uint8_t Operator) {						// Test  bit at Process_x bassed on Operator (0..7)---> Single bit return true/false
 	if (*Addr & (int) pow(2,Operator)) {
 		return true;												// True
-	} else {	
+	} 
+	else {	
 		return false;												// False
 	}
 } 
@@ -435,7 +439,6 @@ float LPFilter(float Out, float In, float percent) {				// Low Pass Filter Funct
 	Out = percent/100*Out + (1-(percent/100))*In;
 	return Out;
 }
-
 void ad7746_on_write_config_callback (ble_AD7746_t *p_ad7746, 
 	CONFIG_bytes_t *p_config, uint8_t len) {						// Write bytes of config ble device AD7746 Capacitor Sensor --> (Redirected to other sensors)
 		
@@ -1183,7 +1186,7 @@ static void UART_VT100_Refresh_Data_Inertial() {					// $$$$$$ INERTIAL MENU 			
 /** @brief 		Function to load INERTIAL MENU Refresh Data MENU-3 to VT100 Screen.  */
 	
 if (testbit(&Process_1, 0)==false) {
-	float Acc[3];
+		float Acc[3];
 		double MagGravity, Magnitude, Bearing;
 			
 		float data[4];
@@ -1267,9 +1270,10 @@ if (testbit(&Process_1, 0)==false) {
 		printf("\x1B[23;21H%d", TimeTick);
 
 		nrf_delay_ms(250);
-				
+		
 	
-/*	Define output variables from updated quaternion---these are Tait-Bryan angles, commonly used in aircraft orientation.
+/*		Define output variables from updated quaternion
+		--->these are Tait-Bryan angles, commonly used in aircraft orientation.
 
 	In this coordinate system, the positive z-axis is down toward Earth. 
 	Yaw is the angle between Sensor x-axis and Earth magnetic North (or true North if corrected for local declination, looking down on the sensor positive yaw is counterclockwise.
@@ -1280,6 +1284,7 @@ if (testbit(&Process_1, 0)==false) {
 	applied in the correct order which for this configuration is yaw, pitch, and then roll.
 	For more see http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles which has additional links.*/
   
+		
 		float yaw, pitch, roll, q[4];
 		float PI = 3.14159265358979323846f;
 		
@@ -1293,13 +1298,13 @@ if (testbit(&Process_1, 0)==false) {
 		roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
 		
 		pitch *= 180.0f / PI;
+		pitch -= -12.0f; 			// Adjust for Declination at Melbourne, Australia  2016-01-19
 		yaw   *= 180.0f / PI; 
-		yaw   -= 13.8f; 			// Declination at Danville, California is 13 degrees 48 minutes and 47 seconds on 2014-04-04
 		roll  *= 180.0f / PI;
 
-		printf("\x1B[11;41H%+4.2f    ", pitch);	
-		printf("\x1B[12;41H%+4.2f    ", roll);
-		printf("\x1B[13;41H%+4.2f    ", yaw);
+		printf("\x1B[11;41H%+06.1f    ", pitch);	
+		printf("\x1B[12;41H%+06.1f    ", roll);
+		printf("\x1B[13;41H%+06.1f    ", yaw);
 		
 		nrf_delay_ms(200);
 	}
@@ -1437,14 +1442,14 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 	
 /** @brief 		Function to load ALL VT100 IMMEDIATE AND DATA REFRESH MENUEs to UART Screen.  */
 	
-	if (testbit(&Process_1, 0)==false) {											// Process_1.0 VT100 refresh=0 or ATxx Command Mode=1
+	if (testbit(&Process_1, 0)==false) {										// Process_1.0 VT100 refresh=0 or ATxx Command Mode=1
 		
-		printf("\x1B[01;78H");														// Park VT100 cursor at row 01 column 78
+		printf("\x1B[01;78H");													// Park VT100 cursor at row 01 column 78
 		
-		nrf_delay_ms(50);
+		nrf_delay_ms(20);
 		
 		uint8_t cr;
-		if (app_uart_get(&cr) == NRF_SUCCESS) {										// Test for UART receive character and action if available.
+		if (app_uart_get(&cr) == NRF_SUCCESS) {									// Test for UART receive character and action if available.
 			
 			switch (cr) {															// Upon Valid Rx Menu Character Load a new Background Menue
 			
@@ -1515,7 +1520,7 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 
 				case 'b':
 					if ( MenuLevel == 80) {											// Zero Manual Calibrations
-					Gyro_ManualCal[0]=0;   Gyro_ManualCal[1]=0;  Gyro_ManualCal[2]=0;
+					Gyro_ManualCal[0] =0;  Gyro_ManualCal[1]=0;  Gyro_ManualCal[2]=0;
 					accel_ManualCal[0]=0; accel_ManualCal[1]=0; accel_ManualCal[2]=0;
 					
 					printf("\x1B[25;30H SYSMSG: Clr Gyro-Accel Zero         ");
@@ -1596,9 +1601,11 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 				default:
 					break;
 			} 
-		} else {
+		} 
+		
+		else {																	// Load Targeted Refresh Menue
 			
-			nrf_delay_ms(25);
+			nrf_delay_ms(10);
 						
 			switch (MenuLevel) {												// If Load UART Reresh data based on current Menu Level
 			
@@ -1641,10 +1648,11 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 			
 			if (testbit(&Process_1, 0)==false) {	
 				printf("\x1B[01;78H");											// Park VT100 cursor at row 01 column 78
-				nrf_delay_ms(50);
+				nrf_delay_ms(20);
 			}
 		}
-	} else {
+	} 
+	else {																		// Test and load Atxx command characters if present
 		uint8_t cr;
 		if (app_uart_get(&cr) == NRF_SUCCESS) {									// Test for UART ATxx Cmd Mode Characters ---> (VT100 Mode Bypassed).
 			
@@ -1655,6 +1663,7 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 						
 						int8_t ATcode;
 						ATcode=(ATxx[1]-48)*10+ATxx[0]-48;						// Convert double ascii into int8 number range 00--99
+						
 						
 						switch (ATcode) {										// Load UART Reresh data based on current Menu Level
 		
@@ -1685,7 +1694,8 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 							case 80:											// Toggle Flag to Stream NEMA GPS to UART
 								if(testbit(&Process_1, 1)==false) {
 									setbit(&Process_1, 1);
-								} else {
+								} 
+								else {
 									clrbit(&Process_1, 1);
 								}
 								break;
@@ -1704,7 +1714,8 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 				ATxx[3]=0;														// Clear the top Buffer --- Disable for cr cr cr repeats
 				if (testbit(&Process_1, 0)==true) printf("\r\nCmd = ");
 						
-			} else {
+			} 
+			else {
 				ATxx[3]=ATxx[2];												// Shuffle ASCII charcters into 4 char buffer ---> Expect "ATnn" upon cairrage return
 				ATxx[2]=ATxx[1];
 				ATxx[1]=ATxx[0];
@@ -1712,7 +1723,7 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 			}
 		}
 	}
-	nrf_delay_ms(100);	
+	nrf_delay_ms(20);	
 }
 
 void APP_ERROR_CHECK_CSB(uint32_t error_code) {						// $$$$$$ Copy of APP_ERROR_CHECK to allow clone trap of error_code events
@@ -1868,17 +1879,19 @@ int32_t readNRF_TEMP() {											// ERROR  ToDo Causes System to Hang !!!!!
 
 int printASMReg() {													// $$$$$$ Function to access and Print ASM registers including Stack Pointer SP 
     
-	int spReg, lrReg, pcReg;
+	int spReg, pcReg;	//, lrReg;
 	
 	__asm {
 		MOV spReg, __current_sp()
 		MOV pcReg, __current_pc()
-		MOV lrReg, __return_address()
+		
+//		MOV lrReg, __return_address()
 	}
 
 	printf("Stack   Pointer SP = 0x%X\n\r",spReg);					// Read and Print _ASM SP, PC and Return Address Output Upon keyboard cmd AT01
 	printf("      Program Counter PC = 0x%X\n\r",pcReg);
-	printf("      Return  Address LR = 0x%X\n\r",lrReg);
+	
+//	printf("      Return  Address LR = 0x%X\n\r",lrReg);
 	return 0;
 }
 
@@ -1890,7 +1903,7 @@ int Read32_ASM_SP() {												// Read and return _ASM Stack Poiter SP Registe
 	return spReg;
 } 
 
-/* _ASM Program Counter PC Register
+/* _ASM Program Counter PC Register									// Diagnostic Program Counter ... Currently not being used
 
 unsigned int Read32_ASM_PC() {										// Read and return _ASM Program Counter PC Register
 	unsigned int pcReg;
@@ -1899,7 +1912,6 @@ unsigned int Read32_ASM_PC() {										// Read and return _ASM Program Counter 
 }*/
 
 /*	static void blockSend(float *Data, unsigned int len) {			// ToDo   Bluetooth fails to send notify in this callback? ---> Leo
-
 
 //	
 // 		if (m_AD7746.conn_handle != BLE_CONN_HANDLE_INVALID) {
@@ -1973,6 +1985,7 @@ unsigned int resumeSendData() {  									// Only called by on_ble_evt when BLE_
 
 
 
+
 static void system_timer_handler(void * p_context) {				// Timer event to prime quaternion inertial filter 100msec rate
 	
 /** @brief 		Function to service background timer interupt 
@@ -1985,96 +1998,90 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
     @ref  																			*/		
 
 	uint32_t err_code = NRF_SUCCESS;    
-			
 	UNUSED_PARAMETER(p_context);
-	
+
 	float temp;
 	float Acc[3];
-	
+
 	TimeTick += 1;														// TimeTick Counter in SysTimer Increments	
-	
+
 	if(testbit(&iProcess_0,0)) goto system_timer_handler_exit;			// Trap and bypass in case handler busy with previous event 
 
 	setbit(&iProcess_0,0);												// Set Flag for active system timer handler
 
 //	Error... readQuaternion bypassed for time being as the TWI I2C service routine dies if hit to quickly !!!
 //	Does work for a short period of time !!!! 
-	
+
 //	readQuaternion(Quaternion);											// MPU9250 QUARTERNION  UPDATING FILTER AT 100msec rate
-	
+
 //	Load Gyro Integrators
-	
 	readGyroFloatDeg(Acc);												// Read xyz Raw GYRO registers deg/sec
 	temp=Acc[0]+Acc[1]+Acc[2];
+	
 	if(temp != 0) {														// Skip if Acc[]=0
-		Gyro[0] = 0.05*Gyro[0] + 0.94*((Acc[0] - Gyro_ManualCal[0]));	// Apply some crude LP filtering  (15% old + 85% new)
-		Gyro[1] = 0.05*Gyro[1] + 0.94*((Acc[1] - Gyro_ManualCal[1]));	// Apply some crude LP filtering
-		Gyro[2] = 0.05*Gyro[2] + 0.94*((Acc[2] - Gyro_ManualCal[2]));	// Apply some crude LP filtering
-		
-		
+		Gyro[0] = 0.05*Gyro[0] + 0.94*((Acc[0] - Gyro_ManualCal[0]));	// Apply some crude Leaky LP filtering  (5% old + 94% new)
+		Gyro[1] = 0.05*Gyro[1] + 0.94*((Acc[1] - Gyro_ManualCal[1]));	// Apply some crude Leaky LP filtering
+		Gyro[2] = 0.05*Gyro[2] + 0.94*((Acc[2] - Gyro_ManualCal[2]));	// Apply some crude Leaky LP filtering
+
 		if(temp <= 10 || temp >= -10) {									// Trap out during big movements Auto cal when moving slow !!!
-//			Gyro_ManualCal[0] = 0.999*Gyro_ManualCal[0] + 0.001*Acc[0];	// Slowly Zero ManualCal Registers when during slow or static movement
-//			Gyro_ManualCal[1] = 0.999*Gyro_ManualCal[1] + 0.001*Acc[1];
-//			Gyro_ManualCal[2] = 0.999*Gyro_ManualCal[2] + 0.001*Acc[2];
-			
-		Gyro_ManualCal[0]=LPFilter(Gyro_ManualCal[0],Acc[0],99.9);		// Slowly Zero ManualCal Registers when during slow or static movement
-		Gyro_ManualCal[1]=LPFilter(Gyro_ManualCal[1],Acc[1],99.9);
-		Gyro_ManualCal[2]=LPFilter(Gyro_ManualCal[2],Acc[2],99.9);	
+			Gyro_ManualCal[0]=LPFilter(Gyro_ManualCal[0],Acc[0],99.9);	// Slowly Zero ManualCal Registers when during slow or static movement
+			Gyro_ManualCal[1]=LPFilter(Gyro_ManualCal[1],Acc[1],99.9);
+			Gyro_ManualCal[2]=LPFilter(Gyro_ManualCal[2],Acc[2],99.9);
 		}
-		
+
 		if(sysLastTime==0) sysLastTime = TimeTick;
 		float DeltaT = 0.1 *(TimeTick-sysLastTime);
 
-		if (Gyro[0]<-5 || Gyro[0]>5) GyroIntegrator[0]+=Gyro[0]*DeltaT;	// Integrate if outside deadband +/- 5degs/sec
+		if (Gyro[0]<-5 || Gyro[0]>5) GyroIntegrator[0]+=Gyro[0]*DeltaT;	// Integrate if outside deadband +/- 5 degs/sec
 																		// convert degs/sec to degrees ie Nominally divide by 100msec sys timer entry
 		if (Gyro[1]<-5 || Gyro[1]>5) GyroIntegrator[1]+=Gyro[1]*DeltaT;
 		if (Gyro[2]<-5 || Gyro[2]>5) GyroIntegrator[2]+=Gyro[2]*DeltaT;
-				
+
 		if(GyroIntegrator[0]>+180) GyroIntegrator[0]-=360;				// Reference Gyrointegrators in the range 0 to +/- 180
-		if(GyroIntegrator[0]<-180) GyroIntegrator[0]+=360;		
+		if(GyroIntegrator[0]<-180) GyroIntegrator[0]+=360;
+
 		if(GyroIntegrator[1]>+180) GyroIntegrator[1]-=360;
-		if(GyroIntegrator[1]<-180) GyroIntegrator[1]+=360;		
+		if(GyroIntegrator[1]<-180) GyroIntegrator[1]+=360;
+
 		if(GyroIntegrator[2]>+180) GyroIntegrator[2]-=360;
 		if(GyroIntegrator[2]<-180) GyroIntegrator[2]+=360;
-		
+
 		GyroIntegrator[0] *= 0.999;										// Slowly Zero Gyro Integrators 
 		GyroIntegrator[1] *= 0.999;
 		GyroIntegrator[2] *= 0.999;
-		
-		sysLastTime = TimeTick;
+
+		sysLastTime = TimeTick;											// Counter for integrator
 	}
 	
-	readMagFloatUT(Acc);												// Read xyz Raw Magnetometer uTesla registers
-	temp=Acc[0]+Acc[1]+Acc[2];
-	if(temp != 0) {														// Skip if Acc[]=0
+//	readMagFloatUT(Acc);												// Read xyz Raw Magnetometer uTesla registers
+//	temp=Acc[0]+Acc[1]+Acc[2];
+//	if(temp != 0) {														// Skip if Acc[]=0
 
-	if(Acc[0]>MagMaxCal[0])	LPFilter(MagMaxCal[0],Acc[0], 85);			// Trap for Maximum Magnetic Field Values in each axis
-	if(Acc[1]>MagMaxCal[1])	LPFilter(MagMaxCal[1],Acc[1], 85);			
-	if(Acc[2]>MagMaxCal[2])	LPFilter(MagMaxCal[2],Acc[2], 85);			
+//	if(Acc[0]>MagMaxCal[0])	LPFilter(MagMaxCal[0],Acc[0], 85);			// Trap for Maximum Magnetic Field Values in each axis
+//	if(Acc[1]>MagMaxCal[1])	LPFilter(MagMaxCal[1],Acc[1], 85);			
+//	if(Acc[2]>MagMaxCal[2])	LPFilter(MagMaxCal[2],Acc[2], 85);			
 
-	if(Acc[0]<MagMinCal[0])	LPFilter(MagMinCal[0],Acc[0], 85);			// Trap for Minimum Magnetic Field Values in each axis
-	if(Acc[1]<MagMinCal[1])	LPFilter(MagMinCal[1],Acc[1], 85);			
-	if(Acc[2]<MagMinCal[2])	LPFilter(MagMinCal[2],Acc[2], 85);			
+//	if(Acc[0]<MagMinCal[0])	LPFilter(MagMinCal[0],Acc[0], 85);			// Trap for Minimum Magnetic Field Values in each axis
+//	if(Acc[1]<MagMinCal[1])	LPFilter(MagMinCal[1],Acc[1], 85);			
+//	if(Acc[2]<MagMinCal[2])	LPFilter(MagMinCal[2],Acc[2], 85);			
 
-	MagCenterCal[0] = LPFilter(MagCenterCal[0],(MagMaxCal[0]-MagMinCal[0])/2, 99);
-	MagCenterCal[1] = LPFilter(MagCenterCal[1],(MagMaxCal[1]-MagMinCal[1])/2, 99);
-	MagCenterCal[2] = LPFilter(MagCenterCal[2],(MagMaxCal[2]-MagMinCal[2])/2, 99);
+//	MagCenterCal[0] = LPFilter(MagCenterCal[0],(MagMaxCal[0]-MagMinCal[0])/2, 99);
+//	MagCenterCal[1] = LPFilter(MagCenterCal[1],(MagMaxCal[1]-MagMinCal[1])/2, 99);
+//	MagCenterCal[2] = LPFilter(MagCenterCal[2],(MagMaxCal[2]-MagMinCal[2])/2, 99);
 
-	MagMeanCal[0] = LPFilter(MagMeanCal[0],Acc[0]-MagCenterCal[0], 95);
-	MagMeanCal[1] = LPFilter(MagMeanCal[1],Acc[1]-MagCenterCal[1], 95);
-	MagMeanCal[2] = LPFilter(MagMeanCal[2],Acc[2]-MagCenterCal[2], 95);
+//	MagMeanCal[0] = LPFilter(MagMeanCal[0],Acc[0]-MagCenterCal[0], 95);
+//	MagMeanCal[1] = LPFilter(MagMeanCal[1],Acc[1]-MagCenterCal[1], 95);
+//	MagMeanCal[2] = LPFilter(MagMeanCal[2],Acc[2]-MagCenterCal[2], 95);
 
-	MagMaxCal[0] *= 0.99999;											// Send to zero while static
-	MagMaxCal[1] *= 0.99999;
-	MagMaxCal[2] *= 0.99999;
+//	MagMaxCal[0] *= 0.99999;											// Send to zero while static
+//	MagMaxCal[1] *= 0.99999;
+//	MagMaxCal[2] *= 0.99999;
 
-	MagMinCal[0] *= 0.99999;											// Send to zero while static
-	MagMinCal[1] *= 0.99999;
-	MagMinCal[2] *= 0.99999;
-	}
+//	MagMinCal[0] *= 0.99999;											// Send to zero while static
+//	MagMinCal[1] *= 0.99999;
+//	MagMinCal[2] *= 0.99999;
+//	}
 
-
-	
 	if(testbit(&Process_0, 0)==true) {									// Background Test for Active Vibro Motor Flag Auto Countdown of 200msec
 		Count_VibroMotor = 2;
 		clrbit(&Process_0, 0);
@@ -2100,41 +2107,41 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 		clrbit(&Process_0, 4);
 	}
 	if(testbit(&Process_0, 5)==true) {									// Background Test for Active Vibro Motor Flag Auto Countdown of 6400msec
+
 		Count_VibroMotor = 64;
 		clrbit(&Process_0, 5);
 	}
 	if(Count_VibroMotor > 0){											// Note Will Assert Vibro Motor up to 2x500 ticks after process flag set in main()
-		
 		Count_VibroMotor -= 1;
 		nrf_gpio_pin_set(MOTOR_PIN_NUMBER);
-	} else {
+	} 
+	else {
 		nrf_gpio_pin_clear(MOTOR_PIN_NUMBER);
 	}
 
+
 	
+
 
 //	short data[3];
 //	unsigned long timestamp;
 //	int16_t temp; // = readTempData();
-	
 
 //	readAccelFloatMG(Acc);			//[0]==Left=+ive    Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
 	readGyroFloatDeg(Acc);			//[0]==Pitch Up=+ive Down=-ive		[1]==Roll CW=+ive   ACW=-ive		[2]==Yaw Right=+ive  Left=-ive
 //	readMagFloatUT(Acc);			//[0]==Front=+ive    Rear=-ive		[1]==Right=+ive     Left=-ive		[2]==Z Down=+ive     Z Up=-ive
-	
-			
-	err_code = ble_AD7746_send_temp_notify(&m_AD7746, Acc[2]);				// Currently ASSIGNED TO transmit Gyro Yaw to ble pipe when ble connected
-	
-	if ((err_code != NRF_SUCCESS) &&
-			(err_code != NRF_ERROR_INVALID_STATE) &&
-			(err_code != BLE_ERROR_NO_TX_BUFFERS) &&
-			(err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) 				// ignore these errors as they appear only during setup and are normal
-	{
-		APP_ERROR_HANDLER(err_code);
-	}
 
-	//readAccelData(data);
-	// do measurement and notify
+	err_code = ble_AD7746_send_temp_notify(&m_AD7746, Acc[2]);			// Currently ASSIGNED TO transmit Gyro Yaw to ble pipe when ble connected
+
+	if ((err_code != NRF_SUCCESS) &&
+		(err_code != NRF_ERROR_INVALID_STATE) &&
+		(err_code != BLE_ERROR_NO_TX_BUFFERS) &&
+		(err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) 				// ignore these errors as they appear only during setup and are normal
+	{	APP_ERROR_HANDLER(err_code);}
+	
+// readAccelData(data);
+
+// do measurement and notify
 // real AD7746 temp data
 //		unsigned long tempData = AD7746_GetVTData();
 //		float tempf;
@@ -2185,15 +2192,15 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 //			resumetype = DataTypeTEMP;
 //			lastSendIndex = 0;  // restart from 0 index
 //			lastSendIndex = resumeSendData();
-//		} else {
+//		} 
+//	else {
 //			sensorADC_startSequenceMeasure(MEASURESIZE, blockSend);
 //		}
 
-    clrbit(&iProcess_0,0);											// Clear Flag for active system timer handler
+	clrbit(&iProcess_0,0);											// Clear Flag for active system interupt timer handler
 
 system_timer_handler_exit:
     return ;
-	
 }
 
 static void timers_init(void) {										// Initalise Timers and setup event handlers
@@ -2421,7 +2428,8 @@ static void ble_stack_init(void) {									// Initalise ble Bluetooth stack also
 static void DeviceNameFromID(char* name, int len) {					// Redefine Device name with Device ID + Device Name based on DS2401 Address
 	if(len<16) {
 		strncpy(name, DEVICE_NAME, len);
-	} else {
+	} 
+	else {
 		while(!ds2401_initAndRead()) ;
 		int j = 0;
 		bool skipLeading = true;
@@ -2442,7 +2450,8 @@ static void DeviceNameFromID(char* name, int len) {					// Redefine Device name 
 static void GrabDeviceID(char* name, int len) {						// DS2401 xxxxxxxx
 	if(len<16) {
 		strncpy(name, DEVICE_NAME, len);
-	} else {
+	} 
+	else {
 		while(!ds2401_initAndRead()) ;
 		int j = 0;
 		bool skipLeading = true;
@@ -2956,12 +2965,14 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	services_init();												// Initialise service
 	advertising_init();												// Initialise Advertising
 	conn_params_init();												// Initialise connection parameters
+	application_timers_start();										// Start Timers
+	
 	SmartCane_peripheral_init();									// Initialise application specific modules
 	
 //	advertising_start();											// Starts Bluetooth advertising, however, also shuts down power to board after 180sec if no connection
 																	// Note... Moved to VT100 System Menu 6 ---> G
-	
-	const app_uart_comm_params_t comm_params =	{					// Load UART Parameters ... USB UART Virtual COM port BAUD==11500
+
+const app_uart_comm_params_t comm_params =	{						// Load UART Parameters ... USB UART Virtual COM port BAUD==11500
 		  RX_PIN_NUMBER,
 		  TX_PIN_NUMBER,
 		  RTS_PIN_NUMBER,
@@ -2978,21 +2989,21 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 		APP_IRQ_PRIORITY_LOW,
 		err_code);
 	  
+	APP_ERROR_CHECK_CSB(err_code);									// Application Error Checker ---> error.h
+
 	TestProcessorHWID();
 
-	application_timers_start();										// Start Timers  ---> Start Timers After all other inits
-
-	APP_ERROR_CHECK_CSB(err_code);									// Application Error Checker ---> error.h	  
-	  
 	UART_VT100_Main_Menu();											// Initialise Default UART VT100 Main Menu
 	
 	int TSA_Count=0;												// Base TSA Initialisation Start Count = 0 of  TSA_Count 0..25	
+	
 	while (true) {													// TSA Time Slot Assigner ---> Endless Loop within main()
 /**	@brief 		MASTER TIME SLOT ASSIGNER --> TSA
 	@details 	This routine operates as a never ending loop within 
 				main() and managers background tasks based on a 
 				rotating counter TSA_Count.
 	@note  		This while Loop Operates as a Background Task Manager */
+		
 		
 		app_sched_execute();										// Execute Task Scheduler per loop
 		

@@ -102,7 +102,8 @@ void ADC_IRQHandler(void) {
 		
 	if (currStoreIndex < maxSeqSamples) {													// trigger next ADC conversion
 			nrf_adc_start();
-	} else {
+	} 
+	else {
 			nrf_adc_stop();
 	}
 }

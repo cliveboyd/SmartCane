@@ -84,7 +84,7 @@ unsigned char I2C_Read(unsigned char slaveAddress,
                        unsigned char bytesNumber,
                        unsigned char stopBit)
 {
-		unsigned char targetAddress = (slaveAddress << 1) | 1;
+	unsigned char targetAddress = (slaveAddress << 1) | 1;
 	if (twi_master_transfer(targetAddress, dataBuffer, bytesNumber, stopBit)) {
 		return bytesNumber;
 	}
