@@ -228,8 +228,8 @@ void readGyroData(int16_t * destination) {											// Read Gyro
 	destination[2] = (int16_t)(((int16_t)rawData[4] << 8) | rawData[5]) ; 
 }
  
-void readMagData(int16_t * destination) {											// Initalise Magnetometer
-	uint8_t rawData[6];  															// xyz gyro register data stored here
+int readMagData(int16_t * destination) {											// Initalise Magnetometer
+	uint8_t rawData[6];  															// xyz magnetometer register data stored here
 	uint8_t c;
 	
 	MPU9150_writeByte(AK8975A_ADDRESS, AK8975A_CNTL, AK8975A_CNTL_POWERDOWN_MODE);	// Toggle enable data read from magnetometer, no continuous read mode!
@@ -254,6 +254,7 @@ void readMagData(int16_t * destination) {											// Initalise Magnetometer
 	while(!(MPU9150_readByte(AK8975A_ADDRESS, AK8975A_ST1) & 0x01) && (--timeout)) {				// wait for magnetometer data ready bit to be set
 		nrf_delay_us(100);
 	}
+	if(timeout==0) return 1;
 	
 	MPU9150_readBytes(AK8975A_ADDRESS, AK8975A_XOUT_L, 6, &rawData[0]);  			// Read the six raw data registers sequentially into data array
 	destination[0] = ((int16_t)rawData[1] << 8) | rawData[0] ;  					// Turn the MSB and LSB into a signed 16-bit value
@@ -281,9 +282,10 @@ void readMagData(int16_t * destination) {											// Initalise Magnetometer
 		destination[2] = ((int16_t)rawData[5] << 8) | rawData[4] ;
 		c = MPU9150_readByte(AK8975A_ADDRESS, AK8975A_ST2);
 	}
+	if(timeout==0) return 1;
 	c = MPU9150_readByte(AK8975A_ADDRESS, 0x0c);	
-	
 	c +=1;
+	return 0;
 }
  
 void initAK8975A(float * destination) {												// Magnetometer INIT
@@ -343,7 +345,7 @@ void resetMPU9150() {																// Reset device
 	wait(0.2);
   }
     
-void initMPU9150() {																// Inertial Sensor
+int initMPU9150() {																// Inertial Sensor
 //	unsigned char status = 0;
     uint8_t c, temp;
     uint8_t chkRegs[] = {SMPLRT_DIV, CONFIG, GYRO_CONFIG, ACCEL_CONFIG, FIFO_EN, I2C_MST_CTRL, I2C_SLV0_ADDR, 
@@ -351,7 +353,8 @@ void initMPU9150() {																// Inertial Sensor
 						I2C_MST_STATUS, INT_PIN_CFG, INT_ENABLE, INT_STATUS, I2C_MST_DELAY_CTRL, SIGNAL_PATH_RESET, USER_CTRL,
 						PWR_MGMT_1, PWR_MGMT_2, 0x75};
 	
-//	while(!status)  status = I2C_Init();
+	unsigned char status;
+	while(!status) status = I2C_Init();
 	resetMPU9150();
 	
 //	Initialize MPU9150 device and wake up device
@@ -467,7 +470,10 @@ void initMPU9150() {																// Inertial Sensor
 	}
 	
 	int16_t out[3];
-	readMagData(out);
+	int ret = ReadMagData(out);
+	return ret;
+	
+	return 0;
 }
 
 void initMPU9250() {  

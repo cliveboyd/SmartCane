@@ -447,11 +447,6 @@
               <FilePath>.\ds2401.c</FilePath>
             </File>
             <File>
-              <FileName>MPU_9150.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\MPU_9150.c</FilePath>
-            </File>
-            <File>
               <FileName>inv_mpu.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\inv_mpu.c</FilePath>
@@ -485,6 +480,11 @@
               <FileName>AT45.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\AT45.c</FilePath>
+            </File>
+            <File>
+              <FileName>MPU_9250.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\MPU_9250.c</FilePath>
             </File>
           </Files>
         </Group>

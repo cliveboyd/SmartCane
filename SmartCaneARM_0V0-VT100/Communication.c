@@ -37,8 +37,7 @@ THE SOFTWARE.
 *******************************************************************************/
 unsigned char I2C_Init(void)
 {
-	if (!twi_master_init())
-		return 0;
+	if (!twi_master_init()) return 0;
 
 	return 1;
 }
@@ -56,11 +55,12 @@ unsigned char I2C_Init(void)
  * @return status - Number of written bytes.
 *******************************************************************************/
 unsigned char I2C_Write(unsigned char slaveAddress,
-                        unsigned char* dataBuffer,
+                        unsigned char *dataBuffer,
                         unsigned char bytesNumber,
                         unsigned char stopBit)
 {
 	unsigned char targetAddress = (slaveAddress << 1);
+	
 	if (twi_master_transfer(targetAddress, dataBuffer, bytesNumber, stopBit)) {
 		return bytesNumber;
 	}
@@ -85,9 +85,9 @@ unsigned char I2C_Read(unsigned char slaveAddress,
                        unsigned char stopBit)
 {
 	unsigned char targetAddress = (slaveAddress << 1) | 1;
+	
 	if (twi_master_transfer(targetAddress, dataBuffer, bytesNumber, stopBit)) {
 		return bytesNumber;
 	}
 	return 0;
-
 }

@@ -22,8 +22,9 @@ THE SOFTWARE.
 #ifndef CUSTOM_BOARD_H
 #define CUSTOM_BOARD_H
 
-// LEDs definitions for PCA10031
-#define LEDS_NUMBER    1
+// Definitions for SmartCane Hardware Revision 1V0
+
+#define LEDS_NUMBER    1							// One Red Diagnostic LED is defined on SmartCane 1V0
 
 #define LED_START      30
 #define LED_RGB_RED    30
@@ -36,6 +37,7 @@ THE SOFTWARE.
 #define LED_RGB_BLUE_MASK   (1<<LED_RGB_BLUE)
 
 #define LEDS_LIST { LED_RGB_RED, LED_RGB_GREEN, LED_RGB_BLUE}
+
 // defining RGB led as 3 single LEDs
 #define BSP_LED_0 LED_RGB_RED
 #define BSP_LED_1 LED_RGB_GREEN
@@ -46,22 +48,26 @@ THE SOFTWARE.
 #define BSP_LED_2_MASK    (1<<BSP_LED_2)
 
 #define LEDS_MASK      (BSP_LED_0_MASK | BSP_LED_1_MASK | BSP_LED_2_MASK)
+
 //defines which LEDs are lit when signal is low
 #define LEDS_INV_MASK  LEDS_MASK
 
-// there are buttons
+
+
+// Two Push Buttons are defined here.
 
 #define BUTTON_START   6
-#define BUTTON_0       6
-#define BUTTON_1       11
+#define BUTTON_0       6						// Rear  Button
+#define BUTTON_1       11						// Front Button
 #define BUTTON_STOP    11
 #define BUTTON_PULL    NRF_GPIO_PIN_PULLUP
 
-#define BSP_BUTTON_0   BUTTON_0
-#define BSP_BUTTON_1   BUTTON_1
+#define BSP_BUTTON_0   BUTTON_0					// Rear  Handle Push Button
+#define BSP_BUTTON_1   BUTTON_1					// Front Handle Push Button
 
 #define BSP_BUTTON_0_MASK (1<<0)
 #define BSP_BUTTON_1_MASK (1<<1)
+
 #define BSP_BUTTON_2_MASK (1<<2)
 #define BSP_BUTTON_3_MASK (1<<3)
 #define BSP_BUTTON_4_MASK (1<<4)
@@ -73,11 +79,15 @@ THE SOFTWARE.
 #define BUTTONS_LIST {BUTTON_0,BUTTON_1}
 #define BUTTONS_MASK   0x000000FF
 
-// UART connection 
-#define RX_PIN_NUMBER  26		//UART via USB CP2103
-#define TX_PIN_NUMBER  27		//UART via USB CP2130
-#define CTS_PIN_NUMBER 22		//Spare IO Pin
-#define RTS_PIN_NUMBER 22		//Spare IO Pin
+
+// UART Tx/Rx pins are interfaced via USB-UART Hub ---> CP2103
+#define RX_PIN_NUMBER  26					// UART via USB CP2103
+#define TX_PIN_NUMBER  27					// UART via USB CP2130
+
+#define CTS_PIN_NUMBER 22					// Spare IO Pin ---> CTS-RTS not connected.
+#define RTS_PIN_NUMBER 22					// Spare IO Pin
+
 #define HWFC           true
 #define NHWFC          false
+	
 #endif

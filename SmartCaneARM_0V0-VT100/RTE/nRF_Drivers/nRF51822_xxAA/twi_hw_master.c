@@ -195,7 +195,7 @@ static bool twi_master_clear_bus(void) {
  *	@retval		true  Bus is clear.
  */    
 	uint32_t twi_state;
-    bool     bus_clear;
+    bool     bus_clear = false;
     uint32_t clk_pin_config;
     uint32_t data_pin_config;
 	
@@ -203,23 +203,23 @@ static bool twi_master_clear_bus(void) {
     twi_state        = NRF_TWI1->ENABLE;
     NRF_TWI1->ENABLE = TWI_ENABLE_ENABLE_Disabled << TWI_ENABLE_ENABLE_Pos;
 
-    clk_pin_config = \
-        NRF_GPIO->PIN_CNF[TWI_MASTER_CONFIG_CLOCK_PIN_NUMBER];
-    NRF_GPIO->PIN_CNF[TWI_MASTER_CONFIG_CLOCK_PIN_NUMBER] =      \
-        (GPIO_PIN_CNF_SENSE_Disabled  << GPIO_PIN_CNF_SENSE_Pos) \
-      | (GPIO_PIN_CNF_DRIVE_S0D1    << GPIO_PIN_CNF_DRIVE_Pos)   \
-      | (GPIO_PIN_CNF_PULL_Pullup   << GPIO_PIN_CNF_PULL_Pos)    \
-      | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)   \
-      | (GPIO_PIN_CNF_DIR_Output    << GPIO_PIN_CNF_DIR_Pos);
+    clk_pin_config = NRF_GPIO->PIN_CNF[TWI_MASTER_CONFIG_CLOCK_PIN_NUMBER];
+	
+    NRF_GPIO->PIN_CNF[TWI_MASTER_CONFIG_CLOCK_PIN_NUMBER] =			\
+        (GPIO_PIN_CNF_SENSE_Disabled	<< GPIO_PIN_CNF_SENSE_Pos)	\
+      | (GPIO_PIN_CNF_DRIVE_S0D1		<< GPIO_PIN_CNF_DRIVE_Pos)	\
+      | (GPIO_PIN_CNF_PULL_Pullup		<< GPIO_PIN_CNF_PULL_Pos)	\
+      | (GPIO_PIN_CNF_INPUT_Connect		<< GPIO_PIN_CNF_INPUT_Pos)	\
+      | (GPIO_PIN_CNF_DIR_Output		<< GPIO_PIN_CNF_DIR_Pos);
 
-    data_pin_config = \
-        NRF_GPIO->PIN_CNF[TWI_MASTER_CONFIG_DATA_PIN_NUMBER];
-    NRF_GPIO->PIN_CNF[TWI_MASTER_CONFIG_DATA_PIN_NUMBER] =       \
-        (GPIO_PIN_CNF_SENSE_Disabled  << GPIO_PIN_CNF_SENSE_Pos) \
-      | (GPIO_PIN_CNF_DRIVE_S0D1    << GPIO_PIN_CNF_DRIVE_Pos)   \
-      | (GPIO_PIN_CNF_PULL_Pullup   << GPIO_PIN_CNF_PULL_Pos)    \
-      | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)   \
-      | (GPIO_PIN_CNF_DIR_Output    << GPIO_PIN_CNF_DIR_Pos);
+    data_pin_config = NRF_GPIO->PIN_CNF[TWI_MASTER_CONFIG_DATA_PIN_NUMBER];
+    
+	NRF_GPIO->PIN_CNF[TWI_MASTER_CONFIG_DATA_PIN_NUMBER] =       	\
+        (GPIO_PIN_CNF_SENSE_Disabled	<< GPIO_PIN_CNF_SENSE_Pos)	\
+      | (GPIO_PIN_CNF_DRIVE_S0D1		<< GPIO_PIN_CNF_DRIVE_Pos)	\
+      | (GPIO_PIN_CNF_PULL_Pullup		<< GPIO_PIN_CNF_PULL_Pos)	\
+      | (GPIO_PIN_CNF_INPUT_Connect		<< GPIO_PIN_CNF_INPUT_Pos)	\
+      | (GPIO_PIN_CNF_DIR_Output		<< GPIO_PIN_CNF_DIR_Pos);
 
     TWI_SDA_HIGH();
     TWI_SCL_HIGH();
@@ -227,21 +227,20 @@ static bool twi_master_clear_bus(void) {
 
     if ((TWI_SDA_READ() == 1) && (TWI_SCL_READ() == 1)) {
         bus_clear = true;
-		
     } 
 	else {
         uint_fast8_t i;
         bus_clear = false;
 
-        // Clock max 18 pulses worst case scenario(9 for master to send the rest of command and 9
-        // for slave to respond) to SCL line and wait for SDA come high.
+		// Clock max 18 pulses worst case scenario (9 for master to send the rest of command
+		// and 9 for slave to respond) to SCL line and wait for SDA to become high.
         for (i=18; i--;) {
             TWI_SCL_LOW();
             TWI_DELAY();
             TWI_SCL_HIGH();
             TWI_DELAY();
 
-            if (TWI_SDA_READ() == 1) {
+            if ((TWI_SDA_READ() == 1) && (TWI_SCL_READ() == 1)) {
                 bus_clear = true;
                 break;
             }
@@ -298,7 +297,9 @@ bool twi_master_transfer(uint8_t   address,
                          uint8_t   data_length,
                          bool      issue_stop_condition)
 { 	/** @brief  Function for transfer by twi_master.  */ 
+
 	bool transfer_succeeded = false;
+	
     if (data_length > 0 && twi_master_clear_bus()) {
         NRF_TWI1->ADDRESS = (address >> 1);
 

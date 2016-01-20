@@ -33,13 +33,13 @@ unsigned char I2C_Init(void);
 
 /* Writes data to a slave device. */
 unsigned char I2C_Write(unsigned char slaveAddress,
-                        unsigned char* dataBuffer,
+                        unsigned char *dataBuffer,
                         unsigned char bytesNumber,
                         unsigned char stopBit);
 
 /* Reads data from a slave device. */
 unsigned char I2C_Read(unsigned char slaveAddress,
-                       unsigned char* dataBuffer,
+                       unsigned char *dataBuffer,
                        unsigned char bytesNumber,
                        unsigned char stopBit);
 
