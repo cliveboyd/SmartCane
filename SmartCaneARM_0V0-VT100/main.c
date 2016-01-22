@@ -120,6 +120,7 @@ THE SOFTWARE.
 #include "nrf.h"
 #include "nrf_temp.h"
 
+#include "global.h"						// A set of global variable definitions
 #include <string.h>  					// for memset()
 #include "softdevice_handler.h"			// Bluetooth
 #include "pstorage.h"
@@ -168,11 +169,12 @@ THE SOFTWARE.
 #define APP_TIMER_OP_QUEUE_SIZE          4                                          /**< Size of timer operation queues. */
 #define FIRST_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER) /**< Time from initiating event (connect or start of notification) to 
 																						 first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY    APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER)/**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY    APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER)/**< Time between each call 30sec to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT     3                                          /**< Number of attempts before giving up the connection parameter negotiation. */
 
 // for Service timer
-#define SYSTEM_TIMER_INTERVAL			APP_TIMER_TICKS(100 , APP_TIMER_PRESCALER) 	/**< sys  measurement interval ticks === (100msec) */
+#define SYSTEM_TIMER_INTERVAL			 APP_TIMER_TICKS(200, APP_TIMER_PRESCALER)	/**< sys measurement interval ticks === (200msec) 
+																						 NOTE: If to small seems to screews up with TWI ???*/
 
 // for GAP param init
 #define MIN_CONN_INTERVAL                MSEC_TO_UNITS(9, UNIT_1_25_MS)           	/**< Minimum acceptable connection interval (0.4 seconds). */
@@ -181,7 +183,6 @@ THE SOFTWARE.
 #define CONN_SUP_TIMEOUT                 MSEC_TO_UNITS(4000, UNIT_10_MS)            /**< Connection supervisory timeout (4 seconds). */
 #define TX_POWER_LEVEL                   (0) 										/**< TX Power Level value. This will be set both in the TX Power service,
 																						 in the advertising data, and also used to set the radio transmit power. */
-
 //	to use button, define BUTTONS_NUMBER in custom_board.h
 #define WAKEUP_BUTTON_ID                 0                                          /**< Button used to wake up the application. */
 #define BOND_DELETE_ALL_BUTTON_ID        1                                          /**< Button used for deleting all bonded centrals during startup. */
@@ -245,9 +246,7 @@ static float dataToSend[MEASURESIZE];
 static uint16_t m_conn_handle =  BLE_CONN_HANDLE_INVALID;			/** < Handle of the current connection. */
 static dm_application_instance_t m_app_handle;						/** < Application identifier allocated by device manager */
 
-//static app_timer_id_t	m_cap_timer_id;								/** <  timer. */
-//static app_timer_id_t	m_temp_timer_id;							/** <  timer. */
-static app_timer_id_t	m_sys_timer_id;								/** <  timer. */
+static app_timer_id_t	m_sys_timer_id;								/** < system timer. */
 
 #define MAX_TEST_DATA_BYTES		(4U)								/** < max number of test bytes per TX Burst to be used for tx and rx. ---> was 55 */
 #define UART_TX_BUF_SIZE		128									/** < UART TX buffer size. Note 512 causes error in xxAA target ---> WARNING Must be 2^x */
@@ -255,12 +254,12 @@ static app_timer_id_t	m_sys_timer_id;								/** <  timer. */
 
 																	// Note... Melbourne == lat:-24.0000deg Lon:+135.0000deg Elev:0.00km
 
-const float MagReference = 5.125;									// Australian Compass North//magNorth field Compensation for Melbourne Australia
+const float MagTNReference = 5.125;									// Australian Compass trueNorth magNorth field Compensation for Melbourne Australia
 																	// ---> Add to Mag Compass bearing for True North
 																	
 const float MagDeclination = -12.000;								// Magnetic declination at Melbourne Australia ---> extracted from Map 
 
-const float EarthMagnetic = 60.00;									// Earths Magnetic field ranges from 25uT to 65uT ---> Melbourne=60uT
+const float EarthMagnetic_uT = 60.00;								// Earths Magnetic field ranges from 25uT to 65uT ---> Melbourne=60uT
 
 float	Magnetic[3];
 float	MagMeanCal[3];
@@ -277,7 +276,7 @@ uint8_t MenuLevel=0;												// Initalise Default Menu Level to 00 --> Main M
 float	Quaternion[4];												// Test Global Decleration to test Quaternion filter update operation
 float	accel_ManualCal[3];											// The following registers are used within manual Acceleration calibration
 float	ErrorCount[16];												// Background Error Counters
-uint32_t TimeTick=0;												// Time Tick Counter Loaded within Timer Interupt ---> SYSTEM_TIMER_INTERVAL 
+uint32_t sysTimeTick=0;												// Time Tick Counter Loaded within Timer Interupt ---> SYSTEM_TIMER_INTERVAL 
 uint32_t sysLastTime=0;
 uint32_t DogCount=0;												// DogCount ---> Background Heartbeat 
 static bool finishedADC;
@@ -295,6 +294,9 @@ uint32_t line_num_clone=0;
 uint16_t Count_VibroMotor=4;										// Auto Starts vibro motor upon sys timer startup for 400msec
 
 char	ATxx[4];													// AT Command mode Ascii buffer
+
+float pitch=0; float roll=0; float yaw=0;							// Also resides in global.h
+uint16_t QuaternionCount=0;
 
 int Process_0  = 0;													/* Initalise Bit Flags Process_0
 	Process_0.0	= Flag to Activate Vibro Motor at Sys_Timer 200msec 
@@ -458,7 +460,7 @@ float BearingTN(float lat1, float lon1, float lat2, float lon2) {	// Function to
 }
 float BearingMag(float lat1, float lon1, float lat2, float lon2) {	// Function to derive Magnetic-North Bearing between two Latitude-Londitude GPS coordinates
 	float BearingTrueNorth = BearingTN(lat1, lon1, lat2, lon2);		
-	return BearingTrueNorth + MagReference;
+	return BearingTrueNorth + MagTNReference;
 }
 
 float LPFilter(float Out, float In, float percent) {				// Low Pass Filter Function
@@ -946,7 +948,8 @@ static void UART_VT100_Menu_8() {		    						// $$$$$$ SYSTEM DIAGNOSTIC MENU-8	
 	printf("\x1B[13;05H h = ATxx Command Menu");
 	printf("\x1B[14;05H j = Clr Error Counters");
 	printf("\x1B[15;05H k = Clr Gyro Integrators");
-
+	printf("\x1B[16;05H l = Calibrate Magnetometer 25sec");
+	
 	nrf_delay_ms(50);
 	 
 	printf("\x1B[05;34H ERROR COUNTERS");
@@ -1161,17 +1164,15 @@ static void UART_VT100_Refresh_Data_All_Sensors() {					// $$$$$$ ALL SENSORS ME
 	if (testbit(&Process_1, 0)==false) {
 		int value;
 		float Acc[3];
-		double Calc, MagGravity, MagCompass;
-		float data[3], temp;
+		double MagGravity;
+		float temp;
 		
-		readAccelFloatMG(Acc);													// ACCELERATION
+		readAccelFloatMG(Acc);													// ACCELERATION - GRAVITY
 
 		printf("\x1B[05;14H%+2.2f  ", Acc[0]);
 		printf("\x1B[06;14H%+2.2f  ", Acc[1]);
 		printf("\x1B[07;14H%+2.2f  ", Acc[2]);									// Z Axis direction swap as chip mounted on PCB bottom
 
-		nrf_delay_ms(50);
-		
 		MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
 		printf("\x1B[08;14H%+2.2f  ", MagGravity);
 		
@@ -1182,18 +1183,15 @@ static void UART_VT100_Refresh_Data_All_Sensors() {					// $$$$$$ ALL SENSORS ME
 		printf("\x1B[06;40H%+4.2f   ", Acc[1]);
 		printf("\x1B[07;40H%+4.2f   ", Acc[2]);
 		
-		Calc = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
-		printf("\x1B[08;40H%+4.2f   ", Calc);
-		
 		nrf_delay_ms(50);
 		
-		readMagFloatUT(data);													// MAGNETIC Field in uTesla UT
-		printf("\x1B[05;68H%+4.2f   ", (float)data[1]);							// X-Y Axis swap to allign with Accel-Gyro axis
-		printf("\x1B[06;68H%+4.2f   ", (float)data[0]);
-		printf("\x1B[07;68H%+4.2f   ", -1 * (float)data[2]);					// Z-Axis alligned in reverse direction to Accel-Gyro
+//		readMagFloatUT(data);													// MAGNETIC Field in uTesla UT (updated at system timer
+		printf("\x1B[05;68H%+4.2f   ", Magnetic[1]);							// X-Y Axis swap to allign with Accel-Gyro axis
+		printf("\x1B[06;68H%+4.2f   ", Magnetic[0]);
+		printf("\x1B[07;68H%+4.2f   ", Magnetic[2]);							// Z-Axis alligned in reverse direction to Accel-Gyro
 		
-		MagCompass = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]); // Total Magnetic Field Exposure ---> Earth + Other ????
-		printf("\x1B[08;68H%+4.2f   ", MagCompass);
+//		MagCompass = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]); // Total Magnetic Field Exposure ---> Earth + Other ????
+		printf("\x1B[08;68H%+4.2f   ",(double) 0); //MagCompass);
 		
 		nrf_delay_ms(50);
 		
@@ -1222,8 +1220,6 @@ static void UART_VT100_Refresh_Data_All_Sensors() {					// $$$$$$ ALL SENSORS ME
 
 }	
 
-
-
 static void UART_VT100_Refresh_Data_GPS() {							// $$$$$$ GPS MENU 						DATA REFRESH MENU-2	$$$$$$
 	
 /** @brief 		Function to load GPS MENU Refresh Data MENU-2 to VT100 Screen.  */
@@ -1245,17 +1241,14 @@ if (testbit(&Process_1, 0)==false) {
 		printf("\x1B[04;41H%+6.3f    ", Acc[0]);
 		printf("\x1B[05;41H%+6.3f    ", Acc[1]);
 		printf("\x1B[06;41H%+6.3f    ", -1 * Acc[2]);							// Swap z Axis AS g typically lies on neg z-axis
-
-		nrf_delay_ms(100);
 		
 		MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
-		printf("\x1B[07;41H%+6.3f   ", (float) MagGravity);						// MAG X-Y-Z
-
+		printf("\x1B[07;41H%+6.3f   ",  (float) MagGravity);					// MAG X-Y-Z
 		
 		readGyroFloatDeg(Acc);													// GYROSCOPE Degrees
-		printf("\x1B[04;65H%+06.1f    ", Gyro[0]);	//Acc[0]);
-		printf("\x1B[05;65H%+06.1f    ", Gyro[1]);	//Acc[1]);
-		printf("\x1B[06;65H%+06.1f    ", Gyro[2]);	//Acc[2]);
+		printf("\x1B[04;65H%+06.1f    ", Gyro[0]);			//Acc[0]);
+		printf("\x1B[05;65H%+06.1f    ", Gyro[1]);			//Acc[1]);
+		printf("\x1B[06;65H%+06.1f    ", Gyro[2]);			//Acc[2]);
 		
 		nrf_delay_ms(50);
 			
@@ -1265,26 +1258,27 @@ if (testbit(&Process_1, 0)==false) {
 		
 		nrf_delay_ms(50);
 			
-	//	mpu_get_compass_reg(data, &timestamp);
-		readMagFloatUT(data);		// MAGNETIC FIELD uTesla
+//		mpu_get_compass_reg(data, &timestamp);
+//		readMagFloatUT(data);													// MAGNETIC FIELD uTesla
 //		readMagTest(data);
-		printf("\x1B[04;14H%+06.1f    ", data[0]);			// X
-		printf("\x1B[05;14H%+06.1f    ", data[1]);			// Y
-		printf("\x1B[06;14H%+06.1f    ", data[2]);			// Z
+
+		printf("\x1B[04;14H%+06.1f    ", Magnetic[1]);			// X			// Updated at System Timer
+		printf("\x1B[05;14H%+06.1f    ", Magnetic[0]);			// Y
+		printf("\x1B[06;14H%+06.1f    ", Magnetic[2]);			// Z
 
 		nrf_delay_ms(100);
 		
-		Magnitude = sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);	// Total Magnetic Field Exposure ---> Earth + Other ????
+		Magnitude = sqrt(Magnetic[0]*Magnetic[0] + Magnetic[1]*Magnetic[1] + Magnetic[2]*Magnetic[2]);	// Total Magnetic Field Exposure ---> Earth + Other ????
 		printf("\x1B[08;14H%+06.1f    ", Magnitude);
 		
 		nrf_delay_ms(50);
 		
-		Magnitude = sqrt(data[0]*data[0] + data[1]*data[1]);   					// Total X-Y Magnetic Field Exposure ---> Earth + Other ????
+		Magnitude = sqrt(Magnetic[0]*Magnetic[0] + Magnetic[1]*Magnetic[1]);   					// Total X-Y Magnetic Field Exposure ---> Earth + Other ????
 		printf("\x1B[07;14H%+06.1f    ", Magnitude);
 		
 		nrf_delay_ms(50);
 			
-		Bearing = 180/pi*atan(data[0]/data[1]);
+		Bearing = 180/pi*atan(Magnetic[0]/Magnetic[1]);
 		
 		if(data[1]<0)  Bearing = Bearing + 180;
 		printf("\x1B[18;14H%+06.1f   ", Bearing);
@@ -1293,7 +1287,8 @@ if (testbit(&Process_1, 0)==false) {
 		
 		nrf_delay_ms(100);
 		
-//		readQuaternion(Quaternion);												// QUARTERNION ---> Updated during sys Timer 100 msec
+		readQuaternion(Quaternion);												// QUARTERNION ---> Updated during sys Timer 200 msec
+		
 		printf("\x1B[11;14H%+07.4f ", Quaternion[0]);
 		printf("\x1B[12;14H%+07.4f ", Quaternion[1]);
 		printf("\x1B[13;14H%+07.4f ", Quaternion[2]);
@@ -1318,7 +1313,7 @@ if (testbit(&Process_1, 0)==false) {
 		printf("\x1B[20;65H%+06.2f    ", Gyro_ManualCal[1]);
 		printf("\x1B[21;65H%+06.2f    ", Gyro_ManualCal[2]);
 		
-		printf("\x1B[23;21H%d", TimeTick);
+		printf("\x1B[23;21H%d", sysTimeTick);
 
 		nrf_delay_ms(250);
 				
@@ -1334,31 +1329,31 @@ if (testbit(&Process_1, 0)==false) {
 	applied in the correct order which for this configuration is yaw, pitch, and then roll.
 	For more see http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles which has additional links.*/
   
-		float yaw, pitch, roll, q[4];
-		float PI = 3.14159265358979323846f;
-		
-		q[0] = Quaternion[0];
-		q[1] = Quaternion[1];
-		q[2] = Quaternion[2];
-		q[3] = Quaternion[3];
+//		float yaw, pitch, roll, q[4];
+//		
+//		q[0] = Quaternion[0];
+//		q[1] = Quaternion[1];
+//		q[2] = Quaternion[2];
+//		q[3] = Quaternion[3];
 
-		yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);   
-		pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
-		roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
+//		yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);   
+//		pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
+//		roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
+//		
+//		pitch *= 180.0f / pi;
+//		yaw   *= 180.0f / pi; 
+//		yaw   += MagTNReference; 								// True North Offset Melbourne Australia on 2014-04-04
+//		roll  *= 180.0f / pi;
 		
-		pitch *= 180.0f / PI;
-		yaw   *= 180.0f / PI; 
-		yaw   -= 13.8f; 			// Declination at Danville, California is 13 degrees 48 minutes and 47 seconds on 2014-04-04
-		roll  *= 180.0f / PI;
+//		MPU9250_Get_Euler(pitch, roll, yaw);
 
-		printf("\x1B[11;41H%+4.2f    ", pitch);	
+		printf("\x1B[11;41H%+4.2f    ", pitch);
 		printf("\x1B[12;41H%+4.2f    ", roll);
 		printf("\x1B[13;41H%+4.2f    ", yaw);
 		
 		nrf_delay_ms(200);
 	}
 }	
-
 
 static void UART_VT100_Refresh_Data_Altitude() {					// $$$$$$ ALTITUDE MENU 				DATA REFRESH MENU-4	$$$$$$
 	
@@ -1577,7 +1572,7 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 					break;
 				
 				case 'c':
-					if ( MenuLevel == 80) { 					
+					if ( MenuLevel == 80) { 										// Vibro Strobe
 					printf("\x1B[25;30H SYSMSG: Vibro Strobe                ");
 					setbit(&Process_0, 1);											// Flag to initiate Vibro Motor at 100msec+100msec
 					}
@@ -1597,7 +1592,7 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 					break;
 				
 				case 'f':
-					if (MenuLevel == 80) { 											// PWM Tone Test
+					if (MenuLevel == 80) { 											// PWM Tone Test (ToDo)
 					setbit(&Process_2, 0);											// PWM Master On/Off Flag
 					setbit(&Process_2, 1);											// Flag to initiate PWM Tone Test 100msec
 					printf("\x1B[25;30H SYSMSG: Enable PWM TEST            ");
@@ -1647,7 +1642,29 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 					GyroIntegrator[2] = 0;
 					}
 					break;
+				
+				case 'l':
+					if (MenuLevel == 80) { 											// Calibrate Magnetometer Average Min Max Readings 
+					printf("\x1B[25;30H SYSMSG: Calibrate Magnetometer START ");										
+					CalibrateMagnetometer(500);										// Average 500 readings
+					printf("\x1B[25;30H SYSMSG: Calibrate Magnetometer END   ");
 					
+					float Acc[3];
+					readMagTest(Acc);
+					MagMeanCal[0] = Acc[0];			// Clear Auto Cal Registers Under developement at system timer handler
+					MagMeanCal[1] = Acc[1];
+					MagMeanCal[2] = Acc[2];
+					
+					MagMaxCal[0] = -999999;
+					MagMaxCal[1] = -999999;
+					MagMaxCal[2] = -999999;
+					
+					MagMinCal[0] = +999999;
+					MagMinCal[1] = +999999;
+					MagMinCal[2] = +999999;
+					}
+					break;	
+				
 				default:
 					break;
 			} 
@@ -1792,11 +1809,11 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	
 	// NOTE... For button interupt, must be called before 'app_button_init' inside bsp_init
 	
-	APP_GPIOTE_INIT(1);  											// One user, no use yet unless app_button_enable() is called
+	APP_GPIOTE_INIT(1);  															// One user, no use yet unless app_button_enable() is called
 
 	err_code = bsp_init(BSP_INIT_LED | BSP_INIT_BUTTONS,
-					APP_TIMER_TICKS(100, APP_TIMER_PRESCALER),		// 100msec scan
-					button_event_handler);							// Button Interupt handler
+					APP_TIMER_TICKS(100, APP_TIMER_PRESCALER),						// 100msec scan
+					button_event_handler);											// Button Interupt Handler
 	if (err_code == NRF_ERROR_INVALID_STATE) ErrorCounter[4] += 1;
 
 	APP_ERROR_CHECK_CSB(err_code);
@@ -1812,12 +1829,11 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	
 	unsigned char status = 0;
 	while(!status)  status = I2C_Init();
-	
-	
-	
+		
 //	calibrateMPU9150()
 	
 	MPU9250_setup();		// Passes through however includes long with big Averaging Loop
+	
 //	initMPU9250();
 	if(MPU9250_WhoAmI()==0x71) setbit(&Process_5,1);				// Process_5.1	= Flag MPU9250 Inertial Sensor Present
 	
@@ -1828,18 +1844,27 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	Gyro_ManualCal[1]=Acc[1];
 	Gyro_ManualCal[2]=Acc[2];
 	
-	sysLastTime = TimeTick;
+	sysLastTime = sysTimeTick;
 	
 	GyroIntegrator[0]=0;
 	GyroIntegrator[1]=0;
 	GyroIntegrator[2]=0;
 
-	readMagFloatUT(Acc);											// Read xyz Raw Magnetometer registers uTesla	
-	MagMeanCal[0] = MagMaxCal[0] = MagMinCal[0] = Acc[0];
-	MagMeanCal[1] = MagMaxCal[1] = MagMinCal[1] = Acc[1];
-	MagMeanCal[2] = MagMaxCal[2] = MagMinCal[2] = Acc[2];
-
-
+	//readMagFloatUT(Acc);											// Read xyz Raw Magnetometer registers uTesla	
+	readMagTest(Acc);
+	MagMeanCal[0] = Acc[0];
+	MagMeanCal[1] = Acc[1];
+	MagMeanCal[2] = Acc[2];
+	
+	MagMaxCal[0] = -999999;
+	MagMaxCal[1] = -999999;
+	MagMaxCal[2] = -999999;
+	
+	MagMinCal[0] = +999999;
+	MagMinCal[1] = +999999;
+	MagMinCal[2] = +999999;
+	
+/*
 //		if(mpu_init(NULL));
 //		long gyro,accel;
 //		mpu_run_self_test(&gyro, &accel);
@@ -1870,37 +1895,28 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 //		mpu_run_6500_self_test(&gyro, &accel,0);
 
 //		initA2035H();
+*/
 
-/*		Process_5.4	= Flag A2035 GPS Sensor Present
-		Process_5.5	= Flag SFlash Memory Present
-		Process_5.6	= Flag EEPROM Present
-		Process_5.7	= uP and Peripheral temperatures OK ---> .LE.50 */
+/*	Process_5.4	= Flag A2035 GPS Sensor Present
 
-		MPL3115A2_init();
-		if(MPL3115A2_WhoAmI()==0xC4) setbit(&Process_5,2);			// Process_5.2 = Flag MPL3115 Pressure Sensor Present
-		
-		float f = MPL3115A2_getAltitude();
-		
-		ltc294x_init();
-		int temp;
-		ltc294x_get_temperature(&temp);
-		if(temp!=0) setbit(&Process_5,3);							// Process_5.3 = Flag LTC2943 GasGauge Sensor Present cludeged by reading temperature
-		
-		ltc294x_get_current(&temp);
-		ltc294x_get_voltage(&temp);
+	Process_5.5	= Flag SFlash Memory Present
+	Process_5.6	= Flag EEPROM Present
+	Process_5.7	= uP and Peripheral temperatures OK ---> .LE.50 */
 
-		ltc294x_get_charge_counter(&temp);
-}
-
-/**	static void capmeasure_timer_handler(void * p_context) {		// $$$$$$ Diff Capacitor Sensor Timer Handler (Not used in SmartCane)
-
-	@brief 		Function to test and initalise miscellanous routines setup by Leo ---> ????@details 	
-	@note  		
-	@ref 			
+	MPL3115A2_init();
+	if(MPL3115A2_WhoAmI()==0xC4) setbit(&Process_5,2);			// Process_5.2 = Flag MPL3115 Pressure Sensor Present
 	
-    UNUSED_PARAMETER(p_context);
-
-}*/
+	float f = MPL3115A2_getAltitude();
+	
+	ltc294x_init();
+	int temp;
+	ltc294x_get_temperature(&temp);
+	if(temp!=0) setbit(&Process_5,3);							// Process_5.3 = Flag LTC2943 GasGauge Sensor Present cludeged by reading temperature
+	
+	ltc294x_get_current(&temp);
+	ltc294x_get_voltage(&temp);
+	ltc294x_get_charge_counter(&temp);
+}
 
 int32_t readNRF_TEMP() {											// ERROR  ToDo Causes System to Hang !!!!!
 /** @brief 		Function to read internal nrf51822 temperature. */
@@ -1952,7 +1968,8 @@ int Read32_ASM_SP() {												// Read and return _ASM Stack Poiter SP Registe
 	return spReg;
 } 
 
-/* _ASM Program Counter PC Register
+/* _ASM Program Counter PC Register									// Bypassed while not in use
+
 
 unsigned int Read32_ASM_PC() {										// Read and return _ASM Program Counter PC Register
 	unsigned int pcReg;
@@ -2053,18 +2070,12 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 	float temp;
 	float Acc[3];
 	
-	TimeTick += 1;														// TimeTick Counter in SysTimer Increments	
+	sysTimeTick += 1;														// sysTimeTick Counter in SysTimer Increments	 200msec
 	
-	if(!testbit(&iProcess_0,0)) {			// Trap and bypass in case handler busy with previous event 
+	if(!testbit(&iProcess_0,0)) {											// Trap and bypass in case handler busy with previous event 
 		setbit(&iProcess_0,0);												// Set Flag for active system timer handler
 
-	//	Error... readQuaternion bypassed for time being as the TWI I2C service routine dies if hit to quickly !!!
-	//	Does work for a short period of time !!!! 
-		
-		readQuaternion(Quaternion);											// MPU9250 QUARTERNION  UPDATING FILTER AT 100msec rate
-		
-	//	Load Gyro Integrators
-		
+
 		readGyroFloatDeg(Acc);												// Read xyz Raw GYRO registers deg/sec
 		temp=Acc[0]+Acc[1]+Acc[2];
 		if(temp != 0) {														// Skip if Acc[]=0
@@ -2078,8 +2089,8 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 				Gyro_ManualCal[2]=LPFilter(Gyro_ManualCal[2],Acc[2],99.9);				
 			}
 			
-			if(sysLastTime==0) sysLastTime = TimeTick;
-			float DeltaT = 0.1 *(TimeTick-sysLastTime);
+			if(sysLastTime==0 || sysLastTime>sysTimeTick) sysLastTime = sysTimeTick;
+			float DeltaT = 0.2*(sysTimeTick-sysLastTime);					// 200msec increments
 
 			if (Gyro[0]<-5 || Gyro[0]>5) GyroIntegrator[0]+=Gyro[0]*DeltaT;	// Integrate if outside deadband +/- 5degs/sec
 																			// convert degs/sec to degrees ie Nominally divide by 100msec sys timer entry
@@ -2097,35 +2108,49 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 			GyroIntegrator[1] *= 0.999;
 			GyroIntegrator[2] *= 0.999;
 			
-			sysLastTime = TimeTick;
+			sysLastTime = sysTimeTick;
+		
 		}
 		
-		readMagFloatUT(Acc);												// Read xyz Raw Magnetometer uTesla registers
-		temp=Acc[0]+Acc[1]+Acc[2];
-		if(temp != 0) {														// Skip if Acc[]=0
-			if(Acc[0]>MagMaxCal[0])	LPFilter(MagMaxCal[0],Acc[0], 85);		// Trap for Maximum Magnetic Field Values in each axis
-			if(Acc[1]>MagMaxCal[1])	LPFilter(MagMaxCal[1],Acc[1], 85);			
-			if(Acc[2]>MagMaxCal[2])	LPFilter(MagMaxCal[2],Acc[2], 85);			
 
-			if(Acc[0]<MagMinCal[0])	LPFilter(MagMinCal[0],Acc[0], 85);		// Trap for Minimum Magnetic Field Values in each axis
-			if(Acc[1]<MagMinCal[1])	LPFilter(MagMinCal[1],Acc[1], 85);			
-			if(Acc[2]<MagMinCal[2])	LPFilter(MagMinCal[2],Acc[2], 85);			
+		MPU9250_Timed_Interupt();											// ToDo---> Maybe Dive via MPU9250 interupt to ensure correct data present !!!!!
+		
+		if(testbit(&Process_5,1)){												// Check if MPU9250 Inertial Sensor Present
 
-			MagCenterCal[0] = LPFilter(MagCenterCal[0],(MagMaxCal[0]-MagMinCal[0])/2, 99);
-			MagCenterCal[1] = LPFilter(MagCenterCal[1],(MagMaxCal[1]-MagMinCal[1])/2, 99);
-			MagCenterCal[2] = LPFilter(MagCenterCal[2],(MagMaxCal[2]-MagMinCal[2])/2, 99);
+			Acc[0]=Acc[1]=Acc[2]=0;
+//			readMagFloatUT(Acc);												// Read xyz Raw Magnetometer uTesla registers
+			readMagTest(Acc);
+			temp=Acc[0]+Acc[1]+Acc[2];
+			if(temp != 0) {														// Skip if Acc[]=0
+				
+				if(Acc[0]>MagMaxCal[0])	LPFilter(MagMaxCal[0],Acc[0], 85);		// Trap for Maximum Magnetic Field Values in each axis
+				if(Acc[1]>MagMaxCal[1])	LPFilter(MagMaxCal[1],Acc[1], 85);			
+				if(Acc[2]>MagMaxCal[2])	LPFilter(MagMaxCal[2],Acc[2], 85);			
 
-			MagMeanCal[0] = LPFilter(MagMeanCal[0],Acc[0]-MagCenterCal[0], 95);
-			MagMeanCal[1] = LPFilter(MagMeanCal[1],Acc[1]-MagCenterCal[1], 95);
-			MagMeanCal[2] = LPFilter(MagMeanCal[2],Acc[2]-MagCenterCal[2], 95);
+				if(Acc[0]<MagMinCal[0])	LPFilter(MagMinCal[0],Acc[0], 85);		// Trap for Minimum Magnetic Field Values in each axis
+				if(Acc[1]<MagMinCal[1])	LPFilter(MagMinCal[1],Acc[1], 85);			
+				if(Acc[2]<MagMinCal[2])	LPFilter(MagMinCal[2],Acc[2], 85);			
 
-			MagMaxCal[0] *= 0.99999;											// Send to zero while static
-			MagMaxCal[1] *= 0.99999;
-			MagMaxCal[2] *= 0.99999;
+				MagCenterCal[0] = LPFilter(MagCenterCal[0],(MagMaxCal[0]-MagMinCal[0])/2, 99);
+				MagCenterCal[1] = LPFilter(MagCenterCal[1],(MagMaxCal[1]-MagMinCal[1])/2, 99);
+				MagCenterCal[2] = LPFilter(MagCenterCal[2],(MagMaxCal[2]-MagMinCal[2])/2, 99);
 
-			MagMinCal[0] *= 0.99999;											// Send to zero while static
-			MagMinCal[1] *= 0.99999;
-			MagMinCal[2] *= 0.99999;
+				MagMeanCal[0] = LPFilter(MagMeanCal[0],Acc[0]-MagCenterCal[0], 95);
+				MagMeanCal[1] = LPFilter(MagMeanCal[1],Acc[1]-MagCenterCal[1], 95);
+				MagMeanCal[2] = LPFilter(MagMeanCal[2],Acc[2]-MagCenterCal[2], 95);
+
+				MagMaxCal[0] *= 0.99999;											// Send to zero while static
+				MagMaxCal[1] *= 0.99999;
+				MagMaxCal[2] *= 0.99999;
+
+				MagMinCal[0] *= 0.99999;											// Send to zero while static
+				MagMinCal[1] *= 0.99999;
+				MagMinCal[2] *= 0.99999;
+				
+				Magnetic[0]=Acc[0];		//-MagCenterCal[0];
+				Magnetic[1]=Acc[1];		//-MagCenterCal[1];
+				Magnetic[2]=Acc[2];		//-MagCenterCal[2];
+			}
 		}
 
 		
@@ -2167,15 +2192,11 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 
 		
 
-	//	short data[3];
-	//	unsigned long timestamp;
-	//	int16_t temp; // = readTempData();
-		
+	
 
 	//	readAccelFloatMG(Acc);			//[0]==Left=+ive    Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
 		readGyroFloatDeg(Acc);			//[0]==Pitch Up=+ive Down=-ive		[1]==Roll CW=+ive   ACW=-ive		[2]==Yaw Right=+ive  Left=-ive
 	//	readMagFloatUT(Acc);			//[0]==Front=+ive    Rear=-ive		[1]==Right=+ive     Left=-ive		[2]==Z Down=+ive     Z Up=-ive
-		
 				
 		err_code = ble_AD7746_send_temp_notify(&m_AD7746, Acc[2]);				// Currently ASSIGNED TO transmit Gyro Yaw to ble pipe when ble connected
 		
@@ -2183,10 +2204,14 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 				(err_code != NRF_ERROR_INVALID_STATE) &&
 				(err_code != BLE_ERROR_NO_TX_BUFFERS) &&
 				(err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) 				// ignore these errors as they appear only during setup and are normal
-		{
-			APP_ERROR_HANDLER(err_code);
+		
+		{	APP_ERROR_HANDLER(err_code);
 		}
 
+/*
+	//	short data[3];
+	//	unsigned long timestamp;
+	//	int16_t temp; // = readTempData();	
 		//readAccelData(data);
 		// do measurement and notify
 	// real AD7746 temp data
@@ -2243,14 +2268,14 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 	//			sensorADC_startSequenceMeasure(MEASURESIZE, blockSend);
 	//		}
 
-		clrbit(&iProcess_0,0);											// Clear Flag for active system timer handler
-
-		return ;
-		
+*/
+	
+	clrbit(&iProcess_0,0);																		// Clear Flag indicating exit from of system timer handler
+	return;
 	}
 }
 
-static void timers_init(void) {										// Initalise Timers and setup event handlers
+static void timers_init(void) {																		// Initalise Timers and setup event handlers
 /**	@brief		Function for the Timer initialisation.
 	@details	Initializes the timer module. This creates application timer event handlers.*/
 
@@ -2266,11 +2291,6 @@ static void timers_init(void) {										// Initalise Timers and setup event han
 	
     APP_ERROR_CHECK_CSB(err_code);
 
-//	err_code = app_timer_create(&m_ble_timer_id,    												// Create bluetooth_timer_handler == 500 msec
-//                               APP_TIMER_MODE_REPEATED,
-//                               bluetooth_timer_handler);
-	
-    APP_ERROR_CHECK_CSB(err_code);
 }
 
 static void application_timers_start(void) {						// Start Background Timers Serviced by interupt handlers defined at timers_init()
@@ -2385,8 +2405,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt) {					// ble advertisement eve
 	
 	uint32_t err_code;
 
-    switch (ble_adv_evt)
-    {
+    switch (ble_adv_evt) {
         case BLE_ADV_EVT_FAST:
             err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
             APP_ERROR_CHECK_CSB(err_code);

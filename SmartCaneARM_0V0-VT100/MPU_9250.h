@@ -69,12 +69,12 @@ void readQuaternion(float * q);
 
 void initAK8963(float * destination);
 
-
 void resetMPU9250(void);
 void initMPU9250(void);
 void MPU9250SelfTest(float * destination);
 
 void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
+
 void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
 
 void accelgyrocalMPU9250(float * dest1, float * dest2);
@@ -86,9 +86,11 @@ uint8_t MPU9250_WhoAmI(void);
 void calibrateMPU9250(float[],float[]);
 void MPU9250_Setup(void);
 
-void magcalMPU9250(float * dest1, float * dest2);
+void magcalMPU9250(float * dest1, float * dest2, uint16_t count);
+void CalibrateMagnetometer(uint16_t count);
 
 uint8_t MPU9250_WhoAmI(void);
+
 
 void getMres(void);
 void getGres(void);
@@ -97,5 +99,8 @@ void getAres(void);
 void MPU9250_setup(void);
 
 void readMagTest(float * destination);
+void MPU9250_Timed_Interupt(void);
+void MPU9250_Get_Euler(float pitch, float roll, float yaw);
+
 #endif
 

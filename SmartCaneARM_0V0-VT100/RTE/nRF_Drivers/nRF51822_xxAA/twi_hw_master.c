@@ -60,7 +60,7 @@ static bool twi_master_write(uint8_t * data, uint8_t data_length, bool issue_sto
 
         NRF_TWI1->TXD = *data++;
     }
-    
+
 	/** @snippet [TWI HW master write] */
 
     if (issue_stop_condition)  {
@@ -178,6 +178,10 @@ static bool twi_master_read(uint8_t * data, uint8_t data_length, bool issue_stop
 		//		NRF_TWI1->ENABLE       = TWI_ENABLE_ENABLE_Enabled << TWI_ENABLE_ENABLE_Pos;
 
 		//		(void)twi_master_init();
+		
+		//// NRF_TWI1->EVENTS_STOPPED = 0;
+		//// NRF_PPI->CHENCLR = PPI_CHENCLR_CH0_Msk;
+
 		//		return false;
 	}
 	

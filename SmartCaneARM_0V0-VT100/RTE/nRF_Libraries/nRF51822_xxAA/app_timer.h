@@ -142,7 +142,7 @@ typedef enum
     {                                                                                              \
         static uint32_t APP_TIMER_BUF[CEIL_DIV(APP_TIMER_BUF_SIZE((MAX_TIMERS),                    \
                                                                   (OP_QUEUES_SIZE) + 1),           \
-                                               sizeof(uint32_t))];                                 \
+                                                                   sizeof(uint32_t))];             \
         uint32_t ERR_CODE = app_timer_init((PRESCALER),                                            \
                                            (MAX_TIMERS),                                           \
                                            (OP_QUEUES_SIZE) + 1,                                   \
