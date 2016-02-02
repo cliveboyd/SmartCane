@@ -22,7 +22,7 @@ THE SOFTWARE.
 /*	
 	NORDIC nrf51822 QFN CHIP variants and S110 SoftDevice Configurations
 
-	:::::: Nordic SoftDevice ---> S110 Ver 8.0.0
+	:::::: Nordic SoftDevice ---> S110 Ver 8.0.0   Keil run-time environment S110 softdevice Driver Version 8.0.2
 
 	nRF51822_xxAC IROM1 Start:0x18000 Size:0x28000(163k)   IRAM1... Start 0x20002000 Size:0x6000(32k)
 
@@ -40,6 +40,9 @@ THE SOFTWARE.
 */
 
 /*
+ ERROR...	Migration to xxAC (new PCB) fails to run. 
+ Note...	xxAA changes to device driver twi_hw_master.c overwriten with default config. Driver (file) was updated with timeout protected CSB variant.
+  
  ERROR...	180seconds Requires ---> Upon Expire Forces Power Down ---> tried to bump 2 Hours and Avoid Advertising Time Out Event however int > 180 causes a shutdown
  Note		Removed Powerdown option at Adv time Out however still forces shutdown upon event
  Note 		Commented out // advertising_start() to bypass shutdown issue (No bluetooth if NOT started
@@ -302,7 +305,6 @@ float pitch=0; float roll=0; float yaw=0;							// Also resides in global.h
 uint16_t QuaternionCount=0;
 
 
-
 int Process_0  = 0;													/* Initalise Bit Flags Process_0
 	Process_0.0	= Flag to Activate Vibro Motor at Sys_Timer 200msec 
 	Process_0.1	= Flag to Activate Vibro Motor at Sys_Timer 400msec 
@@ -319,7 +321,7 @@ int Process_0  = 0;													/* Initalise Bit Flags Process_0
 	Process_0.12 = 
 	Process_0.13 = 
 	Process_0.14 = 
-	Process_0.15 = 
+	Process_0.15 = Flag to indicate start of main() TSA entry
 */
 int Process_1  = 0;													/* Initalise Bit Flags Process_1	
 	Process_1.0	= Flag to bypass VT100 Mode and run ATxx cmd mode 
@@ -400,10 +402,19 @@ int Process_7  = 0;													/* Initalise Bit Flags Process_7
 	Process_7.1	= Buttons 90deg to RIGHT
 	Process_7.2	= Buttons 90deg to LEFT
 	Process_7.3	= Buttons UP 
-	Process_7.4	= Cane UP
-	Process_7.5	= Cane DOWN
-	Process_7.6	= 
+	Process_7.4	= Buttons DOWN
+	Process_7.5	= Cane UP
+	Process_7.6	= Cane DOWN
 	Process_7.7	= 
+	Process_7.8	= 
+	Process_7.9	= 
+	Process_7.10 = 
+	Process_7.11 = 
+	Process_7.12 = 
+	Process_7.13 = 
+	Process_7.14 = 
+	Process_7.15 = 
+	
 */
 
 int iProcess_0 = 0;													/* Initalise Bit Flags iProcess_0 ---> Reserved for use by INTERUPT service routines
@@ -427,19 +438,19 @@ int iProcess_0 = 0;													/* Initalise Bit Flags iProcess_0 ---> Reserved 
 	iProcess_0.15	= 
 */
 
-void setbit(int *Addr, uint8_t Operator) {							// Set   bit at Process_x based on Operator (0..7)---> Single bit
+void setbit(int *Addr, uint8_t Operator) {							// Set   bit at Process_x based on Operator (0..15)---> Single bit
 	if(Operator<=16) {
-		*Addr  = *Addr | (int) pow(2, Operator);						// Bitwise OR
+		*Addr  = *Addr | (int) pow(2, Operator);					// Bitwise OR
 	}
 }	
 
-void clrbit(int *Addr, uint8_t Operator) {							// Clear bit at Process_x bassed on Operator (0..7)---> Single bit 
+void clrbit(int *Addr, uint8_t Operator) {							// Clear bit at Process_x bassed on Operator (0..15)---> Single bit 
 	if(Operator<=16){
-		*Addr  = *Addr & ~((int)(pow(2, Operator)));					// Bitwise AND of inverted Operator
+		*Addr  = *Addr & ~((int)(pow(2, Operator)));				// Bitwise AND of inverted Operator
 	}
 }
 
-bool testbit(int *Addr, uint8_t Operator) {							// Test  bit at Process_x bassed on Operator (0..7)---> Single bit return true/false
+bool testbit(int *Addr, uint8_t Operator) {							// Test  bit at Process_x bassed on Operator (0..15)---> Single bit return true/false
 	if(Operator<=16){
 		if (*Addr & (int) pow(2,Operator)) {
 			return true;												// True
@@ -909,10 +920,17 @@ static void UART_VT100_Menu_7() {		    						// $$$$$$ CANE DIAGNOSTIC MENU-7			
 
 	nrf_delay_ms(50);
 
-	printf("\x1B[05;55H SPARE");
-	printf("\x1B[06;55H Spare = ");
-	printf("\x1B[07;55H Spare = ");
-	printf("\x1B[08;55H Spare = ");
+	printf("\x1B[05;55H CANE ALIGN");
+	printf("\x1B[06;55H READY  = ");
+	printf("\x1B[07;55H bUP    = ");
+	printf("\x1B[08;55H bDOWN  = ");
+	
+	nrf_delay_ms(50);
+	printf("\x1B[09;55H bRIGHT = ");
+	printf("\x1B[10;55H bLEFT  = ");
+	
+	printf("\x1B[12;55H CaneUP = ");
+	printf("\x1B[13;55H CaneDWN= ");
 
 	nrf_delay_ms(50);		
 
@@ -1430,6 +1448,34 @@ static void UART_VT100_Refresh_Data_Cane() {						// $$$$$$ CANE DIAGNOSTICS MEN
 	
 /** @brief 		Function to load CANE DIAGNOSTICS MENU Refresh Data MENU-7 to VT100 Terminal Screen.  */	
 	if (testbit(&Process_1, 0)==false) {								// Test for VT100 refresh Flag
+	
+		printf("\x1B[06;64H ");
+		if (testbit(&Process_7,0)) printf("TRUE ");						// Cane Aligned 45deg in front ---> READY
+		else printf("FALSE");
+		
+		printf("\x1B[07;64H ");
+		if (testbit(&Process_7,1)) printf("TRUE ");						// Buttons Aligned to Up
+		else printf("FALSE");
+		
+		printf("\x1B[08;64H ");
+		if (testbit(&Process_7,2)) printf("TRUE ");						// Buttons Aligned to Down
+		else printf("FALSE");
+		
+		printf("\x1B[09;64H ");
+		if (testbit(&Process_7,3)) printf("TRUE ");						// Buttons Aligned to Right						
+		else printf("FALSE");
+		
+		printf("\x1B[10;64H ");
+		if (testbit(&Process_7,4)) printf("TRUE ");						// Buttons Aligned to Right						
+		else printf("FALSE");
+			
+		printf("\x1B[12;64H ");
+		if (testbit(&Process_7,5)) printf("TRUE ");						// Cane Aligned to UP
+		else printf("FALSE");
+		
+		printf("\x1B[13;64H ");
+		if (testbit(&Process_7,6)) printf("TRUE ");						// Cane Aligned to DOWN
+		else printf("FALSE");
 	}
 }	
 
@@ -2075,8 +2121,10 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
     @note  		nRF51822 Anomaly Notice v3.0 ---> Use of an EVENT from any TIMER module  
 				to trigger a TASK in GPIOTE or RTC using the PPI could fail under
 				certain conditions.
-    @ref  																			*/		
+    @ref  																	*/		
 
+	if(!testbit(&Process_0,15)) return;										// Asserted via entry to TSA within main()
+		
 	uint32_t err_code = NRF_SUCCESS;    
 			
 	UNUSED_PARAMETER(p_context);
@@ -2123,11 +2171,9 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 			GyroIntegrator[2] *= 0.999;
 			
 			sysLastTime = sysTimeTick;
-		
 		}
-		
 
-		MPU9250_Timed_Interupt();											// ToDo---> Maybe Dive via MPU9250 interupt to ensure correct data present !!!!!
+		MPU9250_Timed_Interupt();											// ToDo---> Need to Dive via MPU9250 interupt to ensure correct data present !!!!!
 		
 		if(testbit(&Process_5,1)){												// Check if MPU9250 Inertial Sensor Present
 
@@ -2153,6 +2199,7 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 				MagMeanCal[1] = LPFilter(MagMeanCal[1],Acc[1]-MagCenterCal[1], 95);
 				MagMeanCal[2] = LPFilter(MagMeanCal[2],Acc[2]-MagCenterCal[2], 95);
 
+				
 				MagMaxCal[0] *= 0.99999;										// Send to zero while static
 				MagMaxCal[1] *= 0.99999;
 				MagMaxCal[2] *= 0.99999;
@@ -2167,31 +2214,37 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 			}
 		}
 		
-		
 		readAccelFloatMG(Acc);													// ACCELERATION-GRAVITY (g) ---> May Require LP Filtering --> Decide on test!!!!
 		
 		if(Acc[0]+Acc[1]+Acc[2]!=0) { 											// Chech for valid Acc Read
-			if(Acc[1] < 1 ) {													// Check that Acc[1] is with Gravity Unit Circle 
-				if(Acc[2] > 0.5) {												// Test Cane Handle Facing Up
-					temp = acos(1/Acc[1])*180/pi;								// acos(1/y)
-					if (temp>35 && temp<55) {									// Test if Cane Alignment Angled Down 35deg-to-55deg
-						setbit(&Process_7,0);									// Flag Cane Alignment is NORMAL OPERATION
-					} else clrbit(&Process_7,0);
-				}
+			temp = sqrt(Acc[0]*Acc[0]+Acc[1]*Acc[1]+Acc[2]*Acc[2]);				// Normalise
+			Acc[0] /= temp;
+			Acc[1] /= temp;
+			Acc[2] /= temp;
+			if(Acc[2] > 0.5) {													// Test Cane Handle Facing Up
+				temp = acos(1/Acc[1])*180/pi;									// acos(1/y)
+				if (temp>35 && temp<55) {										// Test if Cane Alignment Angled Down 35deg-to-55deg
+					setbit(&Process_7,0);										// Flag Cane Alignment is NORMAL OPERATION
+				} else clrbit(&Process_7,0);
 			}
 
-		if(atan(Acc[2]/Acc[1])*180/pi>85) setbit(&Process_7,4);					// Test and Flag for Cane Vertical-UP (+15deg-to-15deg)  
-		else clrbit(&Process_7,4);
-
-		if(atan(Acc[2]/Acc[1])*180/pi<-85) setbit(&Process_7,5);				// Test and Flag for Cane Vertical-DOWN (+15deg-to-15deg)  
+		if(atan(Acc[2]/Acc[1])*180/pi>85) setbit(&Process_7,5);					// Test and Flag for Cane Vertical-UP (+15deg-to-15deg)  
 		else clrbit(&Process_7,5);
 
+		if(atan(Acc[2]/Acc[1])*180/pi<-85) setbit(&Process_7,6);				// Test and Flag for Cane Vertical-DOWN (+15deg-to-15deg)  
+		else clrbit(&Process_7,6);
 
-		if(Acc[0] > 0.4) setbit(&Process_7,2);									// Test and Flag for Cane Buttons RIGHT --> Process_7.2 Flags
-		else clrbit(&Process_7,2);	
+		if(Acc[2] > 0.4) setbit(&Process_7,1);									// Test gZ and Flag for Cane Buttons UP --> Process_7.2 Flags
+		else clrbit(&Process_7,1);	
 		
-		if(Acc[0] < -0.4) setbit(&Process_7,3);									// Test and Flag for Cane Buttons LEFT  --> Process_7.3 Flags
+		if(Acc[2] < -0.4) setbit(&Process_7,2);									// Test gZ and Flag for Cane Buttons DOWN  --> Process_7.3 Flags
+		else clrbit(&Process_7,2);		
+
+		if(Acc[0] > 0.4) setbit(&Process_7,3);									// Test gX and Flag for Cane Buttons RIGHT --> Process_7.2 Flags
 		else clrbit(&Process_7,3);	
+		
+		if(Acc[0] < -0.4) setbit(&Process_7,4);									// Test gX and Flag for Cane Buttons LEFT  --> Process_7.3 Flags
+		else clrbit(&Process_7,4);	
 		
 		}
 	
@@ -2838,7 +2891,7 @@ void TestProcessorHWID(void) {										// Test nRF51822 Processor HWID ---> Und
 	
 	uint32_t ic_data;
 	ic_data = (((*((uint32_t volatile *)0xF0000FE8)) & 0x000000FF) );
-	if (ic_data==0x0084) setbit(&Process_5,0);													// HWID=84 ==> nRF51822 xxAC Flash:512k Ram:32k
+	if (ic_data==0x009C) setbit(&Process_5,0);													// HWID=9C ==> nRF51822 xxAC Flash:512k Ram:32k
 																								// Note HWID reads 4C for nRF51822 xxAA Flash:256k Ram:16k
 	
 	uint16_t ram_size	= (uint16_t) NRF_FICR->NUMRAMBLOCK * (NRF_FICR->SIZERAMBLOCKS / 1024);	// FICR ---> Factory Information Config Register
@@ -3089,8 +3142,7 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	services_init();												// Initialise service
 	advertising_init();												// Initialise Advertising
 	conn_params_init();												// Initialise connection parameters
-	application_timers_start();										// Start Timers
-	
+		
 	SmartCane_peripheral_init();									// Initialise application specific modules
 	
 //	advertising_start();											// Starts Bluetooth advertising, however, also shuts down power to board after 180sec if no connection
@@ -3122,6 +3174,9 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	UART_VT100_Main_Menu();											// Initialise Default UART VT100 Main Menu
 	
 	int TSA_Count=0;												// Base TSA Initialisation Start Count = 0 of  TSA_Count 0..25	
+	setbit(&Process_0,15);											// Flag used to signal system timer to start 
+	application_timers_start();										// Start Timers
+	  
 	while (true) {													// TSA Time Slot Assigner ---> Endless Loop within main()
 /**	@brief 		MASTER TIME SLOT ASSIGNER --> TSA
 	@details 	This routine operates as a never ending loop within 
@@ -3160,8 +3215,8 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 			break;
 			
 		case 5:														// To Be Assigned 
-			
-		break;
+			led_red_TOGGLE();
+			break;
 			
 		case 6:														// To Be Assigned 
 			
