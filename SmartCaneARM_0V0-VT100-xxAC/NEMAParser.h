@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>  					// String Handling
 #include <stdlib.h>
+#include <global.h>
 
 typedef struct {
 	double		m_latitude;
@@ -52,6 +53,6 @@ void ProcessGPRMB(const char *buf, const uint16_t bufSize);
 void ProcessGPRMC(const char *buf, const uint16_t bufSize);
 void ProcessGPZDA(const char *buf, const uint16_t bufSize);
 
-bool m_logging;
+//bool m_logging;
 
 

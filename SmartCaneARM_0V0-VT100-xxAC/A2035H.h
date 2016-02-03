@@ -63,5 +63,12 @@ void A2035H_Reset(void);
 /* Writes a 16bit value to the A2035. */
 void A2035H_SetRegisterValue(unsigned short regValue);
 
+/* Read a 8bit value from the A2035. */
+char A2035H_SPI_ReadBytes(void);
 
+/* Read a A Packet of characters from the A2035. */
+void A2035H_SPI_ReadPacket(int *RxPacket, int ByteCount);
+
+/* Scheduled Read of A2035 GPS SPI - Load 32 byte packet and send on to NEMA parser*/
+void A2035H_Sheduled_SPI_Read(void);
 

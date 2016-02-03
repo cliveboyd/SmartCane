@@ -817,18 +817,17 @@ void accelgyrocalMPU9250(float * dest1, float * dest2) {
 	data[5] = (accel_bias_reg[2])      & 0xFF;
 	data[5] = data[5] | mask_bit[2]; 							// preserve temperature compensation bit when writing back to accelerometer bias registers
  
-/*	Apparently this is not working for the acceleration biases in the MPU-9250
+/*	WARNING Apparently this is not working for the acceleration biases in the MPU-9250
 	Are we handling the temperature correction bit properly?
 	
 	Push accelerometer biases to hardware registers */
-/*
+
 	MPU9250_writeByte(MPU9250_ADDRESS, XA_OFFSET_H, data[0]);
 	MPU9250_writeByte(MPU9250_ADDRESS, XA_OFFSET_L, data[1]);
 	MPU9250_writeByte(MPU9250_ADDRESS, YA_OFFSET_H, data[2]);
 	MPU9250_writeByte(MPU9250_ADDRESS, YA_OFFSET_L, data[3]);
 	MPU9250_writeByte(MPU9250_ADDRESS, ZA_OFFSET_H, data[4]);
 	MPU9250_writeByte(MPU9250_ADDRESS, ZA_OFFSET_L, data[5]);
-*/
 
 //	Output scaled accelerometer biases for display in the main program
 	dest2[0] = (float)accel_bias[0]/(float)accelsensitivity; 
@@ -864,7 +863,6 @@ void magcalMPU9250(float * dest1, float * dest2, uint16_t sample_count) {
     dest1[0] = (float) mag_bias[0]*mRes*magCalibration[0];					// save mag biases in G for main program
     dest1[1] = (float) mag_bias[1]*mRes*magCalibration[1];   
     dest1[2] = (float) mag_bias[2]*mRes*magCalibration[2];
-	
        
 //	Get soft iron correction estimate
     mag_scale[0]  = (mag_max[0] - mag_min[0])/2;							// get average x axis max chord length in counts
@@ -873,7 +871,6 @@ void magcalMPU9250(float * dest1, float * dest2, uint16_t sample_count) {
 
     float avg_rad = mag_scale[0] + mag_scale[1] + mag_scale[2];
     avg_rad /= 3.0;
-	
 
     dest2[0] = avg_rad/((float)mag_scale[0]);
     dest2[1] = avg_rad/((float)mag_scale[1]);

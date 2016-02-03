@@ -17,9 +17,22 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
  */
- 
+
+/*
+	Note the A2035-H SPI loads a fifo at the rate of 100bytes/second
+	Need to reading fifo faster then the fill rate, however, pading bytes of 
+	0xB4 0xA7 are automatically added.
+	
+	Upon B4A7 data blocks a delay is planned to be added to allow fifo to fill.
+	Probably a a couple of lines.
+
+	A NEMA parser NEMAParser.C will be used to extract formated data.
+	
+	A2035-H FIFO Buffer ==> 1024bytes refreshed at 100 bytes per sec	
+*/
+
+
 #ifndef A2035H
 #define A2035H
 
@@ -36,6 +49,7 @@ THE SOFTWARE.
 #include "app_error.h"
 #include "app_util_platform.h"
 #include "spi_master.h"
+#include "NEMAParser.h"
 
 #include "nrf_delay.h"
 
@@ -64,7 +78,7 @@ THE SOFTWARE.
 #endif	// A2035H definitions
 
 
-#define SPIFREQ_TO_USE SPI_FREQUENCY_FREQUENCY_M1			// 1Mbps ----> Need to Check This????? WARNING WARNING May be to fast for A2035-H
+#define SPIFREQ_TO_USE SPI_FREQUENCY_FREQUENCY_M1			// 1MHz ----> Maximum Speed suported is 6M8Hz on A2035-H
 
 #define SPICPOL_TO_USE SPI_CONFIG_CPOL_ActiveLow
 #define SPICPHA_TO_USE SPI_CONFIG_CPHA_Leading
@@ -73,8 +87,12 @@ THE SOFTWARE.
 #define TX_RX_MSG_LENGTH         4
 
 static uint8_t m_rx_data_spi[TX_RX_MSG_LENGTH]; 			/**< SPI master RX buffer. */
+
 static volatile bool m_transfer_completed = true;
 
+char A2035_RawData[128];									/** Character Buffer for A2035-H Raw Data */
+uint16_t	A2035_RawDataInPointer=0;
+uint16_t	A2035_RawDataOutPointer=0;
 
 #define SPI_DUMMY_BYTE   0x00
  
@@ -108,7 +126,7 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
             spi_config.SPI_Pin_SS   = SPIM0_SS_PIN;
         }
         break;
-        #endif /* SPI_MASTER_0_ENABLE */
+        #endif 										/* SPI_MASTER_0_ENABLE */
 		
 		case SPI_MASTER_1:
 			break;
@@ -133,7 +151,7 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
 }
 
 
-/***************************************************************************//**
+/*******************************************************************************
  * @brief Initializes the SPI communication peripheral and resets the part.
  *
  * @return 1.
@@ -173,23 +191,20 @@ static void SPI_Write(const spi_master_hw_instance_t spi_master_hw_instance,
 }
  
  
- 
- 
-/***************************************************************************//**
+/*******************************************************************************
  * @brief Sets the Reset bit of the A2035H.
  *
  * @return None.
 *******************************************************************************/
 void A2035H_Reset(void) {
 //    A2035H_SetRegisterValue(A2035H_REG_CMD | A2035H_RESET);
-	
 }
 
 
-/***************************************************************************//**
+/*******************************************************************************
  * @brief Writes the value to a register.
  *
- * @param -  regValue - The value to write to the register.
+ * @param -  regValue - The value 16-bit to write to the register.
  *
  * @return  None.    
 *******************************************************************************/
@@ -204,106 +219,59 @@ void A2035H_SetRegisterValue(unsigned short regValue) {		// 16bit
 }
 
 
-/***************************************************************************//**
- * @brief Writes to the frequency registers.
+/*******************************************************************************
+ * @brief Send a dummy zero byte and Read a byte from SPI Port.
  *
- * @param -  reg - Frequence register to be written to.
- * @param -  val - The value to be written.
- *
- * @return  None.    
+ * @return  m_rx_data_spi[0]   
 *******************************************************************************/
-//void A2035H_SetFrequency(u16 reg, u32 val) {
-//	unsigned short freqHi = reg;
-//	unsigned short freqLo = reg;
-//	
-//	freqHi |= (val & 0xFFFC000) >> 14 ;
-//	freqLo |= (val & 0x3FFF);
-//	A2035H_SetRegisterValue(A2035H_B28 | A2035H_RESET);  // disable DAC at RESET bit first
-//	A2035H_SetRegisterValue(freqLo);			// When B28 is on, first 14 bits is for LSB
-//	A2035H_SetRegisterValue(freqHi);			// then is MSB 14bits
-//}
+char A2035H_SPI_ReadBytes(void) {		// 1x8bit
+	
+	CS_LOW;
+	SPI_Write(SPI_TO_USE, SPI_DUMMY_BYTE , m_rx_data_spi ,1);
+	CS_HIGH;
+	return (char) m_rx_data_spi[0];
+}
 
 
-/***************************************************************************//**
- * @brief Writes to the phase registers.
+/******************************************************************************
+ * @brief Read and load A2035 32 SPI Port0 data bytes into A2035_RawData Buffer.
  *
- * @param -  reg - Phase register to be written to.
- * @param -  val - The value to be written.
- *
- * @return  None.    
+ * @return  32 bytes indexed into A2035_RawData[128] by A2035_RawDataInPointer 
 *******************************************************************************/
-//void A2035H_SetPhase(u16 reg, u16 val) {
-//	unsigned short phase = reg;
-//	phase |= val;
-//	A2035H_SetRegisterValue(phase);
-//}
+void A2035H_SPI_ReadAndLoad32Packets() {
+	
+	for(int i=0;i<32-1;i++){											// Load 32 bytes into 128 byte circular char array
+		A2035_RawDataInPointer++;
+		if (A2035_RawDataInPointer==128) A2035_RawDataInPointer=0;
+		A2035_RawData[A2035_RawDataInPointer]=A2035H_SPI_ReadBytes();
+	}
+}
 
-/***************************************************************************//**
- * @brief Sets the type of waveform to be output.
+
+/******************************************************************************
+ * @brief Routine called from main() system interupt timer.
  *
- * @param -  type - type of waveform to be output.
- *
- * @return  None.    
+ * @return   void ---> Loads data to GPS NEMAParser
 *******************************************************************************/
-//void A2035H_SetWave(unsigned short type) {
-//	A2035H_SetRegisterValue(type);
-//}
+void A2035H_Sheduled_SPI_Read() {
+	
+	A2035H_SPI_ReadAndLoad32Packets();
+	
+	while (A2035_RawDataOutPointer!=A2035_RawDataInPointer) {			// Loop until Out pointer catches up to in or until temp buffer full
+		char temp[33];
+		uint8_t count=0;
+		A2035_RawDataOutPointer++;
+		if (A2035_RawDataOutPointer == 128) A2035_RawDataOutPointer=0;
+		while (count<32) {;
+			count++;
+			if (A2035_RawData[A2035_RawDataOutPointer]!= (char) 0xB4 || A2035_RawData[A2035_RawDataOutPointer]!= (char) 0xA7) {		// Skip pad characters
+				temp[count]=A2035_RawData[A2035_RawDataOutPointer];
+			}
+		}
+		Parse(temp, count);												// Load recursive data to NEMAParser
+	}
+}
 
-
-
-
-// UART Code Depricated and replaced with SPI0
-
-//void uart_event_handle_withBle(app_uart_evt_t * p_event) {	// is setup callback in initA2035H
-
-//	static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];		// 20 bytes
-//    static uint8_t index = 0;
-//    uint32_t err_code;
-
-//    switch (p_event->evt_type)
-//    {
-//        case APP_UART_DATA_READY:
-//            UNUSED_VARIABLE(app_uart_get(&data_array[index]));
-//            index++;
-
-//            if ((data_array[index - 1] == '\n') || (index >= (BLE_NUS_MAX_DATA_LEN)))
-//            {
-//                err_code = ble_nus_string_send(&m_nus, data_array, index);
-//                if (err_code != NRF_ERROR_INVALID_STATE)
-//                {
-//                    APP_ERROR_CHECK(err_code);
-//                }
-//                
-//                index = 0;
-//            }
-//            break;
-
-//        case APP_UART_COMMUNICATION_ERROR:
-//            APP_ERROR_HANDLER(p_event->data.error_communication);
-//            break;
-
-//        case APP_UART_FIFO_ERROR:
-//            APP_ERROR_HANDLER(p_event->data.error_code);
-//            break;
-
-//        default:
-//			UNUSED_VARIABLE(app_uart_get(&data_array[index]));
-//            index++;
-
-//            if ((data_array[index - 1] == '\n') || (index >= (BLE_NUS_MAX_DATA_LEN)))
-//            {
-//                //err_code = ble_nus_string_send(&m_nus, data_array, index);
-//                if (err_code != NRF_ERROR_INVALID_STATE)
-//                {
-//                    APP_ERROR_CHECK(err_code);
-//                }
-//                
-//                index = 0;
-//            }
-//            break;
-//            }
-
-//}
 
 
 typedef enum {
@@ -339,100 +307,31 @@ static __INLINE void pullupdown_gpio_cfg_output(uint32_t pin_number, PullUpDown_
 }
 
 void initA2035H(void) {
+
+	A2035H_Init_IO();													// Initalise the SPI 0 Port used by GPS A2035H ---> and SFLASH
 	
-	nrf_delay_us(1000000); 												// delay 1s
+	nrf_delay_us(100000); 												// delay 100ms
 	
 	pullupdown_gpio_cfg_output(A2035H_ON_OFF_PIN_NUMBER, Pull_down);
-	nrf_delay_us(1000000); 												// delay 1s
-	
-	pullupdown_gpio_cfg_output(A2035H_NRST_PIN_NUMBER, Pull_up);
-	nrf_delay_us(1000000); 												// delay 1s
-	
-	pullupdown_gpio_cfg_output(A2035H_NEN_PIN_NUMBER, Pull_up);
-	nrf_delay_us(1000000); 												// delay 1s
-	
-	pullupdown_gpio_cfg_output(A2035H_INT_PIN_NUMBER, Pull_down);
-	nrf_delay_us(1000000); 												// delay 1s
-	
-	
-//	pullupdown_gpio_cfg_output(A2035H_TX_PIN_NUMBER, Pull_down);
-	
-//	nrf_gpio_cfg_output(A2035H_ON_OFF_PIN_NUMBER);
-//	nrf_gpio_cfg_output(A2035H_NRST_PIN_NUMBER);
-//	nrf_gpio_cfg_output(A2035H_RX_PIN_NUMBER);
-//	nrf_gpio_cfg_output(A2035H_TX_PIN_NUMBER);
+	pullupdown_gpio_cfg_output(A2035H_NRST_PIN_NUMBER,   Pull_up);
+	pullupdown_gpio_cfg_output(A2035H_INT_PIN_NUMBER,    Pull_down);	// Need to sort out the operation of this pin Alsos Pulled low via 33k
 
-	nrf_gpio_pin_set(A2035H_NEN_PIN_NUMBER);			// Enable Aux 3V3 regulator
-	nrf_gpio_pin_clear(A2035H_NRST_PIN_NUMBER);			// Toggle NRST
+	nrf_gpio_pin_set(A2035H_NEN_PIN_NUMBER);							// Enable Aux 3V3 Supply Avoids schottcky diode drop from 3V3 to 3V3GPS rail
 	
-	nrf_delay_us(100000); 								// Delay 100ms 
-	
-	nrf_gpio_pin_set(A2035H_NRST_PIN_NUMBER);
-	
-	nrf_delay_us(100000); 								// Delay 100ms 
+	nrf_gpio_pin_set(A2035H_NRST_PIN_NUMBER);							// A2035 Reset ---> Pull HIGH Also Pulled High via 33k
+	nrf_delay_us(100000); 												// Delay 100ms 
 
-	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);		// Assert ON_OFF Pin Low
-	nrf_delay_us(100000); 								// Delay 100ms
+	// WARNING !!!!!
+	// ToDo Need to Sort out if ON_OFF Strobe High-Low-High or Low-High-low
+	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);						// Assert ON_OFF Pin Low		
+	nrf_delay_us(100000); 												// Delay 100ms
 	
-	nrf_gpio_pin_set(A2035H_ON_OFF_PIN_NUMBER);			// Assert ON_OFF Pin High
-	nrf_delay_us(200000); 								// delay 200ms
+	nrf_gpio_pin_set(A2035H_ON_OFF_PIN_NUMBER);							// Assert ON_OFF Pin High
+	nrf_delay_us(1000000); 												// delay 1000ms (1 second)
 	
-	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);		// Assert ON_OFF Pin Low
-	nrf_delay_us(100000); 								// Delay 100ms 
-	
-//	nrf_gpio_pin_clear(A2035H_RX_PIN_NUMBER);
-//	nrf_gpio_pin_set(A2035H_TX_PIN_NUMBER);
+		nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);					// Assert ON_OFF Pin Low
+	nrf_delay_us(100000); 												// Delay 100ms 
 
 	nrf_delay_us(1000);
-
-//	Note as of Smartcane 1V0 the A2035H configured as SPI Slave ---> UART no longer used.
-
-//	ToDo Sort out SPI and parse string
-
-
-
-
-// $$$$$$ UART Rx Depricated and replaced with SPI0 Parser
-//	uint32_t err_code;
-//    const app_uart_comm_params_t comm_params =
-//      {
-//          A2035H_TX_PIN_NUMBER,  // need to swap RX / TX at controller side
-//          A2035H_RX_PIN_NUMBER,
-//          0U,
-//          0U,
-//          APP_UART_FLOW_CONTROL_DISABLED,
-//          false,  // no parity
-//          UART_BAUDRATE_BAUDRATE_Baud4800
-//      };
-
-//    APP_UART_FIFO_INIT(&comm_params,
-//                         UART_RX_BUF_SIZE,
-//                         UART_TX_BUF_SIZE,
-//                         uart_event_handle_withBle,
-//                         APP_IRQ_PRIORITY_LOW,
-//                         err_code);
-
-//    APP_ERROR_CHECK(err_code);
-	  
-//	printf("\n\rStart: \n\r");
-//	
-//	uint8_t cr;
-//    while (true)
-//    {
-//        
-//        while(app_uart_get(&cr) != NRF_SUCCESS);
-//        //while(app_uart_put(cr) != NRF_SUCCESS);
-
-//		cr += 1;
-//        if (false) // (cr == 'q' || cr == 'Q')
-//        {
-//            printf(" \n\rExit!\n\r");
-
-//            while (true)
-//            {
-//                // Do nothing.
-//            }
-//        }
-//    }
-	
 }
+

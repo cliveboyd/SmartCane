@@ -17,4 +17,14 @@ extern float	roll;
 extern float	pitch;
 extern float	yaw;
 
+extern int		TestFlags;
+
+
+extern double	main_latitude;
+extern double	main_longitude;
+extern double	main_altitude;
+extern long		main_nSentences;
+extern uint16_t	main_signalQuality;
+extern uint16_t	main_satelitesInUse;
+
 #endif

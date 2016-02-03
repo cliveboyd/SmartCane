@@ -155,7 +155,7 @@ THE SOFTWARE.
 
 //#include "ble_nus.h"  				// Bluetooth nordic uart service currently not used may use later for GPS NEMA streaming etc
 
-//#include "A2035H.h"						// GPS Hybrid Module ---> Configured for UART needs to be reworked for SPI operation
+#include "A2035H.h"						// GPS Hybrid Module ---> Configured for UART needs to be reworked for SPI operation
 
 #include "MPL3115.h"					// I2C Peripheral Pressure, Altitude and Temperature Sensor
 #include "ltc2943.h"					// I2C Gas Gauge Battery Monitor
@@ -277,6 +277,11 @@ float	Gyro[3];
 float	GyroIntegrator[3];
 float	Gyro_ManualCal[3];											// The following registers are used within manual Gyro calibration
 
+float	Gravity[3];
+
+uint8_t  CurrentNavTrack=0;
+uint16_t CurrentWaypoint=0;
+
 char	DS2401_ID[16];												// String to hold ---> DS2401 (4bits) + Device_ID
 uint8_t MenuLevel=0;												// Initalise Default Menu Level to 00 --> Main Menu
 float	Quaternion[4];												// Test Global Decleration to test Quaternion filter update operation
@@ -287,7 +292,6 @@ uint32_t sysLastTime=0;
 uint32_t DogCount=0;												// DogCount ---> Background Heartbeat 
 static bool finishedADC;
 const float pi = 3.14159265358979323846f;
-//uint32_t DiagCounter=0;
 
 uint16_t ErrorCounter_UART_FIFO=0;
 uint16_t ErrorCounter_UART_Comms=0;
@@ -301,10 +305,35 @@ uint16_t Count_VibroMotor=4;										// Auto Starts vibro motor upon sys timer 
 
 char	ATxx[4];													// AT Command mode Ascii buffer
 
+double		main_latitude;											// Also resides in global.h
+double		main_longitude;
+double		main_altitude;
+long		main_nSentences;
+uint16_t	main_signalQuality;
+uint16_t	main_satelitesInUse;
+
+
 float pitch=0; float roll=0; float yaw=0;							// Also resides in global.h
 uint16_t QuaternionCount=0;
 
-
+int	TestFlags = 0;													/* Initialise global.h Test Flags
+	TestFlags.0	= 
+	TestFlags.1	= 
+	TestFlags.1	= 
+	TestFlags.3	= 
+	TestFlags.4	= 
+	TestFlags.5	= 
+	TestFlags.6	= 
+	TestFlags.7	= 
+	TestFlags.8	= 
+	TestFlags.9	= 
+	TestFlags.10 = 
+	TestFlags.11 = 
+	TestFlags.12 = 
+	TestFlags.13 = 
+	TestFlags.14 = 
+	TestFlags.15 =  */
+	
 int Process_0  = 0;													/* Initalise Bit Flags Process_0
 	Process_0.0	= Flag to Activate Vibro Motor at Sys_Timer 200msec 
 	Process_0.1	= Flag to Activate Vibro Motor at Sys_Timer 400msec 
@@ -372,7 +401,7 @@ int Process_4  = 0;													/* Initalise Bit Flags Process_4
 	Process_4.4	= 
 	Process_4.5	= 
 	Process_4.6	= 
-	Process_4.7	= 
+	Process_4.7	= Flag Asserted to bypass LPFilter Operation
 */
 
 int Process_5  = 0;													/* Initalise Bit Flags Process_5	
@@ -480,8 +509,9 @@ float BearingMag(float lat1, float lon1, float lat2, float lon2) {	// Function t
 	return BearingTrueNorth + MagTNReference;
 }
 
-float LPFilter(float Out, float In, float percent) {				// Low Pass Filter Function
-	Out = percent/100*Out + (1-(percent/100))*In;
+float LPFilter(float Out, float In, float percent) {				// Low Pass Filter Function (If Process_4.7 asserted then function bypassed and Out=In)
+	if (testbit(&Process_4,7)) Out = In;
+	else Out = percent/100*Out + (1-(percent/100))*In;
 	return Out;
 }
 
@@ -579,34 +609,34 @@ static void UART_VT100_Main_Menu() {								// $$$$$$ TOP LEVEL MENU-x or X					
 	nrf_delay_ms(50);
 
 	printf("\x1B[01;10H  GDV-UoM SMARTCANE MAIN MENU");
-	printf("\x1B[01;45HDEVICE ID = ");
-	printf("\x1B[02;45H   STATUS = ");
+	printf("\x1B[01;45H DEVICE ID = ");
+	printf("\x1B[02;45H STATUS    = ");
 
 	nrf_delay_ms(50);
 
-	printf("\x1B[04;10H  1... All Sensors");
-	printf("\x1B[06;10H  2... GPS Global Position");
-	printf("\x1B[08;10H  3... Inertial Sensors");
-	printf("\x1B[10;10H  4... Altitude and Temperature");
+	printf("\x1B[04;10H 1... All Sensors");
+	printf("\x1B[06;10H 2... GPS Global Position");
+	printf("\x1B[08;10H 3... Inertial Sensors");
+	printf("\x1B[10;10H 4... Altitude and Temperature");
 
 	nrf_delay_ms(50);
 
-	printf("\x1B[12;10H  5... Memory Functions");
-	printf("\x1B[14;10H  6... Power Management");
-	printf("\x1B[16;10H  7... Cane Diagnostics");
+	printf("\x1B[12;10H 5... Memory Functions");
+	printf("\x1B[14;10H 6... Power Management");
+	printf("\x1B[16;10H 7... Cane Diagnostics");
 	
 	nrf_delay_ms(50);
 	
-	printf("\x1B[18;10H  8... System Diagnostics");
-	printf("\x1B[20;10H  9... Peripheral Diagnostics");
+	printf("\x1B[18;10H 8... System Diagnostics");
+	printf("\x1B[20;10H 9... Peripheral Diagnostics");
 
 	nrf_delay_ms(50);
 	
-	printf("\x1B[22;10H  A... Bluetooth Diagnostics");
+	printf("\x1B[04;44H A... Calibration & Test");
+	printf("\x1B[06;44H B... Bluetooth Diagnostics");
 
-	printf("\x1B[24;10H  ?... Help");
+	printf("\x1B[24;10H ?... Help");
 }
-
 
 static void UART_VT100_Menu_1()	{									// $$$$$$ ALL SENSORS MENU-1								$$$$$$
 	
@@ -684,18 +714,18 @@ static void UART_VT100_Menu_2() {									// $$$$$$ GPS GLOBAL POSITION MENU-2  
 	nrf_delay_ms(50);
 			 
 	printf("\x1B[04;05H GPS");
-	printf("\x1B[05;05H Latitude   = ");
-	printf("\x1B[06;05H Longditude = ");
-	printf("\x1B[07;05H Height     = ");
-	printf("\x1B[08;05H Time       = ");
+	printf("\x1B[05;05H Latitude   = ");			// main_latitude
+	printf("\x1B[06;05H Longditude = ");			// main_longitude
+	printf("\x1B[07;05H Altitude   = ");			// main_altitude
+	printf("\x1B[08;05H UTC Time   = ");
 
 	nrf_delay_ms(50);
 	 
-	printf("\x1B[05;30H SatNumber = ");
-	printf("\x1B[06;30H Spare     = ");
-	printf("\x1B[07;30H Spare     = ");
-	printf("\x1B[08;30H Spare     = ");
-	printf("\x1B[09;30H Spare     = ");
+	printf("\x1B[09;05H SatInUse   = ");			// main_satelitesInUse
+	printf("\x1B[10;05H SignalQlty = ");			// main_signalQuality
+	printf("\x1B[11;05H Sentence   = ");			// main_nSentences
+	printf("\x1B[12;05H Spare      = ");
+	printf("\x1B[13;05H Spare      = ");
 	
 	nrf_delay_ms(50);
 		
@@ -906,21 +936,18 @@ static void UART_VT100_Menu_7() {		    						// $$$$$$ CANE DIAGNOSTIC MENU-7			
 	printf("\x1B[H");													// VT100 CURSOR HOME
 	printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-7 CANE DIAGNOSTIC MENU");
 	 
+	nrf_delay_ms(50);
+	
 	printf("\x1B[05;05H Configurations");
-	printf("\x1B[06;05H Way Points  = ");
-	printf("\x1B[07;05H Home        = ");
-	printf("\x1B[08;05H Spare       = ");
-
-	nrf_delay_ms(50);
-	 
-	printf("\x1B[05;30H SPARE");
-	printf("\x1B[06;30H Spare = ");
-	printf("\x1B[07;30H Spare = ");
-	printf("\x1B[08;30H Spare = ");
+	
+	printf("\x1B[06;05H Total Nav Tracks = ");
+	printf("\x1B[07;05H Total  WayPoints = ");
+	printf("\x1B[08;05H Current    Track = ");
+	printf("\x1B[09;05H Current WayPoint = ");
 
 	nrf_delay_ms(50);
 
-	printf("\x1B[05;55H CANE ALIGN");
+	printf("\x1B[05;55H CANE ALIGNMENT");
 	printf("\x1B[06;55H READY  = ");
 	printf("\x1B[07;55H bUP    = ");
 	printf("\x1B[08;55H bDOWN  = ");
@@ -1065,9 +1092,9 @@ static void UART_VT100_Menu_9() {		    						// $$$$$$ PERIPHERAL DIAGNOSTIC MEN
 
 	printf("\x1B[24;05H  X... exit    ?...Help");
 }	
-static void UART_VT100_Menu_A() {		    						// $$$$$$ BLUETOOTH DIAGNOSTIC MENU-A						$$$$$$
+static void UART_VT100_Menu_A() {		    						// $$$$$$ CALIBRATION & TEST MENU-A							$$$$$$
 	
-/*	@brief 		Function to load Bluetooth DIAGNOSTIC MENU to VT100 Screen. 
+/*	@brief 		Function to load Calibration & Test MENU to VT100 Screen. 
  *  @details 	Loads VT100 ESC Sequenceone character to clear screen and load menu data.
  *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
  *  @ref 		VT100 Terminal Emulation Nominal Baud:115200 */		
@@ -1076,7 +1103,43 @@ static void UART_VT100_Menu_A() {		    						// $$$$$$ BLUETOOTH DIAGNOSTIC MENU
 	
 	printf("\x1B[2J");														// VT100 CLR SCREEN
 	printf("\x1B[H");														// VT100 CURSOR HOME
-	printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-9 BLUETOOTH DIAGNOSTIC MENU");
+	printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-A Calibration and Test MENU");
+	
+	nrf_delay_ms(50);
+
+	printf("\x1B[04;05H <<<< MENU >>>>");
+	printf("\x1B[05;05H a... Calibrate Accellerometers");
+	printf("\x1B[06;05H b... Calibrate Gyroscope");
+	printf("\x1B[07;05H c... Calibrate Magnetometer");
+
+	nrf_delay_ms(50);
+	
+	printf("\x1B[08;05H d... Initalise SFlash");
+	printf("\x1B[09;05H e... Clear Way Point Registers");
+	printf("\x1B[10;05H f... ");
+	printf("\x1B[11;05H g... ");
+	printf("\x1B[12;05H h... ");
+
+	nrf_delay_ms(50);
+	 
+	
+
+	nrf_delay_ms(50);		
+
+	printf("\x1B[24;05H  X... exit    ?...Help");
+}	
+static void UART_VT100_Menu_B() {		    						// $$$$$$ BLUETOOTH DIAGNOSTIC MENU-B						$$$$$$
+	
+/*	@brief 		Function to load Bluetooth DIAGNOSTIC MENU to VT100 Screen. 
+ *  @details 	Loads VT100 ESC Sequenceone character to clear screen and load menu data.
+ *  @note  		ASCII DEC 27 == x1B    VT100 ClrScreen == <ESC>[2J    Home == ESC[H    Cursor Location === <ESC>[{ROW};{COLUMN}H
+ *  @ref 		VT100 Terminal Emulation Nominal Baud:115200 */		
+		
+	MenuLevel=110;
+	
+	printf("\x1B[2J");														// VT100 CLR SCREEN
+	printf("\x1B[H");														// VT100 CURSOR HOME
+	printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-B BLUETOOTH DIAGNOSTIC MENU");
 	
 	nrf_delay_ms(50);
 
@@ -1244,7 +1307,20 @@ static void UART_VT100_Refresh_Data_GPS() {							// $$$$$$ GPS MENU 						DATA 
 	
 /** @brief 		Function to load GPS MENU Refresh Data MENU-2 to VT100 Screen.  */
 		
-	}	
+if (testbit(&Process_1, 0)==false) {	
+
+	printf("\x1B[05;18H %012.7f ", main_latitude);
+	printf("\x1B[06;18H %012.7f ", main_longitude);
+	printf("\x1B[07;18H %012.7f ", main_altitude);
+
+	nrf_delay_ms(100);
+	 
+	printf("\x1B[09;18H %d ", main_satelitesInUse);
+	printf("\x1B[10;18H %d ", main_signalQuality);	
+	printf("\x1B[11;18H %012.7f ", (float)main_nSentences);
+
+	}
+}	
 
 
 static void UART_VT100_Refresh_Data_Inertial() {					// $$$$$$ INERTIAL MENU 				DATA REFRESH MENU-3	$$$$$$
@@ -1252,53 +1328,55 @@ static void UART_VT100_Refresh_Data_Inertial() {					// $$$$$$ INERTIAL MENU 			
 /** @brief 		Function to load INERTIAL MENU Refresh Data MENU-3 to VT100 Screen.  */
 	
 if (testbit(&Process_1, 0)==false) {
-	float Acc[3];
-		double MagGravity, Magnitude, Bearing;
-			
+		
+	double MagGravity, Magnitude, Bearing;
 		float data[4];
 		
-		readAccelFloatMG(Acc);													// ACCELERATION-GRAVITY (g)
-		printf("\x1B[04;41H%+6.3f    ", Acc[0]);
-		printf("\x1B[05;41H%+6.3f    ", Acc[1]);
-		printf("\x1B[06;41H%+6.3f    ", -1 * Acc[2]);							// Swap z Axis AS g typically lies on neg z-axis
+	/*  WARNING ---> Inertial Sensor is now accessed via system timer handler ==> foreground/Background conflicts will occur
+		need to store recovered data at system timer and display buffered data here.....*/
+
+																					// ACCELERATION-GRAVITY (g)
+		printf("\x1B[04;41H%+6.3f    ", Gravity[0]);								// Updated at System Timer
+		printf("\x1B[05;41H%+6.3f    ", Gravity[1]);
+		printf("\x1B[06;41H%+6.3f    ", Gravity[2]);
 		
-		MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
-		printf("\x1B[07;41H%+6.3f   ",  (float) MagGravity);					// MAG X-Y-Z
+		MagGravity = sqrt(pow(Gravity[0],2) + pow(Gravity[1],2) + pow(Gravity[2],2));
+		printf("\x1B[07;41H%+6.3f   ",  (float) MagGravity);						// MAGNITUDE X-Y-Z
 		
-		readGyroFloatDeg(Acc);													// GYROSCOPE Degrees
-		printf("\x1B[04;65H%+06.1f    ", Gyro[0]);			//Acc[0]);
-		printf("\x1B[05;65H%+06.1f    ", Gyro[1]);			//Acc[1]);
-		printf("\x1B[06;65H%+06.1f    ", Gyro[2]);			//Acc[2]);
+	
+		printf("\x1B[04;65H%+06.1f    ", Gyro[0]);									// Updated at System Timer  ---> ERROR NOT WORKING on latest Board ???
+		printf("\x1B[05;65H%+06.1f    ", Gyro[1]);			
+		printf("\x1B[06;65H%+06.1f    ", Gyro[2]);			
 		
 		nrf_delay_ms(50);
 			
-		printf("\x1B[15;65H%+06.2f    ", Acc[0]);
-		printf("\x1B[16;65H%+06.2f    ", Acc[1]);
-		printf("\x1B[17;65H%+06.2f    ", Acc[2]);
+		printf("\x1B[15;65H%+06.2f    ", 0.0);
+		printf("\x1B[16;65H%+06.2f    ", 0.0);
+		printf("\x1B[17;65H%+06.2f    ", 0.0);
 		
 		nrf_delay_ms(50);
 			
 //		mpu_get_compass_reg(data, &timestamp);
-//		readMagFloatUT(data);													// MAGNETIC FIELD uTesla
+//		readMagFloatUT(data);														// MAGNETIC FIELD uTesla
 //		readMagTest(data);
 
-		printf("\x1B[04;14H%+06.1f    ", Magnetic[1]);			// X			// Updated at System Timer
+		printf("\x1B[04;14H%+06.1f    ", Magnetic[1]);			// X				// Updated at System Timer
 		printf("\x1B[05;14H%+06.1f    ", Magnetic[0]);			// Y
 		printf("\x1B[06;14H%+06.1f    ", Magnetic[2]);			// Z
 
 		nrf_delay_ms(100);
 		
-		Magnitude = sqrt(Magnetic[0]*Magnetic[0] + Magnetic[1]*Magnetic[1] + Magnetic[2]*Magnetic[2]);	// Total Magnetic Field Exposure ---> Earth + Other ????
+		Magnitude = sqrt(pow(Magnetic[0],2) + pow(Magnetic[1],2) + pow(Magnetic[2],2));	// Total Magnetic Field Exposure ---> Earth + Other ????
 		printf("\x1B[08;14H%+06.1f    ", Magnitude);
 		
 		nrf_delay_ms(50);
 		
-		Magnitude = sqrt(Magnetic[0]*Magnetic[0] + Magnetic[1]*Magnetic[1]);   					// Total X-Y Magnetic Field Exposure ---> Earth + Other ????
+		Magnitude = sqrt(pow(Magnetic[0],2) + pow(Magnetic[1],2));   				// Total X-Y Magnetic Field Exposure ---> Earth + Other ????
 		printf("\x1B[07;14H%+06.1f    ", Magnitude);
 		
 		nrf_delay_ms(50);
 			
-		Bearing = 180/pi*atan(Magnetic[0]/Magnetic[1]);
+		Bearing = 180/pi*atan(Magnetic[0]/Magnetic[1]);			// ---> Maybe use atan2
 		
 		if(data[1]<0)  Bearing = Bearing + 180;
 		printf("\x1B[18;14H%+06.1f   ", Bearing);
@@ -1335,7 +1413,7 @@ if (testbit(&Process_1, 0)==false) {
 		
 		printf("\x1B[23;21H%d", sysTimeTick);
 
-		nrf_delay_ms(250);
+		nrf_delay_ms(50);
 				
 	
 /*	Define output variables from updated quaternion---these are Tait-Bryan angles, commonly used in aircraft orientation.
@@ -1449,8 +1527,17 @@ static void UART_VT100_Refresh_Data_Cane() {						// $$$$$$ CANE DIAGNOSTICS MEN
 /** @brief 		Function to load CANE DIAGNOSTICS MENU Refresh Data MENU-7 to VT100 Terminal Screen.  */	
 	if (testbit(&Process_1, 0)==false) {								// Test for VT100 refresh Flag
 	
+	
+		printf("\x1B[06;24H %0000d ", 0);	// total NavTracks);		---> ToDo Read from SFlash
+		printf("\x1B[07;24H %0000d ", 0);	// total TrackWaypoints);	---> ToDo Read from SFlash
+		
+		printf("\x1B[08;24H %0000d ", CurrentNavTrack);
+		printf("\x1B[09;24H %0000d ", CurrentWaypoint);
+
+		nrf_delay_ms(100);
+
 		printf("\x1B[06;64H ");
-		if (testbit(&Process_7,0)) printf("TRUE ");						// Cane Aligned 45deg in front ---> READY
+		if (testbit(&Process_7,0)) printf("TRUE ");						// Cane Aligned -45deg in front ---> READY
 		else printf("FALSE");
 		
 		printf("\x1B[07;64H ");
@@ -1460,7 +1547,9 @@ static void UART_VT100_Refresh_Data_Cane() {						// $$$$$$ CANE DIAGNOSTICS MEN
 		printf("\x1B[08;64H ");
 		if (testbit(&Process_7,2)) printf("TRUE ");						// Buttons Aligned to Down
 		else printf("FALSE");
-		
+
+		nrf_delay_ms(100);
+
 		printf("\x1B[09;64H ");
 		if (testbit(&Process_7,3)) printf("TRUE ");						// Buttons Aligned to Right						
 		else printf("FALSE");
@@ -1522,7 +1611,14 @@ static void UART_VT100_Refresh_Data_Peripheral() {					// $$$$$$ PERIPHERALICS M
 	}
 }	
 
-static void UART_VT100_Refresh_Data_Bluetooth() {					// $$$$$$ BLUETOOTH DIAGNOSTICS MENU	DATA REFRESH MENU-A	$$$$$$
+static void UART_VT100_Refresh_Data_Calibration() {					// $$$$$$ CALIBRATION & TEST MENU		DATA REFRESH MENU-A	$$$$$$
+	
+	
+/** @brief 		Function to load SYSTEM DIAGNOSTICS MENU Refresh Data MENU-8 to VT100 Screen.  */	
+	if (testbit(&Process_1, 0)==false) {								// Test for VT100 refresh Flag
+	}
+}	
+static void UART_VT100_Refresh_Data_Bluetooth() {					// $$$$$$ BLUETOOTH DIAGNOSTICS MENU	DATA REFRESH MENU-B	$$$$$$
 	
 	
 /** @brief 		Function to load SYSTEM DIAGNOSTICS MENU Refresh Data MENU-8 to VT100 Screen.  */	
@@ -1582,7 +1678,11 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 					break;
 				
 				case 'A':
-					 UART_VT100_Menu_A();											// A... Bluetooth Diagnostics						
+					 UART_VT100_Menu_A();											// A... Calibration & Test Diagnostics						
+					break;
+				
+				case 'B':
+					 UART_VT100_Menu_B();											// B... Bluetooth Diagnostics						
 					break;
 				
 				case 'x':
@@ -1694,7 +1794,7 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 				case 'l':
 					if (MenuLevel == 80) { 											// Calibrate Magnetometer Average Min Max Readings 
 					printf("\x1B[25;30H SYSMSG: Calibrate Magnetometer START ");										
-					CalibrateMagnetometer(500);										// Average 500 readings
+					CalibrateMagnetometer(1000);									// Average 1000 readings
 					printf("\x1B[25;30H SYSMSG: Calibrate Magnetometer END   ");
 					
 					float Acc[3];
@@ -1752,7 +1852,10 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 				case 90:														// Peripheral Diagnostcs
 					UART_VT100_Refresh_Data_Peripheral();
 					break;
-				case 100:														// Bluetooth Diagnostcs 
+				case 100:														// Calibration and Test Diagnostcs 
+					UART_VT100_Refresh_Data_Calibration();
+					break;
+				case 110:														// Bluetooth Diagnostcs 
 					UART_VT100_Refresh_Data_Bluetooth();
 					break;
 				default:
@@ -1964,6 +2067,9 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	ltc294x_get_current(&temp);
 	ltc294x_get_voltage(&temp);
 	ltc294x_get_charge_counter(&temp);
+	
+	
+	initA2035H();												// Initialise the A2035H GPS Module ---> Configured for SPI
 }
 
 
@@ -2112,7 +2218,7 @@ unsigned int resumeSendData() {  									// Only called by on_ble_evt when BLE_
 //    }
 //} */
 
-static void system_timer_handler(void * p_context) {				// Timer event to prime quaternion inertial filter 100msec rate
+static void system_timer_handler(void * p_context) {				// Timer event to prime quaternion inertial filter 100msec rate + System Background Tasks
 	
 /** @brief 		Function to service background timer interupt 
     @details 	This routine is designed provide real time delay functions and load inertial sensor MPU9250
@@ -2123,57 +2229,63 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 				certain conditions.
     @ref  																	*/		
 
-	if(!testbit(&Process_0,15)) return;										// Asserted via entry to TSA within main()
+	if(!testbit(&Process_0,15)) return;											// Asserted via entry to TSA within main()
 		
-	uint32_t err_code = NRF_SUCCESS;    
-			
+	uint32_t err_code = NRF_SUCCESS;
+	
 	UNUSED_PARAMETER(p_context);
 	
 	float temp;
 	float Acc[3];
 	
-	sysTimeTick += 1;														// sysTimeTick Counter in SysTimer Increments	 200msec
+	sysTimeTick += 1;															// sysTimeTick Counter in SysTimer Increments	 200msec
 	
-	if(!testbit(&iProcess_0,0)) {											// Trap and bypass in case handler busy with previous event 
-		setbit(&iProcess_0,0);												// Set Flag for active system timer handler
+	if(!testbit(&iProcess_0,0)) {												// Trap and bypass in case handler busy with previous event 
+		setbit(&iProcess_0,0);													// Set Flag for active system timer handler
 
-
-		readGyroFloatDeg(Acc);												// Read xyz Raw GYRO registers deg/sec
+		readGyroFloatDeg(Acc);													// Read xyz Raw GYRO registers deg/sec
 		temp=Acc[0]+Acc[1]+Acc[2];
-		if(temp != 0) {														// Skip if Acc[]=0
-			Gyro[0] = 0.05*Gyro[0] + 0.94*((Acc[0] - Gyro_ManualCal[0]));	// Apply Leaky LP filtering to Manual Calibration (15% old + 84% new)
-			Gyro[1] = 0.05*Gyro[1] + 0.94*((Acc[1] - Gyro_ManualCal[1]));	// Apply Leaky LP filtering
-			Gyro[2] = 0.05*Gyro[2] + 0.94*((Acc[2] - Gyro_ManualCal[2]));	// Apply leaky LP filtering
+		if(temp != 0) {															// Skip if Acc[]=0
+			Gyro[0] = Acc[0];
+			Gyro[1] = Acc[1];
+			Gyro[2] = Acc[2];
 			
-			if(temp <= 10 || temp >= -10) {									// Trap out during big movements Auto cal when moving slow !!!
-				Gyro_ManualCal[0]=LPFilter(Gyro_ManualCal[0],Acc[0],99.9);	// Slowly Zero ManualCal Registers when during slow or static movement
-				Gyro_ManualCal[1]=LPFilter(Gyro_ManualCal[1],Acc[1],99.9);
-				Gyro_ManualCal[2]=LPFilter(Gyro_ManualCal[2],Acc[2],99.9);				
-			}
+//			Gyro[1] = 0.05*Gyro[1] + 0.94*((Acc[1] - Gyro_ManualCal[1]));		// Apply Leaky LP filtering
+//			Gyro[2] = 0.05*Gyro[2] + 0.94*((Acc[2] - Gyro_ManualCal[2]));		// Apply leaky LP filtering
+//			
+//			Gyro[0] = 0.05*Gyro[0] + 0.94*((Acc[0] - Gyro_ManualCal[0]));		// Apply Leaky LP filtering to Manual Calibration (15% old + 84% new)
+//			Gyro[1] = 0.05*Gyro[1] + 0.94*((Acc[1] - Gyro_ManualCal[1]));		// Apply Leaky LP filtering
+//			Gyro[2] = 0.05*Gyro[2] + 0.94*((Acc[2] - Gyro_ManualCal[2]));		// Apply leaky LP filtering
+//			
+//			if(temp <= 10 || temp >= -10) {										// Trap out during big movements Auto cal when moving slow !!!
+//				Gyro_ManualCal[0]=LPFilter(Gyro_ManualCal[0],Acc[0],99.9);		// Slowly Zero ManualCal Registers when during slow or static movement
+//				Gyro_ManualCal[1]=LPFilter(Gyro_ManualCal[1],Acc[1],99.9);
+//				Gyro_ManualCal[2]=LPFilter(Gyro_ManualCal[2],Acc[2],99.9);				
+//			}
 			
 			if(sysLastTime==0 || sysLastTime>sysTimeTick) sysLastTime = sysTimeTick;
-			float DeltaT = 0.2*(sysTimeTick-sysLastTime);					// 200msec increments
+			float DeltaT = 0.2*(sysTimeTick-sysLastTime);						// 200msec increments
 
-			if (Gyro[0]<-5 || Gyro[0]>5) GyroIntegrator[0]+=Gyro[0]*DeltaT;	// Integrate if outside deadband +/- 5degs/sec
-																			// convert degs/sec to degrees ie Nominally divide by 100msec sys timer entry
+			if (Gyro[0]<-5 || Gyro[0]>5) GyroIntegrator[0]+=Gyro[0]*DeltaT;		// Integrate if outside deadband +/- 5degs/sec
+																				// convert degs/sec to degrees ie Nominally divide by 100msec sys timer entry
 			if (Gyro[1]<-5 || Gyro[1]>5) GyroIntegrator[1]+=Gyro[1]*DeltaT;
 			if (Gyro[2]<-5 || Gyro[2]>5) GyroIntegrator[2]+=Gyro[2]*DeltaT;
 					
-			if(GyroIntegrator[0]>+180) GyroIntegrator[0]-=360;				// Reference Gyrointegrators in the range 0 to +/- 180
+			if(GyroIntegrator[0]>+180) GyroIntegrator[0]-=360;					// Reference Gyrointegrators in the range 0 to +/- 180
 			if(GyroIntegrator[0]<-180) GyroIntegrator[0]+=360;		
 			if(GyroIntegrator[1]>+180) GyroIntegrator[1]-=360;
 			if(GyroIntegrator[1]<-180) GyroIntegrator[1]+=360;		
 			if(GyroIntegrator[2]>+180) GyroIntegrator[2]-=360;
 			if(GyroIntegrator[2]<-180) GyroIntegrator[2]+=360;
 			
-			GyroIntegrator[0] *= 0.999;										// Slowly Zero Gyro Integrators 
+			GyroIntegrator[0] *= 0.999;											// Slowly Zero Gyro Integrators 
 			GyroIntegrator[1] *= 0.999;
 			GyroIntegrator[2] *= 0.999;
 			
 			sysLastTime = sysTimeTick;
 		}
 
-		MPU9250_Timed_Interupt();											// ToDo---> Need to Dive via MPU9250 interupt to ensure correct data present !!!!!
+		MPU9250_Timed_Interupt();												// ToDo---> Need to Dive via MPU9250 interupt to ensure correct data present !!!!!
 		
 		if(testbit(&Process_5,1)){												// Check if MPU9250 Inertial Sensor Present
 
@@ -2198,7 +2310,6 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 				MagMeanCal[0] = LPFilter(MagMeanCal[0],Acc[0]-MagCenterCal[0], 95);
 				MagMeanCal[1] = LPFilter(MagMeanCal[1],Acc[1]-MagCenterCal[1], 95);
 				MagMeanCal[2] = LPFilter(MagMeanCal[2],Acc[2]-MagCenterCal[2], 95);
-
 				
 				MagMaxCal[0] *= 0.99999;										// Send to zero while static
 				MagMaxCal[1] *= 0.99999;
@@ -2217,35 +2328,42 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 		readAccelFloatMG(Acc);													// ACCELERATION-GRAVITY (g) ---> May Require LP Filtering --> Decide on test!!!!
 		
 		if(Acc[0]+Acc[1]+Acc[2]!=0) { 											// Chech for valid Acc Read
-			temp = sqrt(Acc[0]*Acc[0]+Acc[1]*Acc[1]+Acc[2]*Acc[2]);				// Normalise
+			Acc[2] *= -1;					// Swap z-Axis Alignment
+			
+//			Gravity[0] = Acc[0];			// x-axis (Raw Values)
+//			Gravity[1] = Acc[1];			// y-axis
+//			Gravity[2] = Acc[2];			// z-axis
+			
+			temp = sqrt(pow(Acc[0],2)+pow(Acc[1],2)+pow(Acc[2],2));				// Normalise
 			Acc[0] /= temp;
 			Acc[1] /= temp;
 			Acc[2] /= temp;
-			if(Acc[2] > 0.5) {													// Test Cane Handle Facing Up
-				temp = acos(1/Acc[1])*180/pi;									// acos(1/y)
-				if (temp>35 && temp<55) {										// Test if Cane Alignment Angled Down 35deg-to-55deg
-					setbit(&Process_7,0);										// Flag Cane Alignment is NORMAL OPERATION
-				} else clrbit(&Process_7,0);
-			}
+			
+			Gravity[0] = Acc[0];			// x-axis	(Normalised)
+			Gravity[1] = Acc[1];			// y-axis	(Normalised)
+			Gravity[2] = Acc[2];			// z-axis	(Normalised)
 
-		if(atan(Acc[2]/Acc[1])*180/pi>85) setbit(&Process_7,5);					// Test and Flag for Cane Vertical-UP (+15deg-to-15deg)  
-		else clrbit(&Process_7,5);
+			temp = asin(Acc[1])*180/pi;										// asin(Gravity-y) (Normalised)
+			if (temp>-55 && temp<-35) setbit(&Process_7,0);					// Test if Cane Alignment Angled Down 35deg-to-55deg
+			else clrbit(&Process_7,0);
+			
+			if(Acc[2] < -0.4) setbit(&Process_7,1);							// Test gZ and Flag for Cane Buttons UP --> Process_7.2 Flags
+			else clrbit(&Process_7,1);	
 
-		if(atan(Acc[2]/Acc[1])*180/pi<-85) setbit(&Process_7,6);				// Test and Flag for Cane Vertical-DOWN (+15deg-to-15deg)  
-		else clrbit(&Process_7,6);
+			if(Acc[2] > 0.4) setbit(&Process_7,2);							// Test gZ and Flag for Cane Buttons DOWN  --> Process_7.3 Flags
+			else clrbit(&Process_7,2);		
 
-		if(Acc[2] > 0.4) setbit(&Process_7,1);									// Test gZ and Flag for Cane Buttons UP --> Process_7.2 Flags
-		else clrbit(&Process_7,1);	
-		
-		if(Acc[2] < -0.4) setbit(&Process_7,2);									// Test gZ and Flag for Cane Buttons DOWN  --> Process_7.3 Flags
-		else clrbit(&Process_7,2);		
+			if(Acc[0] < -0.4) setbit(&Process_7,3);							// Test gX and Flag for Cane Buttons RIGHT --> Process_7.2 Flags
+			else clrbit(&Process_7,3);	
 
-		if(Acc[0] > 0.4) setbit(&Process_7,3);									// Test gX and Flag for Cane Buttons RIGHT --> Process_7.2 Flags
-		else clrbit(&Process_7,3);	
-		
-		if(Acc[0] < -0.4) setbit(&Process_7,4);									// Test gX and Flag for Cane Buttons LEFT  --> Process_7.3 Flags
-		else clrbit(&Process_7,4);	
-		
+			if(Acc[0] > 0.4) setbit(&Process_7,4);							// Test gX and Flag for Cane Buttons LEFT  --> Process_7.3 Flags
+			else clrbit(&Process_7,4);	
+
+			if(Acc[1] > 0.9) setbit(&Process_7,5);							// Test and Flag for Cane Vertical-UP (+15deg-to-15deg)  
+			else clrbit(&Process_7,5);
+
+			if(Acc[1] < -0.9) setbit(&Process_7,6);							// Test and Flag for Cane Vertical-DOWN (+15deg-to-15deg)  
+			else clrbit(&Process_7,6);
 		}
 	
 		// Test for Vibration motor initiation and Delay off count
@@ -2285,7 +2403,9 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 			nrf_gpio_pin_clear(MOTOR_PIN_NUMBER);
 		}
 
-
+		A2035H_Sheduled_SPI_Read();											// A2035 GPS Read and Recursive Parser (Prototype Routine Under Construction)
+		
+				
 		
 	//	readAccelFloatMG(Acc);			//[0]==Left=+ive    Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
 		readGyroFloatDeg(Acc);			//[0]==Pitch Up=+ive Down=-ive		[1]==Roll CW=+ive   ACW=-ive		[2]==Yaw Right=+ive  Left=-ive
@@ -3124,8 +3244,9 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	@ref		
 	@todo		*/
 	
-	uint32_t err_code;
-	
+
+	setbit(&Process_4,7);											// Debug Disable LPFilter --> Force Out=In
+
 	GrabDeviceID(DS2401_ID,16);										// Grab and store 8-bit Hex Device ID
 
 	ble_stack_init();												// Initialize softdevice stack. ---> s110
@@ -3157,7 +3278,8 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 		  false,
 		  UART_BAUDRATE_BAUDRATE_Baud115200
 	  };
-
+	
+	uint32_t err_code;
 	APP_UART_FIFO_INIT(&comm_params,								// Initalise UART FIFO with defined setup parameters
 		UART_RX_BUF_SIZE,
 		UART_TX_BUF_SIZE,
