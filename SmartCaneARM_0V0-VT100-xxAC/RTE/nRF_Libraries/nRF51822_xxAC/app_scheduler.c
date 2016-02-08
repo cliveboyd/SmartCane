@@ -19,9 +19,9 @@
 #include "app_util.h"
 #include "app_util_platform.h"
 
+
 /**@brief Structure for holding a scheduled event header. */
-typedef struct
-{
+typedef struct {
     app_sched_event_handler_t handler;          /**< Pointer to event handler to receive the event. */
     uint16_t                  event_data_size;  /**< Size of event data. */
 } event_header_t;
@@ -45,7 +45,6 @@ static __INLINE uint8_t next_index(uint8_t index)
 {
     return (index < m_queue_size) ? (index + 1) : 0;
 }
-
 
 static __INLINE uint8_t app_sched_queue_full()
 {
@@ -95,22 +94,19 @@ uint32_t app_sched_event_put(void                    * p_event_data,
 {
     uint32_t err_code;
 
-    if (event_data_size <= m_queue_event_size)
-    {
+    if (event_data_size <= m_queue_event_size) {
         uint16_t event_index = 0xFFFF;
 
         CRITICAL_REGION_ENTER();
 
-        if (!APP_SCHED_QUEUE_FULL())
-        {
+        if (!APP_SCHED_QUEUE_FULL()) {
             event_index       = m_queue_end_index;
             m_queue_end_index = next_index(m_queue_end_index);
         }
 
         CRITICAL_REGION_EXIT();
 
-        if (event_index != 0xFFFF)
-        {
+        if (event_index != 0xFFFF) {
             // NOTE: This can be done outside the critical region since the event consumer will
             //       always be called from the main loop, and will thus never interrupt this code.
             m_queue_event_headers[event_index].handler = handler;
@@ -156,8 +152,7 @@ static uint32_t app_sched_event_get(void                     ** pp_event_data,
 {
     uint32_t err_code = NRF_ERROR_NOT_FOUND;
 
-    if (!APP_SCHED_QUEUE_EMPTY())
-    {
+    if (!APP_SCHED_QUEUE_EMPTY()) {
         uint16_t event_index;
 
         // NOTE: There is no need for a critical region here, as this function will only be called
@@ -173,13 +168,13 @@ static uint32_t app_sched_event_get(void                     ** pp_event_data,
 
         err_code = NRF_SUCCESS;
     }
+	
 
     return err_code;
 }
 
 
-void app_sched_execute(void)
-{
+void app_sched_execute(void) {
     void                    * p_event_data;
     uint16_t                  event_data_size;
     app_sched_event_handler_t event_handler;

@@ -44,15 +44,15 @@ THE SOFTWARE.
 #include <stdbool.h>
 
 #include "A2035H.h"
-#include "spi_master.h"
+#include "spi_slave.h"
 #include "nrf_gpio.h"
 #include "app_error.h"
 #include "app_util_platform.h"
-#include "spi_master.h"
+//#include "spi_master.h"
+#include "spi_slave.h"				// A2035-H GPS Module Requires Host Slave SPI
 #include "NEMAParser.h"
 
 #include "nrf_delay.h"
-
 
 #define A2035H_ON_OFF_PIN_NUMBER	(13U)				/**<  GPS ON-OFF Toogle Control GPIO pin number. */
 #define A2035H_NRST_PIN_NUMBER		(10U)				/**<  GPS nRESET GPIO pin number. */
@@ -63,20 +63,25 @@ THE SOFTWARE.
 #define SPI_TO_USE SPI_MASTER_0
 
 #define A2035H_CS_PIN 				(15U)     			/**< SPI0 A2035H GPIO pin number. */
-#define AT45DB161E_CS_PINS			(18U)     			/**< SPI0 CS SFlash AT45DB161EGPIO pin number. */
+#define AT45DB161E_CS_PINS			(18U)     			/**< SPI0 MASTER CS SFlash AT45DB161EGPIO pin number. */
 
 #ifdef SPI_MASTER_0_ENABLE
 
-#define SPIM0_SCK_PIN       		(19U)     			/**< SPI Clock GPIO pin number. */
-#define SPIM0_MOSI_PIN      		(17U)     			/**< SPI Master Out Slave In GPIO pin number. */
-#define SPIM0_MISO_PIN      		(20U)    			/**< SPI Master In Slave Out GPIO pin number. */
+//#define SPIM0_SCK_PIN       		(19U)     			/**< SPI Clock GPIO pin number. */
+//#define SPIM0_MOSI_PIN      		(17U)     			/**< SPI Master Out Slave In GPIO pin number. */
+//#define SPIM0_MISO_PIN      		(20U)    			/**< SPI Master In Slave Out GPIO pin number. */
 
-#define SPIM0_SS_PIN        		A2035H_CS_PIN     	/**< SPI Slave Select GPIO pin number.   re pin 15*/
+//#define SPIM0_SS_PIN        		A2035H_CS_PIN     	/**< SPI Slave Select GPIO pin number.   re pin 15*/
 
 #endif 	// SPI0 ENABLE Definitions
 
-#endif	// A2035H definitions
+#define SPIS_MISO_PIN				(20U)				/**< Definition Extracted for SPI Slave on SMARTCANE 1V0 >**/
+#define SPIS_MOSI_PIN				(17U)
+#define SPIS_CSN_PIN				(15U)
+#define SPIS_SCK_PIN       			(19U)
 
+
+#endif	// A2035H definitions
 
 #define SPIFREQ_TO_USE SPI_FREQUENCY_FREQUENCY_M1			// 1MHz ----> Maximum Speed suported is 6M8Hz on A2035-H
 
@@ -99,6 +104,116 @@ uint16_t	A2035_RawDataOutPointer=0;
 #define CS_HIGH     NRF_GPIO->OUTSET = (1UL << A2035H_CS_PIN)
 #define CS_LOW      NRF_GPIO->OUTCLR = (1UL << A2035H_CS_PIN)
  
+
+#define TX_BUF_SIZE   64u				/**< SPI TX buffer size. */      
+#define RX_BUF_SIZE   TX_BUF_SIZE		/**< SPI RX buffer size. */      
+#define DEF_CHARACTER 0xAAu				/**< SPI default character. Character clocked out in case of an ignored transaction. */      
+#define ORC_CHARACTER 0x55u				/**< SPI over-read character. Character clocked out after an over-read of the transmit buffer. */      
+
+static uint8_t m_tx_buf[TX_BUF_SIZE];	/**< SPI TX buffer. */      
+static uint8_t m_rx_buf[RX_BUF_SIZE];	/**< SPI RX buffer. */          
+
+/**@brief Function for initializing buffers.
+ *
+ * @param[in] p_tx_buf  Pointer to a transmit buffer.
+ * @param[in] p_rx_buf  Pointer to a receive  buffer.
+ * @param[in] len       Buffers length.
+ */
+static __INLINE void spi_slave_buffers_init(uint8_t * const p_tx_buf, uint8_t * const p_rx_buf, const uint16_t len)
+{
+    uint16_t i;
+    for (i = 0; i < len; i++)
+    {
+        p_tx_buf[i] = (uint8_t)('a' + i);
+        p_rx_buf[i] = 0;
+    }
+}
+
+/**@brief Function for checking if received data is valid.
+ *
+ * @param[in] p_rx_buf  Pointer to a receive  buffer.
+ * @param[in] len       Buffers length.
+ *
+ * @retval true     Buffer contains expected data.
+ * @retval false    Data in buffer are different than expected.
+ */
+static bool __INLINE spi_slave_buffer_check(uint8_t * const p_rx_buf, const uint16_t len)
+{
+    uint16_t i;
+    for (i = 0; i < len; i++)
+    {
+        if (p_rx_buf[i] != (uint8_t)('A' + i))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**@brief Function for SPI slave event callback.
+ *
+ * Upon receiving an SPI transaction complete event, LED1 will blink and the buffers will be set.
+ *
+ * @param[in] event SPI slave driver event.
+ */
+static void spi_slave_event_handle(spi_slave_evt_t event) {
+    uint32_t err_code=0;
+    
+    if (event.evt_type == SPI_SLAVE_XFER_DONE) {
+//		err_code = bsp_indication_set(BSP_INDICATE_RCV_OK);
+		APP_ERROR_CHECK(err_code);
+
+//		Check if buffer size is the same as amount of received data.
+		APP_ERROR_CHECK_BOOL(event.rx_amount == RX_BUF_SIZE);
+
+//		Check if received data is valid.
+		bool success = spi_slave_buffer_check(m_rx_buf, event.rx_amount);
+		APP_ERROR_CHECK_BOOL(success);
+
+//		Set buffers.
+		err_code = spi_slave_buffers_set(m_tx_buf, m_rx_buf, sizeof(m_tx_buf), sizeof(m_rx_buf));
+		APP_ERROR_CHECK(err_code);          
+    }
+}
+
+/**@brief Function for initializing SPI slave.
+ *
+ *  Function configures a SPI slave and sets buffers.
+ *
+ * @retval NRF_SUCCESS  Initialization successful.
+ */
+uint32_t spi_slave_A2035H_init(void) {
+    
+	uint32_t           err_code;
+    spi_slave_config_t spi_slave_config;
+        
+    err_code = spi_slave_evt_handler_register(spi_slave_event_handle);
+    APP_ERROR_CHECK(err_code);    
+
+    spi_slave_config.pin_miso         = SPIS_MISO_PIN;
+    spi_slave_config.pin_mosi         = SPIS_MOSI_PIN;
+    spi_slave_config.pin_sck          = SPIS_SCK_PIN;
+    spi_slave_config.pin_csn          = SPIS_CSN_PIN;
+    spi_slave_config.mode             = SPI_MODE_0;
+    spi_slave_config.bit_order        = SPIM_LSB_FIRST;
+    spi_slave_config.def_tx_character = DEF_CHARACTER;
+    spi_slave_config.orc_tx_character = ORC_CHARACTER;
+    
+    err_code = spi_slave_init(&spi_slave_config);
+    APP_ERROR_CHECK(err_code);
+    
+    //Initialize buffers.
+    spi_slave_buffers_init(m_tx_buf, m_rx_buf, (uint16_t)TX_BUF_SIZE);
+    
+    //Set buffers.
+    err_code = spi_slave_buffers_set(m_tx_buf, m_rx_buf, sizeof(m_tx_buf), sizeof(m_rx_buf));
+    APP_ERROR_CHECK(err_code);            
+
+    return NRF_SUCCESS;
+}
+
+ 
+ 
  
 /**@brief Function for initializing a SPI master driver.
  *
@@ -106,49 +221,49 @@ uint16_t	A2035_RawDataOutPointer=0;
  * @param[in] spi_master_event_handler  An event handler for SPI master events.
  * @param[in] lsb                       Bits order LSB if true, MSB if false.
  */
-static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
-                            spi_master_event_handler_t spi_master_event_handler,
-                            const bool                 lsb)
-{
-    uint32_t err_code = NRF_SUCCESS;
+//static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
+//                            spi_master_event_handler_t spi_master_event_handler,
+//                            const bool                 lsb)
+//{
+//    uint32_t err_code = NRF_SUCCESS;
 
-    // Configure SPI master.
-    spi_master_config_t spi_config = SPI_MASTER_INIT_DEFAULT;
+//    // Configure SPI master.
+//    spi_master_config_t spi_config = SPI_MASTER_INIT_DEFAULT;
 
-    switch (spi_master_instance) {
-        
-		#ifdef SPI_MASTER_0_ENABLE
-        case SPI_MASTER_0:
-        {
-            spi_config.SPI_Pin_SCK  = SPIM0_SCK_PIN;
-            spi_config.SPI_Pin_MISO = SPIM0_MISO_PIN;
-            spi_config.SPI_Pin_MOSI = SPIM0_MOSI_PIN;
-            spi_config.SPI_Pin_SS   = SPIM0_SS_PIN;
-        }
-        break;
-        #endif 										/* SPI_MASTER_0_ENABLE */
-		
-		case SPI_MASTER_1:
-			break;
-		
-        default:
-            break;
-    }
+//    switch (spi_master_instance) {
+//        
+//		#ifdef SPI_MASTER_0_ENABLE
+//        case SPI_MASTER_0:
+//        {
+//            spi_config.SPI_Pin_SCK  = SPIM0_SCK_PIN;
+//            spi_config.SPI_Pin_MISO = SPIM0_MISO_PIN;
+//            spi_config.SPI_Pin_MOSI = SPIM0_MOSI_PIN;
+//            spi_config.SPI_Pin_SS   = SPIM0_SS_PIN;
+//        }
+//        break;
+//        #endif 										/* SPI_MASTER_0_ENABLE */
+//		
+//		case SPI_MASTER_1:
+//			break;
+//		
+//        default:
+//            break;
+//    }
 	
 	// bit order
-    spi_config.SPI_CONFIG_ORDER = (lsb ? SPI_CONFIG_ORDER_LsbFirst : SPI_CONFIG_ORDER_MsbFirst);
-	spi_config.SPI_Freq = SPIFREQ_TO_USE;
-	spi_config.SPI_CONFIG_CPHA = SPICPHA_TO_USE;
-	spi_config.SPI_CONFIG_CPOL = SPICPOL_TO_USE;
-	spi_config.SPI_PriorityIRQ = APP_IRQ_PRIORITY_HIGH;
-	
-    err_code = spi_master_open(spi_master_instance, &spi_config);
-    
-	APP_ERROR_CHECK(err_code);
+//    spi_config.SPI_CONFIG_ORDER = (lsb ? SPI_CONFIG_ORDER_LsbFirst : SPI_CONFIG_ORDER_MsbFirst);
+//	spi_config.SPI_Freq = SPIFREQ_TO_USE;
+//	spi_config.SPI_CONFIG_CPHA = SPICPHA_TO_USE;
+//	spi_config.SPI_CONFIG_CPOL = SPICPOL_TO_USE;
+//	spi_config.SPI_PriorityIRQ = APP_IRQ_PRIORITY_HIGH;
+//	
+//    err_code = spi_master_open(spi_master_instance, &spi_config);
+//    
+//	APP_ERROR_CHECK(err_code);
 
-    // Register event handler for SPI master.
-    spi_master_evt_handler_reg(spi_master_instance, spi_master_event_handler);
-}
+//    // Register event handler for SPI master.
+//    spi_master_evt_handler_reg(spi_master_instance, spi_master_event_handler);
+//}
 
 
 /*******************************************************************************
@@ -156,7 +271,7 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
  *
  * @return 1.
 *******************************************************************************/
-void A2035H_Init_IO(void) {
+void A2035H_Init_SPIO(void) {
 																				// Pull A2035H CS pin  
 	 NRF_GPIO->PIN_CNF[A2035H_CS_PIN] = 							\
         (GPIO_PIN_CNF_SENSE_Disabled 	<< GPIO_PIN_CNF_SENSE_Pos)	\
@@ -168,7 +283,7 @@ void A2035H_Init_IO(void) {
 		NRF_GPIO->DIRSET = (1UL << A2035H_CS_PIN);
 		NRF_GPIO->OUTSET = (1UL << A2035H_CS_PIN); 
 	
-	spi_master_init(SPI_TO_USE, NULL, false);  									// no handler, msb first
+//	spi_master_init(SPI_TO_USE, NULL, false);  									// no handler, msb first
 
     A2035H_Reset();
 }
@@ -180,15 +295,15 @@ void A2035H_Init_IO(void) {
  * @param[out]  p_rx_data               A pointer to a buffer RX.
  * @param[in]   len                     A length of the data buffers.
  */
-static void SPI_Write(const spi_master_hw_instance_t spi_master_hw_instance,
-                          uint8_t * const                p_tx_data,
-                          uint8_t * const                p_rx_data,
-                          const uint16_t                 len)
-{
-    uint32_t err_code;
-	err_code = spi_master_send_recv(spi_master_hw_instance, p_tx_data, len, p_rx_data, len);    // Start transfer.
-    APP_ERROR_CHECK(err_code);
-}
+//static void SPI_Write(const spi_master_hw_instance_t spi_master_hw_instance,
+//                          uint8_t * const                p_tx_data,
+//                          uint8_t * const                p_rx_data,
+//                          const uint16_t                 len)
+//{
+//		uint32_t err_code;
+//		err_code = spi_master_send_recv(spi_master_hw_instance, p_tx_data, len, p_rx_data, len);    // Start transfer.
+//		APP_ERROR_CHECK(err_code);
+//}
  
  
 /*******************************************************************************
@@ -214,29 +329,29 @@ void A2035H_SetRegisterValue(unsigned short regValue) {		// 16bit
 	data[0] = (unsigned char)((regValue & 0xFF00) >> 8);
 	data[1] = (unsigned char)((regValue & 0x00FF) >> 0);
 	CS_LOW;
-	SPI_Write(SPI_TO_USE, data, m_rx_data_spi ,2);
+//	SPI_Write(SPI_TO_USE, data, m_rx_data_spi ,2);
 	CS_HIGH;
 }
 
 
 /*******************************************************************************
- * @brief Send a dummy zero byte and Read a byte from SPI Port.
+ * @brief	Send a dummy zero byte and Read a byte from SPI Port.
  *
- * @return  m_rx_data_spi[0]   
+ * @return	m_rx_data_spi[0]   
 *******************************************************************************/
 char A2035H_SPI_ReadBytes(void) {		// 1x8bit
 	
 	CS_LOW;
-	SPI_Write(SPI_TO_USE, SPI_DUMMY_BYTE , m_rx_data_spi ,1);
+//	SPI_Write(SPI_TO_USE, SPI_DUMMY_BYTE , m_rx_data_spi ,1);
 	CS_HIGH;
 	return (char) m_rx_data_spi[0];
 }
 
 
 /******************************************************************************
- * @brief Read and load A2035 32 SPI Port0 data bytes into A2035_RawData Buffer.
+ * @brief	Read and load A2035 32 SPI Port0 data bytes into A2035_RawData Buffer.
  *
- * @return  32 bytes indexed into A2035_RawData[128] by A2035_RawDataInPointer 
+ * @return	32 bytes indexed into A2035_RawData[128] by A2035_RawDataInPointer 
 *******************************************************************************/
 void A2035H_SPI_ReadAndLoad32Packets() {
 	
@@ -249,9 +364,9 @@ void A2035H_SPI_ReadAndLoad32Packets() {
 
 
 /******************************************************************************
- * @brief Routine called from main() system interupt timer.
+ * @brief	Routine called from main() system interupt timer.
  *
- * @return   void ---> Loads data to GPS NEMAParser
+ * @return	void ---> Loads data to GPS NEMAParser
 *******************************************************************************/
 void A2035H_Sheduled_SPI_Read() {
 	
@@ -271,7 +386,6 @@ void A2035H_Sheduled_SPI_Read() {
 		Parse(temp, count);												// Load recursive data to NEMAParser
 	}
 }
-
 
 
 typedef enum {
@@ -307,31 +421,80 @@ static __INLINE void pullupdown_gpio_cfg_output(uint32_t pin_number, PullUpDown_
 }
 
 void initA2035H(void) {
-
-	A2035H_Init_IO();													// Initalise the SPI 0 Port used by GPS A2035H ---> and SFLASH
 	
-	nrf_delay_us(100000); 												// delay 100ms
+	uint32_t	err_code;
+	
+	pullupdown_gpio_cfg_output(SPIS_CSN_PIN, Pull_up);
+	pullupdown_gpio_cfg_output(SPIS_SCK_PIN, Pull_down);
 	
 	pullupdown_gpio_cfg_output(A2035H_ON_OFF_PIN_NUMBER, Pull_down);
 	pullupdown_gpio_cfg_output(A2035H_NRST_PIN_NUMBER,   Pull_up);
-	pullupdown_gpio_cfg_output(A2035H_INT_PIN_NUMBER,    Pull_down);	// Need to sort out the operation of this pin Alsos Pulled low via 33k
-
-	nrf_gpio_pin_set(A2035H_NEN_PIN_NUMBER);							// Enable Aux 3V3 Supply Avoids schottcky diode drop from 3V3 to 3V3GPS rail
+	pullupdown_gpio_cfg_output(A2035H_INT_PIN_NUMBER,    Pull_down);	// Need to sort out the operation of this pin WARNING---> Pulled low via external 33k!!!
+	pullupdown_gpio_cfg_output(A2035H_NEN_PIN_NUMBER,    Pull_down);	// Ensure 3V3GPS Powered OFF
+	
+	nrf_gpio_pin_set(SPIS_CSN_PIN);										// ASSERT HIGH Extract from A2035H eval User Guide Table 4: Swith Settings Pg:13
+	nrf_gpio_pin_clear(SPIS_SCK_PIN);									// ASSERT  LOW Extract from A2035H eval User Guide Table 4: Swith Settings Pg:13
+	
+	nrf_gpio_pin_clear(A2035H_NRST_PIN_NUMBER);							// A2035 Reset      	---> ASSERT LOW Keep Low during POWER UP
+	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);						// A2035 ONOFF 	
+	
+	nrf_delay_us(100000); 												// Delay 100ms 
+	
+	nrf_gpio_pin_clear(A2035H_NEN_PIN_NUMBER);							// A2035 NEN 3V3GPS OFF ---> ASSERT LOW
+	
+	nrf_delay_us(100000); 												// Delay 100ms 
+	
+	nrf_gpio_pin_set(A2035H_NEN_PIN_NUMBER);							// Enable 3V3GPS Supply Rail
+	nrf_delay_us(250000); 												// Delay 250ms 
+	
 	
 	nrf_gpio_pin_set(A2035H_NRST_PIN_NUMBER);							// A2035 Reset ---> Pull HIGH Also Pulled High via 33k
-	nrf_delay_us(100000); 												// Delay 100ms 
+	nrf_delay_us(250000); 												// Delay 250ms 
 
-	// WARNING !!!!!
-	// ToDo Need to Sort out if ON_OFF Strobe High-Low-High or Low-High-low
-	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);						// Assert ON_OFF Pin Low		
-	nrf_delay_us(100000); 												// Delay 100ms
-	
-	nrf_gpio_pin_set(A2035H_ON_OFF_PIN_NUMBER);							// Assert ON_OFF Pin High
-	nrf_delay_us(1000000); 												// delay 1000ms (1 second)
-	
-		nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);					// Assert ON_OFF Pin Low
-	nrf_delay_us(100000); 												// Delay 100ms 
+	A2035H_Toggle_ONOFF(); 												// Delay 100ms 
 
-	nrf_delay_us(1000);
+	err_code = spi_slave_A2035H_init();									// Initialise Slave SPI Event Handler Here
+//    APP_ERROR_CHECK(err_code);
+
+	pullupdown_gpio_cfg_output(SPIS_CSN_PIN, Pull_up);
+	
+//	A2035H_Init_SPI0();													// Initalise the SPI 0 Port used by GPS A2035H (Host == SLAVE)
+																		// ---> Shared with SFLASH --> SPI0 Host = MASTER (reset A2035-H for SFALSH Use)
 }
 
+void A2035H_Toggle_ONOFF(void){
+//	ON_OFF Strobe Low-High-low
+	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);						// Assert ON_OFF Pin Low		
+	nrf_delay_us(50000); 												// Delay 50ms
+	
+	nrf_gpio_pin_set(A2035H_ON_OFF_PIN_NUMBER);							// Assert ON_OFF Pin High
+	nrf_delay_us(220000); 												// delay minimum 200ms ---> allow 220msec
+	
+	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);						// Assert ON_OFF Pin Low
+	nrf_delay_us(50000); 												// Delay 50ms 
+}
+
+void A2035H_RESET_ON(void) {
+	nrf_gpio_pin_clear(A2035H_NRST_PIN_NUMBER);							// A2035 Reset ---> Pull HIGH Also Pulled High via 33k
+	nrf_delay_us(50000); 												// Delay 50ms 
+}
+
+void A2035H_RESET_OFF(void) {
+	nrf_gpio_pin_set(A2035H_NRST_PIN_NUMBER);							// A2035 Reset ---> Pull HIGH Also Pulled High via 33k
+	nrf_delay_us(50000); 												// Delay 50ms 
+}
+
+void A2035H_POWER_OFF(void) {											// WARNING Abrust Power Down may corrupt FLASH
+	A2035H_Toggle_ONOFF();
+	nrf_gpio_pin_clear(A2035H_NRST_PIN_NUMBER);							// A2035 Reset ---> Pull HIGH Also Pulled High via 33k
+	nrf_delay_us(50000); 												// Delay 50ms
+	
+	nrf_gpio_pin_clear(A2035H_NEN_PIN_NUMBER);							// A2035 NEN 3V3GPS OFF ---> ASSERT LOW
+	nrf_delay_us(50000); 												// Delay 50ms
+}
+
+void A2035H_POWER_ON(void) {											// WARNING Abrust Power Down may corrupt FLASH
+	nrf_gpio_pin_set(A2035H_NEN_PIN_NUMBER);							// A2035 NEN 3V3GPS OFF ---> ASSERT LOW
+	nrf_delay_us(200000); 												// Delay 200ms
+	
+}

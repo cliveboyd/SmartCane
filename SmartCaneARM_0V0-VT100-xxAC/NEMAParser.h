@@ -18,6 +18,13 @@ typedef struct {
 	long		m_nSentences;
 	uint16_t	m_signalQuality;
 	uint16_t	m_satelitesInUse;
+	uint16_t	m_hour;
+	uint16_t	m_minute;
+	uint16_t	m_second;
+	uint16_t	m_year;
+	uint16_t	m_month;
+	uint16_t	m_day;
+	
 } GPSInfo_t;
 
 

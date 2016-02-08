@@ -72,3 +72,15 @@ void A2035H_SPI_ReadPacket(int *RxPacket, int ByteCount);
 /* Scheduled Read of A2035 GPS SPI - Load 32 byte packet and send on to NEMA parser*/
 void A2035H_Sheduled_SPI_Read(void);
 
+uint32_t spi_slave_example_init(void);
+
+void A2035H_Toggle_ONOFF(void);
+
+void A2035H_RESET_ON(void);
+
+void A2035H_RESET_OFF(void);
+
+void A2035H_POWER_OFF(void);
+
+void A2035H_POWER_ON(void);
+

@@ -40,8 +40,25 @@ THE SOFTWARE.
 */
 
 /*
- ERROR...	Migration to xxAC (new PCB) fails to run. 
- Note...	xxAA changes to device driver twi_hw_master.c overwriten with default config. Driver (file) was updated with timeout protected CSB variant.
+	:::::::: SPECIAL NOTE:::::::::::
+	For First time operation the S110 Softcore requires the softcore Hex file to be loaded seperately via nRFGo Studio.
+	This file only needs to be loaded once.
+*/
+
+/*
+	HARDWARE MODIFICATION LIST.... SMARTCANE Version 1V0
+	Remove D1 (Auxillary 3V3GPS diode
+	Remove R27 Pullup on A2035-H SCLK line ---> Force SPI-SLAVE Mode upon Reset (Currently Not Working as SPI)
+	Remove LED3 and R3 Forces full control of GPS via nRF51822 with no Standby Battery Default.
+	Remove R37 INT 33k Pull-down Resistor - Use nRF51 pull up or Down as required
+	Unresolved Issues...
+	Pick and Place Build Possibly Overheating (Damaging) Haptic Motor NRS-2574. Fails to run as intended (Note::: 1V2 Drive rail OK)
+	
+	Note::: SPIMASTER Operation of SFLASH will likely require A2035-H to be held in Reset during SPI Operation
+*/
+
+
+/*
   
  ERROR...	180seconds Requires ---> Upon Expire Forces Power Down ---> tried to bump 2 Hours and Avoid Advertising Time Out Event however int > 180 causes a shutdown
  Note		Removed Powerdown option at Adv time Out however still forces shutdown upon event
@@ -66,9 +83,9 @@ THE SOFTWARE.
  
  TODO...	Driver for Serial Flash AT45DB161
  
- TODO...	Driver for SPI A2035 GPS Extraction and Parse NEMA (requires SPI Module variant shared with SFLASH SPI)
+ TODO...	Driver for SPI A2035 GPS Extraction (requires SPI Module variant shared with SFLASH SPI)
  
- TODO...	Fix gasGauge Manager (Readings need to be fixed) 
+ TODO...	Fix GasGauge Manager (Readings need to be fixed) 
  
  TODO...	Generate PWM for Audio Tone Prompts
  
@@ -78,16 +95,11 @@ THE SOFTWARE.
 
  TODO...	Iniatiate Watch Dog Timer and Pat_the_Dog in main()
  
- TODO...	Write Driver for SHA-1 EEPROM DS28e02 (Security Option APPLY - Hide from GitHub)
- 
  TODO...	Do some further tests on Pressure/Altimeter and incorportae into GIS awarness tracking
  
  TODO...	Command-Control via Aux. USB-UART (Write PC app to Manage GIS and Client data sets)
  
  TODO...	SPI Parsed NEMA stream to UART at 4800Baud (Setup ATxx command for VT100 Overide/Initiation OF NEMA Stream)
- 
- TODO...	Write a driver for SHA-1 EEPROM ds28e02
- Note		Security Restriction Apply ---> Keep Away from GitHub 
  
  TODO...	Investigate Bluetooth ble_nus Nordic UART service as alternate command control (Requires Further Applet Develeopement)
  
@@ -96,6 +108,9 @@ THE SOFTWARE.
  TODO...	sensorADC_singleMeasure Battery Voltage Measurement stabalises after multiple reads --> Should be available upon first read ?????
  
  TODO...	iPhone Application via bluetooth (Fix up broadcast headers)
+ 
+ TODO...	Write Driver for SHA-1 EEPROM DS28e02 (Security Option APPLY - Hide from GitHub)
+ Note		Security Restriction Apply ---> Keep Away from GitHub
  
  */
   
@@ -148,7 +163,9 @@ THE SOFTWARE.
 #include "sensorADC.h"					// ???????
 
 #include "ds2401.h"						// Unique 1-Wire 48bit ID
+
 #include "AT45_Flash.h"					// SPI Serial Flash 16Mbit
+
 //#include "MPU_9150.h"  				// I2C Inertial Sensor 9-Axis Gyro Accel Magnetis + Temperature
 //#include "inv_mpu.h"					// Inertial Sensor Drivers
 #include "MPU_9250.h"  					// I2C Inertial Sensor 9-Axis Gyro Accel Magnetis + Temperature (EXTRACT FROM ADRINO SAMPLE CODE INCLUDES  AUX PRESS SENDSOR)
@@ -160,7 +177,7 @@ THE SOFTWARE.
 #include "MPL3115.h"					// I2C Peripheral Pressure, Altitude and Temperature Sensor
 #include "ltc2943.h"					// I2C Gas Gauge Battery Monitor
 
-#include "Communication.h"				// I2C and Other comm's
+#include "Communication.h"				// I2C and Other Communications
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT  0                                          /**< Include or not the service_changed characteristic. */
 
@@ -178,7 +195,8 @@ THE SOFTWARE.
 #define MAX_CONN_PARAMS_UPDATE_COUNT     3                                          /**< Number of attempts before giving up the connection parameter negotiation. */
 
 // for Service timer
-#define SYSTEM_TIMER_INTERVAL			 APP_TIMER_TICKS(200, APP_TIMER_PRESCALER)	/**< sys measurement interval ticks === (200msec) 
+#define MS100              				 100
+#define SYSTEM_TIMER_INTERVAL			 APP_TIMER_TICKS(MS100, APP_TIMER_PRESCALER)	/**< sys measurement interval ticks === (100msec) 
 																						 NOTE: If to small seems to screews up with TWI ???*/
 
 // for GAP param init
@@ -253,8 +271,8 @@ static dm_application_instance_t m_app_handle;						/** < Application identifier
 
 static app_timer_id_t	m_sys_timer_id;								/** < system timer. */
 
-#define MAX_TEST_DATA_BYTES		(4U)								/** < max number of test bytes per TX Burst to be used for tx and rx. ---> was 55 */
-#define UART_TX_BUF_SIZE		128									/** < UART TX buffer size. Note 512 causes error in xxAA target ---> WARNING Must be 2^x */
+#define MAX_TEST_DATA_BYTES		(16U)								/** < max number of test bytes per TX Burst to be used for tx and rx. ---> was 55 */
+#define UART_TX_BUF_SIZE		256									/** < UART TX buffer size. Note 512 causes error in xxAA target ---> WARNING Must be 2^x */
 #define UART_RX_BUF_SIZE		16									/** < UART RX buffer size.  ---> WARNING Must be 2^x  */
 
 //nrf_drv_wdt_channel_id m_channel_id;
@@ -467,6 +485,8 @@ int iProcess_0 = 0;													/* Initalise Bit Flags iProcess_0 ---> Reserved 
 	iProcess_0.15	= 
 */
 
+
+//	<<<<<<<< Start of Function and Subroutine Calls >>>>>>>>
 void setbit(int *Addr, uint8_t Operator) {							// Set   bit at Process_x based on Operator (0..15)---> Single bit
 	if(Operator<=16) {
 		*Addr  = *Addr | (int) pow(2, Operator);					// Bitwise OR
@@ -2045,33 +2065,28 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 //	
 //		mpu_run_6500_self_test(&gyro, &accel,0);
 
-//		initA2035H();
 */
 
 /*	Process_5.4	= Flag A2035 GPS Sensor Present
-
 	Process_5.5	= Flag SFlash Memory Present
-	Process_5.6	= Flag EEPROM Present
-	Process_5.7	= uP and Peripheral temperatures OK ---> .LE.50 */
+	Process_5.6	= Flag EEPROM Present */
 
 	MPL3115A2_init();
-	if(MPL3115A2_WhoAmI()==0xC4) setbit(&Process_5,2);			// Process_5.2 = Flag MPL3115 Pressure Sensor Present
+	if(MPL3115A2_WhoAmI()==0xC4) setbit(&Process_5,2);				// Process_5.2 = Flag MPL3115 Pressure Sensor Present
 	
 	float f = MPL3115A2_getAltitude();
 	
 	ltc294x_init();
 	int temp;
 	ltc294x_get_temperature(&temp);
-	if(temp!=0) setbit(&Process_5,3);							// Process_5.3 = Flag LTC2943 GasGauge Sensor Present cludeged by reading temperature
+	if(temp!=0) setbit(&Process_5,3);								// Process_5.3 = Flag LTC2943 GasGauge Sensor Present cludeged by reading temperature
 	
 	ltc294x_get_current(&temp);
 	ltc294x_get_voltage(&temp);
 	ltc294x_get_charge_counter(&temp);
 	
-	
-	initA2035H();												// Initialise the A2035H GPS Module ---> Configured for SPI
+	initA2035H();													// Initialise the A2035H GPS Module ---> Configured for SPI
 }
-
 
 int32_t temperature_nRF51_get(void) {								// $$$$$$ nRf51 Die Temperature
     int32_t temp;
@@ -2083,7 +2098,7 @@ int32_t temperature_nRF51_get(void) {								// $$$$$$ nRf51 Die Temperature
     if (err_code) return 0;
 	
 	temperature = (double) temp;
-    temperature = (temperature / 4);												// Die Temperature 0.25deg increments ---> Accuracy +/-4degC
+    temperature = (temperature / 4);								// Die Temperature 0.25deg increments ---> Accuracy +/-4degC
     
  //   int8_t exponent = -2;
     return temperature; //((exponent & 0xFF) << 24) | (temp & 0x00FFFFFF);
@@ -2198,10 +2213,8 @@ unsigned int resumeSendData() {  									// Only called by on_ble_evt when BLE_
 
 
 
-/**
+/** WATCHDOG
  * @brief WDT events handler.
-
-
 
 //void bsp_event_callback(bsp_event_t event){
 //
@@ -2264,7 +2277,7 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 //			}
 			
 			if(sysLastTime==0 || sysLastTime>sysTimeTick) sysLastTime = sysTimeTick;
-			float DeltaT = 0.2*(sysTimeTick-sysLastTime);						// 200msec increments
+			float DeltaT = MS100*(sysTimeTick-sysLastTime);						// 100msec increments
 
 			if (Gyro[0]<-5 || Gyro[0]>5) GyroIntegrator[0]+=Gyro[0]*DeltaT;		// Integrate if outside deadband +/- 5degs/sec
 																				// convert degs/sec to degrees ie Nominally divide by 100msec sys timer entry
@@ -2403,7 +2416,7 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 			nrf_gpio_pin_clear(MOTOR_PIN_NUMBER);
 		}
 
-		A2035H_Sheduled_SPI_Read();											// A2035 GPS Read and Recursive Parser (Prototype Routine Under Construction)
+//		A2035H_Sheduled_SPI_Read();											// A2035 GPS Read and Recursive Parser (Prototype Routine Under Construction)
 		
 				
 		
@@ -3200,12 +3213,6 @@ void GPIO_config_all_init() {										// Configure nRF51 GPIO Pins as required.
 						NRF_GPIO_PIN_SENSE_LOW);								// Configure button-1 with sense level low as wakeup source.
 						
 
-//#define GAUGE_NALCC_PIN_NUMBER	(12U)				// INPUT (INT) Gas Gauge Interupt I2C Programmable Alarm States LTC2943.pin6
-//#define INERTIAL_INT_PIN_NUMBER	(03U)				// INPUT (INT) Inertial Sensor Interupt MPU9250.pin12
-//#define PRESS1_PIN_NUMBER			(29U)				// INPUT (INT) Pressure Sensor PRESS1 Interupt MPL3115.pin6
-//#define PRESS2_PIN_NUMBER			(02U)				// INPUT (INT) Pressure Sensor PRESS2 Interupt MPL3115.pin5
-//#define GPS_INT_PIN_NUMBER		(14U)				// INPUT (INT) GPS External Interupt A2035-H.pin19
-
 
 /* TODO
 	Pressure  Sensor interupts PRESS1 and PRESS2
@@ -3295,6 +3302,10 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	  
 	UART_VT100_Main_Menu();											// Initialise Default UART VT100 Main Menu
 	
+//	err_code = spi_slave_example_init();							// Initialise Once -- Events then handled by ---> spi_slave_event_handle
+//	APP_ERROR_CHECK(err_code);										// REMOVED from here to ensure SPI init happens after A2035 SPI Mode Activated
+	  
+	  
 	int TSA_Count=0;												// Base TSA Initialisation Start Count = 0 of  TSA_Count 0..25	
 	setbit(&Process_0,15);											// Flag used to signal system timer to start 
 	application_timers_start();										// Start Timers

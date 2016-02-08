@@ -281,7 +281,7 @@ float zeta = 0;				   										// compute zeta, ---> zeta = sqrt(3.0f / 4.0f) *
 #define Kp 2.0f * 5.0f 												// these are the free parameters in the Mahony filter and fusion scheme, Kp for proportional feedback, Ki for integral
 #define Ki 0.0f
 
-float deltat = 0.2f; 			         							// integration interval for both filter schemes --> main.sysTimerHandler 200msec
+float deltat = 0.100; 			         							// integration interval for both filter schemes --> main.sysTimerHandler 100msec
 
 float ax, ay, az, gx, gy, gz, mx, my, mz; 							// variables to hold latest sensor data values 
 

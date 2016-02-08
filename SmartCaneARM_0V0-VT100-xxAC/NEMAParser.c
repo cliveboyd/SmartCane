@@ -390,6 +390,13 @@ void ProcessGPGGA(const char *buf, const uint16_t bufSize) {						// Global Posi
 	m_GPSInfo.m_nSentences++;
 	m_GPSInfo.m_signalQuality	= quality;
 	m_GPSInfo.m_satelitesInUse	= satelitesInUse;
+	m_GPSInfo.m_hour			= hour;
+	m_GPSInfo.m_minute			= min;
+	m_GPSInfo.m_second			= sec;
+//	m_GPSInfo.m_month			= month;
+//	m_GPSInfo.m_year			= year;
+//	m_GPSInfo.m_day				= day;
+	
 }
 
 void ProcessGPGSA(const char *buf, const uint16_t bufSize) {			// GPS DOP and active satellites
@@ -642,6 +649,13 @@ void ProcessGPRMC(const char *buf, const uint16_t bufSize) {		// Recommended min
 	m_GPSInfo.m_latitude		= latitude;								// Set the values of m_GPSInfo
 	m_GPSInfo.m_longitude		= longitude;
 	m_GPSInfo.m_nSentences++;
+	m_GPSInfo.m_hour			= hour;
+	m_GPSInfo.m_minute			= min;
+	m_GPSInfo.m_second			= sec;	
+	m_GPSInfo.m_day				= day;
+	m_GPSInfo.m_month			= month;
+	m_GPSInfo.m_year			= year;
+
 }
 
 void ProcessGPZDA(const char *buf, const uint16_t bufSize) { 			// Date & Time
