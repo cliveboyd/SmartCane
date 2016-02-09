@@ -78,9 +78,16 @@ void Parse(const char *buf, const uint16_t bufSize) {		// CSB---> Main recursive
 	main_longitude=m_GPSInfo.m_longitude;
 	main_altitude=m_GPSInfo.m_altitude;
 	main_nSentences=m_GPSInfo.m_nSentences;
-	//main_signalQuality=m_GPSInfo.m_signalQuality;		// CSB CSB TEST TEST TEST
-	main_signalQuality=main_signalQuality+1;
+//	main_signalQuality=m_GPSInfo.m_signalQuality;			// CSB CSB TEST TEST TEST
+	main_signalQuality=main_signalQuality+1;				// CSB CSB TEST TEST TEST
 	main_satelitesInUse=m_GPSInfo.m_satelitesInUse;
+	
+	main_year=m_GPSInfo.m_year;
+	main_month=m_GPSInfo.m_month;
+	main_day=m_GPSInfo.m_day;
+	main_hour=m_GPSInfo.m_hour;
+	main_minute=m_GPSInfo.m_minute;
+	main_second=m_GPSInfo.m_second;
 }
 
 void ParseRecursive(const char ch) {
@@ -387,15 +394,18 @@ void ProcessGPGGA(const char *buf, const uint16_t bufSize) {						// Global Posi
 	m_GPSInfo.m_latitude		= latitude;								// Set the values of m_GPSInfo
 	m_GPSInfo.m_longitude		= longitude;
 	m_GPSInfo.m_altitude		= altitude;
+
 	m_GPSInfo.m_nSentences++;
-	m_GPSInfo.m_signalQuality	= quality;
+
+m_GPSInfo.m_signalQuality	= quality;
 	m_GPSInfo.m_satelitesInUse	= satelitesInUse;
+//	m_GPSInfo.m_year			= year;
+//	m_GPSInfo.m_month			= month;
+//	m_GPSInfo.m_day				= day;
 	m_GPSInfo.m_hour			= hour;
 	m_GPSInfo.m_minute			= min;
 	m_GPSInfo.m_second			= sec;
-//	m_GPSInfo.m_month			= month;
-//	m_GPSInfo.m_year			= year;
-//	m_GPSInfo.m_day				= day;
+
 	
 }
 
@@ -649,13 +659,13 @@ void ProcessGPRMC(const char *buf, const uint16_t bufSize) {		// Recommended min
 	m_GPSInfo.m_latitude		= latitude;								// Set the values of m_GPSInfo
 	m_GPSInfo.m_longitude		= longitude;
 	m_GPSInfo.m_nSentences++;
+	
+	m_GPSInfo.m_year			= year;
+	m_GPSInfo.m_month			= month;
+	m_GPSInfo.m_day				= day;
 	m_GPSInfo.m_hour			= hour;
 	m_GPSInfo.m_minute			= min;
 	m_GPSInfo.m_second			= sec;	
-	m_GPSInfo.m_day				= day;
-	m_GPSInfo.m_month			= month;
-	m_GPSInfo.m_year			= year;
-
 }
 
 void ProcessGPZDA(const char *buf, const uint16_t bufSize) { 			// Date & Time

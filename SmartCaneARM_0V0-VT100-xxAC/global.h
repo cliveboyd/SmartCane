@@ -19,12 +19,18 @@ extern float	yaw;
 
 extern int		TestFlags;
 
-
 extern double	main_latitude;
 extern double	main_longitude;
 extern double	main_altitude;
 extern long		main_nSentences;
 extern uint16_t	main_signalQuality;
 extern uint16_t	main_satelitesInUse;
+
+extern uint16_t	main_year;
+extern uint16_t	main_month;
+extern uint16_t	main_day;
+extern uint16_t	main_hour;
+extern uint16_t	main_minute;
+extern uint16_t	main_second;
 
 #endif

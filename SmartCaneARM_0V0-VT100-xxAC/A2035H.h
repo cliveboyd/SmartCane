@@ -84,3 +84,4 @@ void A2035H_POWER_OFF(void);
 
 void A2035H_POWER_ON(void);
 
+void init_A2035H_UART(void);

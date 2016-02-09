@@ -330,6 +330,12 @@ long		main_nSentences;
 uint16_t	main_signalQuality;
 uint16_t	main_satelitesInUse;
 
+uint16_t	main_year;
+uint16_t	main_month;
+uint16_t	main_day;
+uint16_t	main_hour;
+uint16_t	main_minute;
+uint16_t	main_second;
 
 float pitch=0; float roll=0; float yaw=0;							// Also resides in global.h
 uint16_t QuaternionCount=0;
@@ -433,7 +439,7 @@ int Process_5  = 0;													/* Initalise Bit Flags Process_5
 	Process_5.7	= Flag System Temperatures OK
 */
 int Process_6  = 0;													/* Initalise Bit Flags Process_6	
-	Process_6.0	= 
+	Process_6.0	= Flag to Indicate A2035H GPS Power ON or OFF
 	Process_6.1	= 
 	Process_6.2	= 
 	Process_6.3	= 
@@ -652,8 +658,8 @@ static void UART_VT100_Main_Menu() {								// $$$$$$ TOP LEVEL MENU-x or X					
 
 	nrf_delay_ms(50);
 	
-	printf("\x1B[04;44H A... Calibration & Test");
-	printf("\x1B[06;44H B... Bluetooth Diagnostics");
+	printf("\x1B[04;45H A... Calibration & Test");
+	printf("\x1B[06;45H B... Bluetooth Diagnostics");
 
 	printf("\x1B[24;10H ?... Help");
 }
@@ -747,8 +753,27 @@ static void UART_VT100_Menu_2() {									// $$$$$$ GPS GLOBAL POSITION MENU-2  
 	printf("\x1B[12;05H Spare      = ");
 	printf("\x1B[13;05H Spare      = ");
 	
+	nrf_delay_ms(80);
+	
+	printf("\x1B[04;40H UTC Date/Time");
+	printf("\x1B[05;40H Year       = ");			
+	printf("\x1B[06;40H Month      = ");			
+	printf("\x1B[07;40H Day        = ");			
+	printf("\x1B[08;40H Hour       = ");
+
 	nrf_delay_ms(50);
-		
+	 
+	printf("\x1B[09;40H Minute     = ");			// 
+	printf("\x1B[10;40H Second     = ");			// 
+
+	
+	nrf_delay_ms(50);
+	printf("\x1B[15;40H KEY COMMANDS");
+	printf("\x1B[16;40H a = A2035-ONOFF");
+	printf("\x1B[17;40H b = A2035-nRST ");
+	printf("\x1B[18;40H c = A2035-3V3GPS");
+
+
   printf("\x1B[24;05H  X... exit    ?...Help");
 }	
 
@@ -1338,7 +1363,19 @@ if (testbit(&Process_1, 0)==false) {
 	printf("\x1B[09;18H %d ", main_satelitesInUse);
 	printf("\x1B[10;18H %d ", main_signalQuality);	
 	printf("\x1B[11;18H %012.7f ", (float)main_nSentences);
+	
+	nrf_delay_ms(100);
+	
+	printf("\x1B[05;53H %d ", main_year);
+	printf("\x1B[06;53H %d ", main_month);
+	printf("\x1B[07;53H %d ", main_day);
 
+	nrf_delay_ms(100);
+	 
+	printf("\x1B[08;53H %d ", main_hour);
+	printf("\x1B[09;53H %d ", main_minute);	
+	printf("\x1B[10;53H %d ", main_second);
+	
 	}
 }	
 
@@ -1722,30 +1759,73 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 					break;
 				
 				case 'a':															// Grab Static Manual Calibration Variables
-//					calibrateMPU9150(gyro_ManualCal, accel_ManualCal);
-					Gyro_ManualCal[0]=Gyro[0];										// Warning... Zero ManualCal registers before reloading --> Interative
-					Gyro_ManualCal[1]=Gyro[1];
-					Gyro_ManualCal[2]=Gyro[2];
-				
-					printf("\x1B[25;30H SYSMSG: Load Gyro-Accel ManualCal   ");
+					switch (MenuLevel) {
+						case 20:
+							A2035H_Toggle_ONOFF();
+							break;
+						
+						case 80:	
+							//	calibrateMPU9150(gyro_ManualCal, accel_ManualCal);
+							Gyro_ManualCal[0]=Gyro[0];										// Warning... Zero ManualCal registers before reloading --> Interative
+							Gyro_ManualCal[1]=Gyro[1];
+							Gyro_ManualCal[2]=Gyro[2];
+						
+							printf("\x1B[25;30H SYSMSG: Load Gyro-Accel ManualCal   ");
+							break;
+						
+						default:
+							break;
+					}
 					break;
 
 				case 'b':
-					if ( MenuLevel == 80) {											// Zero Manual Calibrations
-					Gyro_ManualCal[0]=0;   Gyro_ManualCal[1]=0;  Gyro_ManualCal[2]=0;
-					accel_ManualCal[0]=0; accel_ManualCal[1]=0; accel_ManualCal[2]=0;
-					
-					printf("\x1B[25;30H SYSMSG: Clr Gyro-Accel Zero         ");
+					switch (MenuLevel) {	
+						case 20:
+							A2035H_RESET_ON();
+							A2035H_RESET_ON();
+							A2035H_RESET_ON();
+							A2035H_RESET_OFF();
+							break;
+						
+						case 80:	
+							if ( MenuLevel == 80) {											// Zero Manual Calibrations
+							Gyro_ManualCal[0]=0;   Gyro_ManualCal[1]=0;  Gyro_ManualCal[2]=0;
+							accel_ManualCal[0]=0; accel_ManualCal[1]=0; accel_ManualCal[2]=0;
+							
+							printf("\x1B[25;30H SYSMSG: Clr Gyro-Accel Zero         ");
+							}
+							break;
+						
+						default:
+							break;
 					}
 					break;
 				
 				case 'c':
-					if ( MenuLevel == 80) { 										// Vibro Strobe
-					printf("\x1B[25;30H SYSMSG: Vibro Strobe                ");
-					setbit(&Process_0, 1);											// Flag to initiate Vibro Motor at 100msec+100msec
+					switch (MenuLevel) {	
+						case 20:
+							if (testbit(&Process_6,0)){
+								clrbit(&Process_6,0);
+								A2035H_POWER_OFF();
+							}
+							else {
+								setbit(&Process_6,0);
+								A2035H_POWER_ON();
+							}
+							break;
+						
+						case 80:	
+							if ( MenuLevel == 80) { 										// Vibro Strobe
+							printf("\x1B[25;30H SYSMSG: Vibro Strobe                ");
+							setbit(&Process_0, 1);											// Flag to initiate Vibro Motor at 100msec+100msec
+							}
+							break;
+						
+						default:
+							break;
 					}
 					break;
-				
+					
 				case 'd':
 					if ( MenuLevel == 80) { 										// Spare Menu as Start timer
 					printf("\x1B[25;30H SYSMSG: ASM register Test          ");
@@ -2086,6 +2166,7 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	ltc294x_get_charge_counter(&temp);
 	
 	initA2035H();													// Initialise the A2035H GPS Module ---> Configured for SPI
+	setbit(&Process_6,0);											// init Flag to indicate A2035H 3v3GPS Power Asserted
 }
 
 int32_t temperature_nRF51_get(void) {								// $$$$$$ nRf51 Die Temperature
@@ -2418,20 +2499,19 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 
 //		A2035H_Sheduled_SPI_Read();											// A2035 GPS Read and Recursive Parser (Prototype Routine Under Construction)
 		
-				
-		
-	//	readAccelFloatMG(Acc);			//[0]==Left=+ive    Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
-		readGyroFloatDeg(Acc);			//[0]==Pitch Up=+ive Down=-ive		[1]==Roll CW=+ive   ACW=-ive		[2]==Yaw Right=+ive  Left=-ive
+
+		readAccelFloatMG(Acc);			//[0]==Left=+ive    Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
+	//	readGyroFloatDeg(Acc);			//[0]==Pitch Up=+ive Down=-ive		[1]==Roll CW=+ive   ACW=-ive		[2]==Yaw Right=+ive  Left=-ive
 	//	readMagFloatUT(Acc);			//[0]==Front=+ive    Rear=-ive		[1]==Right=+ive     Left=-ive		[2]==Z Down=+ive     Z Up=-ive
 				
-		err_code = ble_AD7746_send_temp_notify(&m_AD7746, Acc[2]);				// Currently ASSIGNED TO transmit Gyro Yaw to ble pipe when ble connected
+		err_code = ble_AD7746_send_temp_notify(&m_AD7746, Acc[2]);			// Currently ASSIGNED TO transmit z-Gravity Gyro Yaw to ble pipe when ble connected
 		
 		if ((err_code != NRF_SUCCESS) &&
-				(err_code != NRF_ERROR_INVALID_STATE) &&
-				(err_code != BLE_ERROR_NO_TX_BUFFERS) &&
-				(err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) 				// ignore these errors as they appear only during setup and are normal
+			(err_code != NRF_ERROR_INVALID_STATE) &&
+			(err_code != BLE_ERROR_NO_TX_BUFFERS) &&
+			(err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) { 				// Ignore these errors as they appear only during setup and are normal
 		
-		{	APP_ERROR_HANDLER(err_code);
+			APP_ERROR_HANDLER(err_code);
 		}
 
 /*
@@ -2700,7 +2780,7 @@ static void ble_stack_init(void) {									// Initalise ble Bluetooth stack also
 //	SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_16000MS_CALIBRATION,NULL);	// Temperature compensated LF RC Osc calibration every 16seconds
 	
 // WARNING --> NOT USED ---> Alternative LF Clock Source 
-//	SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM,NULL);						// Low Frequency Clock Source --> External Xtal/Resonator 32k682kHz
+//	SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM,NULL);						// ERROR fails to Start.. Low Frequency Clock Source --> External Xtal/Resonator 32k682kHz
 
 #ifdef S110																				// Initialize the SoftDevice handler module.
 	ble_enable_params_t ble_enable_params;												// Enable BLE stack.
@@ -2920,12 +3000,13 @@ static uint32_t device_manager_evt_handler							// ToDo ---> Empty
     
 	APP_ERROR_CHECK_CSB(event_result);
 
-#ifdef BLE_DFU_APP_SUPPORT
+#ifdef BLE_DFU_APP_SUPPORT											// ble_DFU_APP_SUPPORT
     if (p_event->event_id == DM_EVT_LINK_SECURED) {
         app_context_load(p_handle);
+		
     }
-#endif 																// BLE_DFU_APP_SUPPORT
-		ErrorCounter[2] += 1;										// Note ErrorCounter[2] Shared elsewhere
+#endif 																
+	ErrorCounter[2] += 1;											// Note ErrorCounter[2] Shared elsewhere
     return NRF_SUCCESS;
 }
 static void device_manager_init(void) {
