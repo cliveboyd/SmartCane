@@ -337,7 +337,7 @@ double		main_altitude;
 long		main_nSentences;
 uint16_t	main_signalQuality;
 uint16_t	main_satelitesInUse;
-
+//test
 uint16_t	main_year;
 uint16_t	main_month;
 uint16_t	main_day;
