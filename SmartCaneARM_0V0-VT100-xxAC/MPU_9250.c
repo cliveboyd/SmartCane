@@ -323,8 +323,9 @@ void MPU9250_readBytes_(uint8_t address, uint8_t subAddress, uint8_t count, uint
 				  break; 																		// if written length > 0
 			if (!loop) break;
 	}
-	if (i>=5) 
-		return;
+	
+	if (i>=5) return;
+	
 	for(i=0;i<5;i++) {
 		if(I2C_Read(address,
              dest,

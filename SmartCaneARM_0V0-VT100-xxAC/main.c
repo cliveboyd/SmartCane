@@ -53,6 +53,7 @@ THE SOFTWARE.
 	Remove R37 INT 33k Pull-down Resistor - Use nRF51 pull up or Down as required
 	Unresolved Issues...
 	Pick and Place Build Possibly Overheating (Damaging) Haptic Motor NRS-2574. Fails to run as intended (Note::: 1V2 Drive rail OK)
+	Also possible issue with inertial sensor MPU9250 as the code for magnetometer and gyro failed to work as intended upon new PCB -- requires Investigation.
 	
 	Note::: SPIMASTER Operation of SFLASH will likely require A2035-H to be held in Reset during SPI Operation
 */
@@ -110,6 +111,7 @@ THE SOFTWARE.
  TODO...	iPhone Application via bluetooth (Fix up broadcast headers)
  
  TODO...	Write Driver for SHA-1 EEPROM DS28e02 (Security Option APPLY - Hide from GitHub)
+ Error		Grab_EEPROM_ID currently under developement Not Reading Correct ---> Family ID
  Note		Security Restriction Apply ---> Keep Away from GitHub
  
  */
@@ -164,7 +166,9 @@ THE SOFTWARE.
 
 #include "ds2401.h"						// Unique 1-Wire 48bit ID
 
-#include "AT45_Flash.h"					// SPI Serial Flash 16Mbit
+#include "ds28e02.h"					// One Wire Interface EEPROM + SHA
+
+#include "AT45.h"						// SPI Serial Flash AT45DB161E 16Mbit
 
 //#include "MPU_9150.h"  				// I2C Inertial Sensor 9-Axis Gyro Accel Magnetis + Temperature
 //#include "inv_mpu.h"					// Inertial Sensor Drivers
@@ -276,6 +280,7 @@ static app_timer_id_t	m_sys_timer_id;								/** < system timer. */
 #define UART_RX_BUF_SIZE		16									/** < UART RX buffer size.  ---> WARNING Must be 2^x  */
 
 //nrf_drv_wdt_channel_id m_channel_id;
+																	
 																	// Note... Melbourne == lat:-24.0000deg Lon:+135.0000deg Elev:0.00km
 
 const float MagTNReference = 5.125;									// Australian Compass trueNorth magNorth field Compensation for Melbourne Australia
@@ -300,7 +305,8 @@ float	Gravity[3];
 uint8_t  CurrentNavTrack=0;
 uint16_t CurrentWaypoint=0;
 
-char	DS2401_ID[16];												// String to hold ---> DS2401 (4bits) + Device_ID
+char	DS2401_ID[16];												// String to hold ---> DS2401  (4bits) + Device_ID
+char	DS28E02_ID[16];												// String to hold ---> DS28E02 (4bits) + Device_ID???
 uint8_t MenuLevel=0;												// Initalise Default Menu Level to 00 --> Main Menu
 float	Quaternion[4];												// Test Global Decleration to test Quaternion filter update operation
 float	accel_ManualCal[3];											// The following registers are used within manual Acceleration calibration
@@ -321,6 +327,8 @@ uint32_t line_num_clone=0;
 
 uint16_t Count_VibroMotor=4;										// Auto Starts vibro motor upon sys timer startup for 400msec
 
+uint16_t SFLASH_GPS_flag=999;										// IO Access Flags ---> None=999   AT45DB161:SFLASH_Authority=2    A2035:GPS_Authority=4 
+
 char	ATxx[4];													// AT Command mode Ascii buffer
 
 double		main_latitude;											// Also resides in global.h
@@ -336,7 +344,6 @@ uint16_t	main_day;
 uint16_t	main_hour;
 uint16_t	main_minute;
 uint16_t	main_second;
-
 float pitch=0; float roll=0; float yaw=0;							// Also resides in global.h
 uint16_t QuaternionCount=0;
 
@@ -492,20 +499,31 @@ int iProcess_0 = 0;													/* Initalise Bit Flags iProcess_0 ---> Reserved 
 */
 
 
-//	<<<<<<<< Start of Function and Subroutine Calls >>>>>>>>
+/*	<<<<<<<<  Start of Function and Subroutine Calls  >>>>>>>>
+*/
 void setbit(int *Addr, uint8_t Operator) {							// Set   bit at Process_x based on Operator (0..15)---> Single bit
 	if(Operator<=16) {
 		*Addr  = *Addr | (int) pow(2, Operator);					// Bitwise OR
 	}
 }	
 
-void clrbit(int *Addr, uint8_t Operator) {							// Clear bit at Process_x bassed on Operator (0..15)---> Single bit 
+void clrbit(int *Addr, uint8_t Operator) {							// Clear bit at Process_x based on Operator (0..15)---> Single bit 
 	if(Operator<=16){
 		*Addr  = *Addr & ~((int)(pow(2, Operator)));				// Bitwise AND of inverted Operator
 	}
 }
 
-bool testbit(int *Addr, uint8_t Operator) {							// Test  bit at Process_x bassed on Operator (0..15)---> Single bit return true/false
+bool testbit(int *Addr, uint8_t Operator) {							// Test  bit at Process_x based on Operator (0..15)---> Single bit return true/false
+	if(Operator<=16){
+		if (*Addr & (int) pow(2,Operator)) {
+			return true;												// True
+		} else {	
+			return false;												// False
+		}
+	}
+	return false;
+}
+bool testbit_int(int *Addr, uint8_t Operator) {							// Duplicate Test to stop interupt driven Foreground-Background conflict
 	if(Operator<=16){
 		if (*Addr & (int) pow(2,Operator)) {
 			return true;												// True
@@ -1044,6 +1062,8 @@ static void UART_VT100_Menu_8() {		    						// $$$$$$ SYSTEM DIAGNOSTIC MENU-8	
 	printf("\x1B[15;05H k = Clr Gyro Integrators");
 	printf("\x1B[16;05H l = Calibrate Magnetometer 25sec");
 	
+	printf("\x1B[17;05H m = read AT45 WhoAmI");
+	
 	nrf_delay_ms(50);
 	 
 	printf("\x1B[05;34H ERROR COUNTERS");
@@ -1104,33 +1124,33 @@ static void UART_VT100_Menu_9() {		    						// $$$$$$ PERIPHERAL DIAGNOSTIC MEN
 	nrf_delay_ms(50);
 
 	printf("\x1B[09;05H Inertial     ");
-	if(testbit(&Process_5,1)) printf("Pass     ");
+	if(testbit(&Process_5, 1)) printf("Pass     ");
 	else printf("---> FAIL");
 
 	printf("\x1B[10;05H Pressure     ");
-	if(testbit(&Process_5,2)) printf("Pass     ");
+	if(testbit(&Process_5, 2)) printf("Pass     ");
 	else printf("---> FAIL");
 	
 	printf("\x1B[11;05H Gas Gauge    ");
-	if(testbit(&Process_5,3)) printf("Pass     ");
+	if(testbit(&Process_5, 3)) printf("Pass     ");
 	else printf("---> FAIL ");
 	
 	printf("\x1B[12;05H GPS          ");
-	if(testbit(&Process_5,4)) printf("Pass     ");
+	if(testbit(&Process_5, 4)) printf("Pass     ");
 	else printf("---> FAIL");
 	
-	nrf_delay_ms(50);
+	nrf_delay_ms(55);
 	
 	printf("\x1B[13;05H SFlash       ");
-	if(testbit(&Process_5,5)) printf("Pass     ");
+	if(testbit(&Process_5, 5)) printf("Pass     ");
 	else printf("---> FAIL");
 	
 	printf("\x1B[14;05H EEPROM       ");
-	if(testbit(&Process_5,6)) printf("Pass     ");
+	if(testbit(&Process_5, 6)) printf("Pass     ");
 	else printf("---> FAIL");
 	
 	printf("\x1B[15;05H Temperature  ");
-	if(testbit(&Process_5,7)) printf("Pass     ");
+	if(testbit(&Process_5, 7)) printf("Pass     ");
 	else printf("---> FAIL");
 
 	nrf_delay_ms(50);		
@@ -1655,8 +1675,14 @@ static void UART_VT100_Refresh_Data_System() {						// $$$$$$ SYSTEM DIAGNOSTICS
 		
 		nrf_delay_ms(100);
 		
-		printf("\x1B[22;47H SP = 0x%X ", Read32_ASM_SP());				// Current Stack Position
+
+		printf("\x1B[20;47H IO = ");
+		int temp = Read32_ALL_IO();
+		Print_byte_to_binary(temp>>16);	
+		Print_byte_to_binary(temp>>8);											// Print out bits as a string
+		Print_byte_to_binary(temp);
 		
+		printf("\x1B[22;47H SP = 0x%X ", Read32_ASM_SP());				// Current Stack Position
 	}
 }	
 static void UART_VT100_Refresh_Data_Peripheral() {					// $$$$$$ PERIPHERALICS MENU			DATA REFRESH MENU-9	$$$$$$
@@ -1913,6 +1939,13 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 					}
 					break;	
 				
+				case 'm':
+					if (MenuLevel == 80) { 											// Read AT45 Manufacturers Device ID 
+					printf("\x1B[25;30H SYSMSG: AT45_WhoAmI = ");										
+					printf("%X",  AT45_WhoAmI());
+					}
+					break;	
+				
 				default:
 					break;
 			} 
@@ -2083,9 +2116,9 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 		
 //	calibrateMPU9150()
 	
-	MPU9250_setup();		// Passes through however includes long with big Averaging Loop
+//	MPU9250_setup();		// Passes through however includes long with big Averaging Loop
 	
-//	initMPU9250();
+	initMPU9250();
 	if(MPU9250_WhoAmI()==0x71) setbit(&Process_5,1);				// Process_5.1	= Flag MPU9250 Inertial Sensor Present
 	
 	float Acc[3];
@@ -2114,36 +2147,38 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	MagMinCal[0] = +999999;
 	MagMinCal[1] = +999999;
 	MagMinCal[2] = +999999;
+
+	sensorADC_config();  										// sensor adc init
+	finishedADC = false;  										// for sensor_adc only	
 	
 /*
-//		if(mpu_init(NULL));
-//		long gyro,accel;
-//		mpu_run_self_test(&gyro, &accel);
+		if(mpu_init(NULL));
+		long gyro,accel;
+		mpu_run_self_test(&gyro, &accel);
 
-//		sensorADC_config();  										// sensor adc init
-		finishedADC = false;  										// for sensor_adc only
+
 	
-// read compass
-//		short data[3];
+ read compass
+		short data[3];
 		
-//		unsigned long timestamp;
-//		
-//		nrf_delay_us(1000000);
+		unsigned long timestamp;
+		
+		nrf_delay_us(1000000);
 
 
-//		while(mpu_get_compass_reg(data, &timestamp)) 
-//			nrf_delay_us(1000);
-//			while(1) {
-//				status = mpu_get_compass_reg(data, &timestamp);
-//				if(data[0]>0 || status == 0)
-//				break;
-//			}
-//		long temperature;
-//		while(mpu_get_temperature(&temperature, &timestamp));
-//		while(mpu_get_accel_reg(data,&timestamp));
-//		while(mpu_get_gyro_reg(data,&timestamp));
-//	
-//		mpu_run_6500_self_test(&gyro, &accel,0);
+		while(mpu_get_compass_reg(data, &timestamp)) 
+			nrf_delay_us(1000);
+			while(1) {
+				status = mpu_get_compass_reg(data, &timestamp);
+				if(data[0]>0 || status == 0)
+				break;
+			}
+		long temperature;
+		while(mpu_get_temperature(&temperature, &timestamp));
+		while(mpu_get_accel_reg(data,&timestamp));
+		while(mpu_get_gyro_reg(data,&timestamp));
+	
+		mpu_run_6500_self_test(&gyro, &accel,0);
 
 */
 
@@ -2165,8 +2200,46 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	ltc294x_get_voltage(&temp);
 	ltc294x_get_charge_counter(&temp);
 	
-	initA2035H();													// Initialise the A2035H GPS Module ---> Configured for SPI
-	setbit(&Process_6,0);											// init Flag to indicate A2035H 3v3GPS Power Asserted
+//	initA2035H();													// Initialise the A2035H GPS Module ---> Configured for SPI
+//	setbit(&Process_6,0);											// init Flag to indicate A2035H 3v3GPS Power Asserted
+
+//	Test for SFLASH Presence by reading AT45 Device ID
+	nrf_gpio_cfg_output(04U);										// GPS RESET ASSERTED LOW ---> WARNING ---> 1V8 GPS Power is being generated via MISO 3V3 Line Blead ==> Assert 3V3GPS Power
+	NRF_GPIO->OUTCLR = (1UL << 04U);
+
+	nrf_gpio_cfg_output(10U);										// Assert GPS Power OFF while GPS Held in RESET 
+	NRF_GPIO->OUTCLR = (1UL << 10U);
+
+	AT45DB161E_init();
+	int tempx=AT45_WhoAmI();
+//	tempx=AT45_WhoAmI();
+	if (tempx==0x1f26) setbit(&Process_5, 5);
+	
+	
+//	Test for Presence of 1WI EEPROM DS28E02 by reading Unique Regestration Number 
+	Grab_EEPROM_ID(DS28E02_ID, 16);
+	if((int) DS28E02_ID[1]==0x00 && (int) DS28E02_ID[2]==0x00) setbit(&Process_5, 6);			// ToDo Bypass Fault The Return ID is cludged and hard set to 0x00
+	
+}
+
+
+int32_t Read32_ALL_IO(void){
+	return  NRF_GPIO->IN & 0x0000ffff;
+}
+
+
+int Print_byte_to_binary(int x) {									// Function to generate a binary printf binary output function as a string
+    
+	static char bx[17];
+    bx[0] = '\0';
+
+    int z;
+    for (z = 128; z > 0; z >>= 1)
+    {
+        strcat(bx, ((x & z) == z) ? "1" : "0");
+    }
+	printf ("%s ", bx);
+	return 0;
 }
 
 int32_t temperature_nRF51_get(void) {								// $$$$$$ nRf51 Die Temperature
@@ -2334,8 +2407,8 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 	
 	sysTimeTick += 1;															// sysTimeTick Counter in SysTimer Increments	 200msec
 	
-	if(!testbit(&iProcess_0,0)) {												// Trap and bypass in case handler busy with previous event 
-		setbit(&iProcess_0,0);													// Set Flag for active system timer handler
+	if(!testbit_int(&iProcess_0, 0)) {											// Trap and bypass in case handler busy with previous event 
+		setbit(&iProcess_0, 0);													// Set Flag for active system timer handler
 
 		readGyroFloatDeg(Acc);													// Read xyz Raw GYRO registers deg/sec
 		temp=Acc[0]+Acc[1]+Acc[2];
@@ -2381,11 +2454,11 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 
 		MPU9250_Timed_Interupt();												// ToDo---> Need to Dive via MPU9250 interupt to ensure correct data present !!!!!
 		
-		if(testbit(&Process_5,1)){												// Check if MPU9250 Inertial Sensor Present
+		if(testbit(&Process_5, 1)){												// Check if MPU9250 Inertial Sensor Present
 
 			Acc[0]=Acc[1]=Acc[2]=0;
-//			readMagFloatUT(Acc);												// Read xyz Raw Magnetometer uTesla registers
-			readMagTest(Acc);
+			readMagFloatUT(Acc);												// Read xyz Raw Magnetometer uTesla registers
+//			readMagTest(Acc);
 			temp=Acc[0]+Acc[1]+Acc[2];
 			if(temp != 0) {														// Skip if Acc[]=0
 				
@@ -2819,26 +2892,40 @@ static void DeviceNameFromID(char* name, int len) {					// Redefine Device name 
 	return;
 }
 
-static void GrabDeviceID(char* name, int len) {						// DS2401 xxxxxxxx
-	if(len<16) {
-		strncpy(name, DEVICE_NAME, len);
-	} else {
+static void GrabDeviceID(char* name, int len) {							// DS2401 xxxxxxxx
+	if(len<16) strncpy(name, DEVICE_NAME, len);
+	else {
 		while(!ds2401_initAndRead()) ;
 		int j = 0;
 		bool skipLeading = true;
-		for(int i=0;i<8;i++)
-		{
+		for(int i=0;i<8;i++) {
 			if(ds2401_id[i]==0 && skipLeading) continue;
 			else skipLeading = false;
 			sprintf(name+j*2, "%02X", ds2401_id[i]);
 			j++;
 		}
-		if (j*2<len) {
-			strncpy(name+j*2, "", len-j*2);
-		}
+		if (j*2<len) strncpy(name+j*2, "", len-j*2);
 	}
 	return;
 }
+
+int Grab_EEPROM_ID(char* name, int len) {							// DS28e02 xxxxxxxx
+	if(len<16) strncpy(name, DEVICE_NAME, len);
+	else {
+		while(!ds28e02_initAndRead()) ;
+		int j = 0;
+		bool skipLeading = true;
+		for(int i=0;i<8;i++) {
+			if(ds28e02_id[i]==0 && skipLeading) continue;
+			else skipLeading = false;
+			sprintf(name+j*2, "%02X", ds28e02_id[i]);
+			j++;
+		}
+		if (j*2<len)  strncpy(name+j*2, "", len-j*2);
+	}
+	return 0;
+}
+
 static void gap_params_init(void) {									// Initialise ble Generic Access Profile GAP parameters
 /**	@brief 		Function for the GAP initialization.
 	@details 	This function sets up all the necessary GAP (Generic Access Profile) parameters of the
@@ -2994,10 +3081,9 @@ static uint32_t device_manager_evt_handler							// ToDo ---> Empty
 	(dm_handle_t const * p_handle,
 	 dm_event_t  const * p_event,
      ret_code_t          event_result) {	
-				   
 /**	@brief		Function for handling the Device Manager events.
 	@param[in]	p_evt  Data associated to the device manager event.*/											   
-    
+
 	APP_ERROR_CHECK_CSB(event_result);
 
 #ifdef BLE_DFU_APP_SUPPORT											// ble_DFU_APP_SUPPORT
@@ -3105,35 +3191,35 @@ void TestProcessorHWID(void) {										// Test nRF51822 Processor HWID ---> Und
 	
 	uint32_t ic_data;
 	ic_data = (((*((uint32_t volatile *)0xF0000FE8)) & 0x000000FF) );
-	if (ic_data==0x009C) setbit(&Process_5,0);													// HWID=9C ==> nRF51822 xxAC Flash:512k Ram:32k
+	if (ic_data==0x009C) setbit(&Process_5, 0);													// HWID=9C ==> nRF51822 xxAC Flash:512k Ram:32k
 																								// Note HWID reads 4C for nRF51822 xxAA Flash:256k Ram:16k
 	
 	uint16_t ram_size	= (uint16_t) NRF_FICR->NUMRAMBLOCK * (NRF_FICR->SIZERAMBLOCKS / 1024);	// FICR ---> Factory Information Config Register
-	if (ram_size != 0x0020) clrbit(&Process_5,0);												// ram_size==0x0020 --> 32k  ram_size == 0x0010 --> 16k   
+	if (ram_size != 0x0020) clrbit(&Process_5, 0);												// ram_size==0x0020 --> 32k  ram_size == 0x0010 --> 16k   
 	
 	uint16_t flash_size	= (uint16_t) NRF_FICR->CODESIZE;										// flash_size==0x0100 --> 256k
-	if (flash_size != 0x0100) clrbit(&Process_5,0);
+	if (flash_size != 0x0100) clrbit(&Process_5, 0);
 	
 	ic_data = (((*((uint32_t volatile *)0xF0000FE8)) & 0x000000F0) >> 4);						// Check Hardware Revision
 	
 	switch (ic_data) {
        
 		case 1: 						// IC revision 1	IC_REVISION_NRF51_REV1;
-			setbit(&Process_0,4);																// Assert Vibro Motor to Signal Error
+			setbit(&Process_0, 4);																// Assert Vibro Motor to Signal Error
 			break;
 
 		case 4: 						// IC revision 2	IC_REVISION_NRF51_REV2;
-			setbit(&Process_0,4);																// Assert Vibro Motor to Signal Error
+			setbit(&Process_0 ,4);																// Assert Vibro Motor to Signal Error
 			break;
 
 		case 7:							// IC revision 3	Fall Through
 		case 8:							// IC revision 3	Fall Through
 		case 9:							// IC_REVISION_NRF51_REV3
-			setbit(&Process_2,7);																// <-- Should End Up Here for Rev3
+			setbit(&Process_2, 7);																// <-- Should End Up Here for Rev3
 		break;
 
 		default:						// IC_REVISION_NRF51_UNKNOWN;
-			setbit(&Process_0,4);																// Assert Vibro Motor to Signal Error
+			setbit(&Process_0, 4);																// Assert Vibro Motor to Signal Error
 			break;
     }
 }
@@ -3200,8 +3286,8 @@ void TestTemperatures () {											// Test uP and Peripheral Temperatures
 		if(temp> 50) flag=false;
 	}
 	
-	if(flag==false) clrbit(&Process_5,7);									// if Process_5.7 ---> 
-	else setbit(&Process_5,7);
+	if(flag==false) clrbit(&Process_5, 7);									// if Process_5.7 ---> 
+	else setbit(&Process_5, 7);
 }
 
 void GPIO_config_all_init() {										// Configure nRF51 GPIO Pins as required.
@@ -3333,7 +3419,7 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	@todo		*/
 	
 
-	setbit(&Process_4,7);											// Debug Disable LPFilter --> Force Out=In
+	setbit(&Process_4, 7);											// Debug Disable LPFilter --> Force Out=In
 
 	GrabDeviceID(DS2401_ID,16);										// Grab and store 8-bit Hex Device ID
 
@@ -3345,14 +3431,16 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 
 //	Initialize Common modules
 	scheduler_init();												// Initialise Scheduler
-	device_manager_init();											// Initialise Device Manager  
+	device_manager_init();											// Initialise Device Manager 
+	
+
 	timers_init();													// Initialise Timers  
 	gap_params_init();												// Initialise GAP and GATT 
 	services_init();												// Initialise service
 	advertising_init();												// Initialise Advertising
 	conn_params_init();												// Initialise connection parameters
 		
-	SmartCane_peripheral_init();									// Initialise application specific modules
+	SmartCane_peripheral_init();									// Initialise application specific modules  	
 	
 //	advertising_start();											// Starts Bluetooth advertising, however, also shuts down power to board after 180sec if no connection
 																	// Note... Moved to VT100 System Menu 6 ---> G
@@ -3389,6 +3477,7 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	  
 	int TSA_Count=0;												// Base TSA Initialisation Start Count = 0 of  TSA_Count 0..25	
 	setbit(&Process_0,15);											// Flag used to signal system timer to start 
+	
 	application_timers_start();										// Start Timers
 	  
 	while (true) {													// TSA Time Slot Assigner ---> Endless Loop within main()

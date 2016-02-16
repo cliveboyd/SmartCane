@@ -85,3 +85,7 @@ void A2035H_POWER_OFF(void);
 void A2035H_POWER_ON(void);
 
 void init_A2035H_UART(void);
+
+void A2035H_disable_SPI_Bus_Pins(void);
+
+

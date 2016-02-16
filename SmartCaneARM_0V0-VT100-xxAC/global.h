@@ -19,6 +19,8 @@ extern float	yaw;
 
 extern int		TestFlags;
 
+extern uint16_t SFLASH_GPS_flag;
+
 extern double	main_latitude;
 extern double	main_longitude;
 extern double	main_altitude;

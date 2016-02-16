@@ -32,11 +32,11 @@ THE SOFTWARE.
 unsigned char ds2401_id[8];
 
 /* 1-wire is at defined in ds2401_config.h */
-#define SET_PIN_INPUT()  do { NRF_GPIO->DIRCLR = (1UL << One_Wire_Interface_1WI_PIN_NUMBER);  } while(0)   /*!< Configures 1-wire pin as input  */
-#define SET_PIN_OUTPUT() do { NRF_GPIO->DIRSET = (1UL << One_Wire_Interface_1WI_PIN_NUMBER);  } while(0)   /*!< Configures 1-wire pin as output  */
+#define SET_PIN_INPUT()  do { NRF_GPIO->DIRCLR = (1UL << DS2401_SERIAL_ID_PIN_NUMBER);  } while(0)   /*!< Configures 1-wire pin as input  */
+#define SET_PIN_OUTPUT() do { NRF_GPIO->DIRSET = (1UL << DS2401_SERIAL_ID_PIN_NUMBER);  } while(0)   /*!< Configures 1-wire pin as output  */
 
-#define OUTP_0() do { NRF_GPIO->OUTCLR = (1UL << One_Wire_Interface_1WI_PIN_NUMBER);  } while(0)   /*!< Pulls 1-wire pin low  */
-#define OUTP_1() do { NRF_GPIO->OUTSET = (1UL << One_Wire_Interface_1WI_PIN_NUMBER);  } while(0)   /*!< Pulls 1-wire pin high */
+#define OUTP_0() do { NRF_GPIO->OUTCLR = (1UL << DS2401_SERIAL_ID_PIN_NUMBER);  } while(0)   /*!< Pulls 1-wire pin low  */
+#define OUTP_1() do { NRF_GPIO->OUTSET = (1UL << DS2401_SERIAL_ID_PIN_NUMBER);  } while(0)   /*!< Pulls 1-wire pin high */
 
 #define PIN_INIT() do{  \
                      SET_PIN_INPUT();    \
@@ -57,7 +57,7 @@ unsigned char ds2401_id[8];
                      } while (0)
 
 /* Read one bit. */
-#define INP()  ((NRF_GPIO->IN >> One_Wire_Interface_1WI_PIN_NUMBER) & 0x1UL)                     /*!< Reads current state of 1-wire pin */
+#define INP()  ((NRF_GPIO->IN >> DS2401_SERIAL_ID_PIN_NUMBER) & 0x1UL)                     /*!< Reads current state of 1-wire pin */
 
 					 
 
@@ -162,7 +162,7 @@ ds2401_initAndRead()
   int i;
   unsigned family, crc, acc;
 
-    NRF_GPIO->PIN_CNF[One_Wire_Interface_1WI_PIN_NUMBER] =     \
+    NRF_GPIO->PIN_CNF[DS2401_SERIAL_ID_PIN_NUMBER] =     \
         (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos) \
       | (GPIO_PIN_CNF_DRIVE_S0D1     << GPIO_PIN_CNF_DRIVE_Pos) \
       | (GPIO_PIN_CNF_PULL_Pullup    << GPIO_PIN_CNF_PULL_Pos)  \

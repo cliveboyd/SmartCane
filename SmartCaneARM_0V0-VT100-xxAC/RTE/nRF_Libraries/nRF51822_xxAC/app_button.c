@@ -165,8 +165,7 @@ uint32_t app_button_init(app_button_cfg_t *             p_buttons,
     // Configure pins.
     uint32_t pins_transition_mask = 0;
     
-    while (button_count--)
-    {
+    while (button_count--) {
         app_button_cfg_t * p_btn = &p_buttons[button_count];
 
         // Configure pin.
@@ -181,10 +180,8 @@ uint32_t app_button_init(app_button_cfg_t *             p_buttons,
                                         pins_transition_mask,
                                         pins_transition_mask,
                                         gpiote_event_handler);
-    if (err_code != NRF_SUCCESS)
-    {
-        return err_code;
-    }
+    
+	if (err_code != NRF_SUCCESS) return err_code;
 
     // Create polling timer.
     return app_timer_create(&m_detection_delay_timer_id,

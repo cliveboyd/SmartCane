@@ -20,21 +20,39 @@ THE SOFTWARE.
  */
 
 /*
-	Note the A2035-H SPI loads a fifo at the rate of 100bytes/second
-	Need to reading fifo faster then the fill rate, however, pading bytes of 
-	0xB4 0xA7 are automatically added.
+Note	The A2035-H SPI loads a fifo at the rate of 100bytes/second
+		Need to reading fifo faster then the fill rate, however, pading bytes of 
+		0xB4 0xA7 are automatically added.
 	
-	Upon B4A7 data blocks a delay is planned to be added to allow fifo to fill.
-	Probably a a couple of lines.
+		Upon B4A7 data blocks a delay is planned to be added to allow fifo to fill.
+		Probably a a couple of lines.
 
-	A NEMA parser NEMAParser.C will be used to extract formated data.
+		A NEMA parser NEMAParser.C will be used to extract formated data.
 	
-	A2035-H FIFO Buffer ==> 1024bytes refreshed at 100 bytes per sec	
+		A2035-H FIFO Buffer ==> 1024bytes refreshed at 100 bytes per sec
+
+		A2035-H SPI Mode ---> Configuration SPI Mode 1 (CPOL:0,CPHA:1) --> MSb first
+
 */
 
 
-#ifndef A2035H
-#define A2035H
+/* 
+NOTE:	The A2035H and the AT45DB161 share the SPi Clk MISO and MOSI signal lines
+		the A2035H needs to be configured as SPI-SLAVE while the AT45DB SFLASH requires SPI MASTER
+		To Resolve this conflict SPI Lines will be configured as SPI-MASTER When the GPS A2035H is held in RESET
+		
+		After Reading the SPI-MASTER Serial Flash Memory the At45 will be placed in nCS and the SPI IO lines then 
+		returned to SPI-SLAVE.  At this time the A2035 will be reactivated nRST=High and read.
+	
+		in order to facilitate the Dual SPI-SLAVE_SPI-MASTER function on Shared Io pins the A2035H and AT45DB drivers
+		will be controlled via SPI-Master-Slave Controller
+
+*/
+
+
+
+//#ifndef A2035H
+//#define A2035H
 
 
 /******************************************************************************/
@@ -44,44 +62,37 @@ THE SOFTWARE.
 #include <stdbool.h>
 
 #include "A2035H.h"
-#include "spi_slave.h"
+
 #include "nrf_gpio.h"
 #include "app_error.h"
 #include "app_util_platform.h"
-//#include "spi_master.h"
-#include "spi_slave.h"				// A2035-H GPS Module Requires Host Slave SPI
+//#include "spi_master.h"									// AT45DB161 SFLASH   requires MASTER SPI0 Driver Defined under A2035.h
+#include "spi_slave.h"										// A2035-H GPS Module Requires SLAVE  SPI1
 #include "NEMAParser.h"
 
 #include "nrf_delay.h"
+#include "global.h"
 
-#define A2035H_ON_OFF_PIN_NUMBER	(13U)				/**<  GPS ON-OFF Toogle Control GPIO pin number. */
-#define A2035H_NRST_PIN_NUMBER		(10U)				/**<  GPS nRESET GPIO pin number. */
-#define A2035H_NEN_PIN_NUMBER		(04U)				/**<  GPS 3V3 Linear regulator nEnable GPIO pin number. */
-#define A2035H_INT_PIN_NUMBER		(14U)				/**<  GPS int GPIO pin number. */
+#define A2035H_ON_OFF_PIN_NUMBER		(13U)				/**<  GPS ON-OFF Toogle Control GPIO pin number. */
+#define A2035H_NRST_PIN_NUMBER			(10U)				/**<  GPS nRESET GPIO pin number. */
+#define A2035H_NEN_PIN_NUMBER			(04U)				/**<  GPS 3V3 Linear regulator nEnable GPIO pin number. */
+#define A2035H_INT_PIN_NUMBER			(14U)				/**<  GPS int GPIO pin number. */
 
+#define AT45_ALT_NCS					(18U)				/**<  ALternate AT45 SFLASH Definition as double sequrity to ensure chip is tristate when A2035 is enabled */
 
-#define SPI_TO_USE SPI_MASTER_0
+#define A2035H_CS_PIN 					(15U)     			/**< SPI1 SLAVE A2035H GPIO pin number. */
+//#define AT45DB161E_CS_PINS			(18U)     			/**< SPI0 MASTER CS SFlash AT45DB161EGPIO pin number. */
 
-#define A2035H_CS_PIN 				(15U)     			/**< SPI0 A2035H GPIO pin number. */
-#define AT45DB161E_CS_PINS			(18U)     			/**< SPI0 MASTER CS SFlash AT45DB161EGPIO pin number. */
+#define SPI_TO_USE SPI_SLAVE_1
 
-#ifdef SPI_MASTER_0_ENABLE
+#define SPI_SLAVE_1_ENABLE		
 
-//#define SPIM0_SCK_PIN       		(19U)     			/**< SPI Clock GPIO pin number. */
-//#define SPIM0_MOSI_PIN      		(17U)     			/**< SPI Master Out Slave In GPIO pin number. */
-//#define SPIM0_MISO_PIN      		(20U)    			/**< SPI Master In Slave Out GPIO pin number. */
-
-//#define SPIM0_SS_PIN        		A2035H_CS_PIN     	/**< SPI Slave Select GPIO pin number.   re pin 15*/
-
-#endif 	// SPI0 ENABLE Definitions
-
-#define SPIS_MISO_PIN				(17U)				/**< Definition Extracted for SPI Slave on SMARTCANE 1V0 >**/
-#define SPIS_MOSI_PIN				(20U)				// Note for Slave mode.... A2035H ==> MASTER
-#define SPIS_CSN_PIN				(15U)
-#define SPIS_SCK_PIN       			(19U)
-
-
-#endif	// A2035H definitions
+#ifdef SPI_SLAVE_1_ENABLE									// SPI1 SLAVE ENABLE Definitions
+	#define SPI1S_MISO_PIN				(17U)				/**< Definition Extracted for SPI Slave on SMARTCANE 1V0 >**/
+	#define SPI1S_MOSI_PIN				(20U)				// Note for Slave mode.... A2035H ==> MASTER while the nRF51 HOST ==> SLAVE
+	#define SPI1S_CSN_PIN				(15U)
+	#define SPI1S_SCK_PIN      			(19U)
+#endif														// SPI1 SLAVE ENABLE Definitions
 
 #define SPIFREQ_TO_USE SPI_FREQUENCY_FREQUENCY_M1			// 1MHz ----> Maximum Speed suported is 6M8Hz on A2035-H
 
@@ -89,9 +100,9 @@ THE SOFTWARE.
 #define SPICPHA_TO_USE SPI_CONFIG_CPHA_Leading
 
 
-#define TX_RX_MSG_LENGTH         4
+#define TX_RX_MSG_LENGTH   4
 
-static uint8_t m_rx_data_spi[TX_RX_MSG_LENGTH]; 			/**< SPI master RX buffer. */
+static uint8_t m_rx_data_spi[TX_RX_MSG_LENGTH]; 			/**< SPI RX data buffer. */
 
 static volatile bool m_transfer_completed = true;
 
@@ -101,8 +112,8 @@ uint16_t	A2035_RawDataOutPointer=0;
 
 #define SPI_DUMMY_BYTE   0x00
  
-#define CS_HIGH     NRF_GPIO->OUTSET = (1UL << A2035H_CS_PIN)
-#define CS_LOW      NRF_GPIO->OUTCLR = (1UL << A2035H_CS_PIN)
+#define CS_HIGH     NRF_GPIO->OUTSET = (1UL << A2035H_CS_PIN)		// USED to drive A2035 SPI-CS during SPI MASTER tests
+#define CS_LOW      NRF_GPIO->OUTCLR = (1UL << A2035H_CS_PIN)		// USED to drive A2035 SPI-CS during SPI MASTER tests
  
 
 #define TX_BUF_SIZE   64u				/**< SPI TX buffer size. */      
@@ -138,10 +149,8 @@ static __INLINE void spi_slave_buffers_init(uint8_t * const p_tx_buf, uint8_t * 
  */
 static bool __INLINE spi_slave_buffer_check(uint8_t * const p_rx_buf, const uint16_t len) {
 	uint16_t i;
-	for (i = 0; i < len; i++)
-	{
+	for (i = 0; i < len; i++) {
 		if (p_rx_buf[i] != (uint8_t)('A' + i)) return false;
-		
 	}
 	return true;
 }
@@ -185,10 +194,10 @@ uint32_t spi_slave_A2035H_init(void) {
     err_code = spi_slave_evt_handler_register(spi_slave_event_handle);
     APP_ERROR_CHECK(err_code);    
 
-    spi_slave_config.pin_miso         = SPIS_MISO_PIN;
-    spi_slave_config.pin_mosi         = SPIS_MOSI_PIN;
-    spi_slave_config.pin_sck          = SPIS_SCK_PIN;
-    spi_slave_config.pin_csn          = SPIS_CSN_PIN;
+    spi_slave_config.pin_miso         = SPI1S_MISO_PIN;
+    spi_slave_config.pin_mosi         = SPI1S_MOSI_PIN;
+    spi_slave_config.pin_sck          = SPI1S_SCK_PIN;
+    spi_slave_config.pin_csn          = SPI1S_CSN_PIN;
     spi_slave_config.mode             = SPI_MODE_0;
     spi_slave_config.bit_order        = SPIM_LSB_FIRST;
     spi_slave_config.def_tx_character = DEF_CHARACTER;
@@ -207,9 +216,7 @@ uint32_t spi_slave_A2035H_init(void) {
     return NRF_SUCCESS;
 }
 
- 
- 
- 
+  
 /**@brief Function for initializing a SPI master driver.
  *
  * @param[in] spi_master_instance       An instance of SPI master module.
@@ -382,7 +389,6 @@ void A2035H_Sheduled_SPI_Read() {
 	}
 }
 
-
 typedef enum {
 	Pull_up,
 	Pull_down,
@@ -395,40 +401,43 @@ static __INLINE void pullupdown_gpio_cfg_output(uint32_t pin_number, PullUpDown_
 	switch(pull)
 	{
 		case Pull_up:
-			pullset = (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos);
+			pullset = (GPIO_PIN_CNF_PULL_Pullup		<< GPIO_PIN_CNF_PULL_Pos);
 			break;
 		
 		case Pull_down:
-			pullset = (GPIO_PIN_CNF_PULL_Pulldown << GPIO_PIN_CNF_PULL_Pos);
+			pullset = (GPIO_PIN_CNF_PULL_Pulldown	<< GPIO_PIN_CNF_PULL_Pos);
 			break;
 		
 		case Pull_disable:
-			pullset = (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos);
+			pullset = (GPIO_PIN_CNF_PULL_Disabled	<< GPIO_PIN_CNF_PULL_Pos);
 			break;
 	}
 
-    /*lint -e{845} 													// A zero has been given as right argument to operator '|'" */
-    NRF_GPIO->PIN_CNF[pin_number] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
-                                            | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
-                                            | pullset
-                                            | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
-                                            | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
+    /*lint -e{845} 														// A zero has been given as right argument to operator '|'" */
+    NRF_GPIO->PIN_CNF[pin_number] = (GPIO_PIN_CNF_SENSE_Disabled <<  GPIO_PIN_CNF_SENSE_Pos)
+																 |  (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+																 |   pullset
+																 |  (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+																 |  (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
 }
 
 void initA2035Hx(void) {
+//	Note Current SPI Configuration Enables 1V8 TM pulses after a few minutes if exposed to Sky
+//	SPI A2035 outputs No Clock and No Data	SPI-CS --> 1V8
+
 	
 //	uint32_t	err_code;
 	
-	pullupdown_gpio_cfg_output(SPIS_CSN_PIN, Pull_up);
-	pullupdown_gpio_cfg_output(SPIS_SCK_PIN, Pull_down);
+	pullupdown_gpio_cfg_output(SPI1S_CSN_PIN, Pull_up);
+	pullupdown_gpio_cfg_output(SPI1S_SCK_PIN, Pull_down);
 	
 	pullupdown_gpio_cfg_output(A2035H_ON_OFF_PIN_NUMBER, Pull_down);
 	pullupdown_gpio_cfg_output(A2035H_NRST_PIN_NUMBER,   Pull_up);
 	pullupdown_gpio_cfg_output(A2035H_INT_PIN_NUMBER,    Pull_down);	// Need to sort out the operation of this pin WARNING---> Pulled low via external 33k!!!
 	pullupdown_gpio_cfg_output(A2035H_NEN_PIN_NUMBER,    Pull_down);	// Ensure 3V3GPS Powered OFF
 	
-//	nrf_gpio_pin_set(SPIS_CSN_PIN);										// ASSERT HIGH Extract from A2035H eval User Guide Table 4: Swith Settings Pg:13
-//	nrf_gpio_pin_clear(SPIS_SCK_PIN);									// ASSERT  LOW Extract from A2035H eval User Guide Table 4: Swith Settings Pg:13
+//	nrf_gpio_pin_set(SPI1S_CSN_PIN);									// ASSERT HIGH Extract from A2035H eval User Guide Table 4: Swith Settings Pg:13
+//	nrf_gpio_pin_clear(SPI1S_SCK_PIN);									// ASSERT  LOW Extract from A2035H eval User Guide Table 4: Swith Settings Pg:13
 	
 	nrf_gpio_pin_clear(A2035H_NRST_PIN_NUMBER);							// A2035 Reset      	---> ASSERT LOW Keep Low during POWER UP
 	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);						// A2035 ONOFF 	
@@ -451,7 +460,7 @@ void initA2035Hx(void) {
 //	err_code = spi_slave_A2035H_init();									// Initialise Slave SPI Event Handler Here
 //	APP_ERROR_CHECK(err_code);
 
-	pullupdown_gpio_cfg_output(SPIS_CSN_PIN, Pull_up);
+	pullupdown_gpio_cfg_output(SPI1S_CSN_PIN, Pull_up);
 	pullupdown_gpio_cfg_output(A2035H_INT_PIN_NUMBER,    Pull_up);		// Test to check pin state Post nReset
 
 //	A2035H_Init_SPI0();													// Initalise the SPI 0 Port used by GPS A2035H (Host == SLAVE)
@@ -511,51 +520,67 @@ void init_A2035H_UART(void) {
 						  A2035.GPIO7.SPI_CS  Left   OPEN --> Weak   Internal pull UP (Rail Unknown Probably 1V8)  */
 
 //	WORKING...	Current HARDWARE Config 10k pullups to 1V8 on GPIO6.SPI_CLK and GPIO7.SPI_CS
-//	UART MODE OPERATIONAL RX=1V8 TX=0V_3V3(DATA) GPIO6.SPI_CLK=1V8 GPIO7.SPI_CS=1V8
-	
+//				UART MODE OPERATIONAL RX=1V8 TX=0V_3V3(DATA) GPIO6.SPI_CLK=1V8 GPIO7.SPI_CS=1V8
 	
 //	uint32_t	err_code;
 	
-//	pullupdown_gpio_cfg_output(SPIS_CSN_PIN, Pull_up);			// Doesn't Work --> UART Mode with internal 3V3 Pullups ()
-//	pullupdown_gpio_cfg_output(SPIS_SCK_PIN, Pull_down);		// Try and Force SPI Mode
+//	pullupdown_gpio_cfg_output(SPI1S_CSN_PIN, Pull_up);					// Doesn't Work --> UART Mode with internal 3V3 Pullups ()
+//	pullupdown_gpio_cfg_output(SPI1S_SCK_PIN, Pull_down);				// Try and Force SPI Mode
 	
-//	pullupdown_gpio_cfg_output(SPIS_CSN_PIN, Pull_up);			// Doesn't Work --> UART Mode with internal 3V3 Pullups ()
-//	pullupdown_gpio_cfg_output(SPIS_SCK_PIN, Pull_up);
+//	pullupdown_gpio_cfg_output(SPI1S_CSN_PIN, Pull_up);					// Doesn't Work --> UART Mode with internal 3V3 Pullups ()
+//	pullupdown_gpio_cfg_output(SPI1S_SCK_PIN, Pull_up);
 	
 	pullupdown_gpio_cfg_output(A2035H_ON_OFF_PIN_NUMBER, Pull_down);	// Drive all rails to ground to stop 3V3-1V8 bleed through
+	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);						// A2035 ONOFF 	---> ASSERT LOW Keep Low during POWER UP
+	
 	pullupdown_gpio_cfg_output(A2035H_NRST_PIN_NUMBER,   Pull_up);
-	pullupdown_gpio_cfg_output(A2035H_INT_PIN_NUMBER,    Pull_down);	// Need to sort out the operation of this pin WARNING---> Pulled low via external 33k!!!
+	nrf_gpio_pin_clear(A2035H_NRST_PIN_NUMBER);							// A2035 Reset	---> ASSERT LOW Keep Low during POWER UPpullupdown_gpio_cfg_output(A2035H_INT_PIN_NUMBER,    Pull_down);	// Need to sort out the operation of this pin WARNING---> Pulled low via external 33k!!!
+	
 	pullupdown_gpio_cfg_output(A2035H_NEN_PIN_NUMBER,    Pull_down);	// Ensure 3V3GPS Powered OFF
-	
-//	nrf_gpio_pin_set(SPIS_CSN_PIN);										// ASSERT HIGH Extract from A2035H eval User Guide Table 4: Swith Settings Pg:13
-//	nrf_gpio_pin_clear(SPIS_SCK_PIN);									// ASSERT  LOW Extract from A2035H eval User Guide Table 4: Swith Settings Pg:13
-	
-	nrf_gpio_pin_clear(A2035H_NRST_PIN_NUMBER);							// A2035 Reset	---> ASSERT LOW Keep Low during POWER UP
-	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN_NUMBER);						// A2035 ONOFF 	---> ASSERT LOW Keep Low during POWER UP	
-	
 	nrf_gpio_pin_clear(A2035H_NEN_PIN_NUMBER);							// A2035 NEN 3V3GPS OFF ---> ASSERT LOW
 	
+//	nrf_gpio_pin_set(SPI1S_CSN_PIN);										// ASSERT HIGH Extract from A2035H eval User Guide Table 4: Swith Settings Pg:13
+//	nrf_gpio_pin_clear(SPI1S_SCK_PIN);									// ASSERT  LOW Extract from A2035H eval User Guide Table 4: Swith Settings Pg:13
+	
+	nrf_delay_us(250000); 												// Delay 250ms Allow 3V#GPS rail to blead off residual power
+	
+	nrf_gpio_pin_set(A2035H_NEN_PIN_NUMBER);							// ASSERT NEN --> 3V3 Enable 3V3GPS Supply Rail
+	nrf_gpio_pin_clear(A2035H_NRST_PIN_NUMBER);							// ASSERT Reset	
 	nrf_delay_us(250000); 												// Delay 250ms 
 	
-	nrf_gpio_pin_set(A2035H_NEN_PIN_NUMBER);							// Enable 3V3GPS Supply Rail
+	nrf_gpio_pin_set(A2035H_NRST_PIN_NUMBER);							// DEASSERT Reset ---> Pull HIGH Also Pulled High via 33k	
 	nrf_delay_us(250000); 												// Delay 250ms 
 	
-	nrf_gpio_pin_set(A2035H_NRST_PIN_NUMBER);							// A2035 Reset ---> Pull HIGH Also Pulled High via 33k
-	nrf_delay_us(250000); 												// Delay 250ms 
+//	pullupdown_gpio_cfg_output(SPI1S_SCK_PIN, Pull_disable);
+//	pullupdown_gpio_cfg_output(SPI1S_SCK_PIN, Pull_up);
 
-//	pullupdown_gpio_cfg_output(SPIS_SCK_PIN, Pull_disable);
-//	pullupdown_gpio_cfg_output(SPIS_SCK_PIN, Pull_up);
+//	nrf_delay_us(800000); 												// Delay 800msec (may need up to 1 second if Wakeup not monitored)
 
-	nrf_delay_us(800000); 												// Delay 800msec (Toggle ON-OFF After Wakeup pin or by waiting 1 second)
+	A2035H_Toggle_ONOFF(); 												// Start ---> OFF-ON-OFF Toggle Sequence
 
-	A2035H_Toggle_ONOFF(); 												 
+	nrf_delay_us(800000);
+//	pullupdown_gpio_cfg_output(SPI1S_CSN_PIN, Pull_down);				// Test to see what happens Forces Io from 1V8 to 0V0
 
+//	nrf_delay_us(800000);
+//	pullupdown_gpio_cfg_output(SPI1S_MOSI_PIN, Pull_up);
+//	pullupdown_gpio_cfg_output(SPI1S_CSN_PIN, Pull_down);
+//	uint16_t kk=0;
+//	uint16_t jj=0;
+//	for(0;kk<50;kk++) {
+//		jj=0;
+//		for(0;jj<8;jj++) {
+//			pullupdown_gpio_cfg_output(SPI1S_MOSI_PIN, Pull_up);
+//			nrf_delay_us(20000);	
+//			pullupdown_gpio_cfg_output(SPI1S_MOSI_PIN, Pull_down);
+//			nrf_delay_us(20000);		
+//		}
+//	}
 //	err_code = spi_slave_A2035H_init();									// Initialise Slave SPI Event Handler Here
 //	APP_ERROR_CHECK(err_code);
 
-//	pullupdown_gpio_cfg_output(SPIS_CSN_PIN, Pull_up);
+//	pullupdown_gpio_cfg_output(SPI1S_CSN_PIN, Pull_up);
 	
-//	pullupdown_gpio_cfg_output(SPIS_MOSI_PIN, Pull_up);					// Test Pullup up in case pin is an Open Drain
+//	pullupdown_gpio_cfg_output(SPI1S_MOSI_PIN, Pull_up);				// Test Pullup up in case pin is an Open Drain
 	
 //	pullupdown_gpio_cfg_output(A2035H_INT_PIN_NUMBER, Pull_down);		// Test to check pin state Post nReset
 
@@ -563,6 +588,49 @@ void init_A2035H_UART(void) {
 																		// ---> Shared with SFLASH --> SPI0 Host = MASTER (reset A2035-H for SFALSH Use)
 }
 
+void A2035H_disable_SPI_Bus_Pins(void) {								// ToDo  Disable the A2035h nCS SLCK MISO MOSI Lines
+	
+	NRF_GPIO->PIN_CNF[A2035H_CS_PIN] = 								
+	(GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)	
+	| (GPIO_PIN_CNF_PULL_Disabled		<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Input			<< GPIO_PIN_CNF_DIR_Pos);		// Configure The SPI-CS  Line as InputIO Pin as Input	
+
+	NRF_GPIO->PIN_CNF[SPI1S_SCK_PIN] =								
+	(GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)		
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)	
+	| (GPIO_PIN_CNF_PULL_Disabled		<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Input			<< GPIO_PIN_CNF_DIR_Pos);		// Configure SPI1 Slave CLKIO Pin as Input
 
 
+	NRF_GPIO->PIN_CNF[SPI1S_MISO_PIN] = 							
+	(GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)	
+	| (GPIO_PIN_CNF_PULL_Disabled		<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Input			<< GPIO_PIN_CNF_DIR_Pos);		// Configure MISO IO Pin as Input
+
+	NRF_GPIO->PIN_CNF[SPI1S_MOSI_PIN] = 							
+	(GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)		
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)		
+	| (GPIO_PIN_CNF_PULL_Disabled		<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Input			<< GPIO_PIN_CNF_DIR_Pos);		// Configure The MOSI IO Pin as Input
+  
+	  
+	SFLASH_GPS_flag=999;												// Bus released ---> IO Pins No longer defined --> Now Safe to Assert AT45 SFLASH Read
+}
+
+void A2035H_enable_SPI_Bus_Pins(void) {									// ToDo  Reenable the A2035h nCS SLCK MISO MOSI Lines -- Check SPI Slave Init options
+		
+	pullupdown_gpio_cfg_output(AT45_ALT_NCS, Pull_up);					// PULL and ASSERT SFLASH NCS HIGH to Ensure No Bus Contention (Upon Entry --> Should Already be High!!!!)
+	nrf_gpio_pin_set(AT45_ALT_NCS);							
+
+	uint32_t err_code = spi_slave_A2035H_init();						// Initialise Slave SPI Event Handler Here
+	APP_ERROR_CHECK(err_code);
+
+	SFLASH_GPS_flag=4;													// SPI SLAVE Bus reasserted for use by A2035 (SFLASH Should not be asserted if SFLASH_GPS_flag=4
+}
 

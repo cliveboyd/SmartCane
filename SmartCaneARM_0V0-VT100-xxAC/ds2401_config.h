@@ -24,6 +24,6 @@ THE SOFTWARE.
 #ifndef DS2401_CONFIG_H
 #define DS2401_CONFIG_H
 
-#define DS2401_SERIAL_ID_PIN_NUMBER (21U)
+#define One_Wire_Interface_1WI_PIN_NUMBER (21U)
 
 #endif
