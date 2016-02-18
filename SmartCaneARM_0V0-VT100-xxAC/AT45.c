@@ -81,8 +81,8 @@
 // Public functions
 //=============================================================================
 
-int pages		= 4096;															// Number of pages
-int pagesize	= 528;															// Size of pages -->  Expected Default page size == 528 ---> 256/264, 512/528, 1024/1056
+int pages		= 4096;															// Number of pages 
+int pagesize	= 528;															// Size of pages -->  Expected Default page size == 528 ---> 256/264, 512/528, 1024/1056 bytes
 int devicesize	= 512;															// In bytes
 int blocks		= 512;															// Number of blocks 512 in AT45DB161E (One Block == 4096/4224 bytes)
 int sectors		= 17;															// Number of sectors 0_to_17 (One sector == 256 pages (135168 bytes))
@@ -216,7 +216,7 @@ int AT45_FAT_read(char* data, int page) {										// Read FAT --> File Allocati
 	if((pagesize == 256) || (pagesize == 264)) {								// Note: For 256 byte pages, we read two pages
 		int address = page * 512;												// This is the start address of the 512 byte block
 		   
-		AT45_flashread(1,address);												// Read the first page of the block into SRAM buffer 1
+		AT45_flashread(1, address);												// Read the first page of the block into SRAM buffer 1
 		AT45_busy();															// Wait until First page has loaded into buffer 1
 
 		// This is done directly as we are reading back an entire buffer, and this can be done more optimally as a Flash read rather then using _sramread
@@ -252,7 +252,7 @@ int AT45_FAT_read(char* data, int page) {										// Read FAT --> File Allocati
 		int address = page * 512;												// This is the start address of the 512 byte block
 
 		AT45_busy();															// Wait until First page has loaded into buffer 1
-		AT45_flashread(1,address);												// Read the first page of the block into SRAM buffer 1
+		AT45_flashread(1, address);												// Read the first page of the block into SRAM buffer 1
 		AT45_busy();															// Wait until First page has loaded into buffer 1
 
 		// Now the page has loaded, simply transfer it from the sram buffer to the data array
@@ -513,15 +513,15 @@ void AT45_block_erase(int erase_block) {										// Erase a Block... One block 
 }	
 
 
-int AT45_device_size(void) { 													// Return the size of the part in bytes
+int AT45_device_size(void) { 													// ToDo Return the size of the part in bytes
 	return devicesize;			// Hardset
 }       
  
-int AT45_pages(void) { 															// Return the numbers of pages
+int AT45_pages(void) { 															// ToDo Return the numbers of pages
 	return pages;				// Hardset
 }       
        
-int AT45_pagesize(void) { 														// Return the page size of the part in bytes
+int AT45_pagesize(void) { 														// ToDo Return the page size of the part in bytes
 	return pagesize;			// Hardset
 }       
        									
@@ -705,7 +705,7 @@ void AT45_busy(void) {
 		if ( AT45_status() & 0x80 ) {iambusy = 0;}								// If bit 7 is set, we can proceed
 	}
 }
- 
+
 
 void AT45_sramwrite(int buffer, int address, int data) {						// Write to an SRAM buffer
 																				// Note: We create buffer and page addresses in _sram and _flash
@@ -796,7 +796,7 @@ int AT45_memread (int address) {												// Read directly from main memory
 	int data = 0;        
 	int addr;
 
-	addr = AT45_getpaddr(address) | AT45_getbaddr(address);
+	addr = AT45_getpaddr(address) | AT45_getbaddr(address);						// Define addr from recovered (Page Address) and (Buffer Address)
 
 	AT45_busy();
 
@@ -805,18 +805,16 @@ int AT45_memread (int address) {												// Read directly from main memory
 	spi_bcm_write (0xd2);														// Direct main memory page read command
 	AT45_sendaddr (addr);
 
+	spi_bcm_write (0x00);														// 4 don't care bytes
+	spi_bcm_write (0x00);  
+	spi_bcm_write (0x00);  
+	spi_bcm_write (0x00);
 
-	spi_bcm_write (0x00);														// 4 dont care bytes
-	spi_bcm_write (0x00);  
-	spi_bcm_write (0x00);  
-	spi_bcm_write (0x00);  
-
-	// This one clocks the data
-	data = spi_bcm_write (0x00);  
+	data = spi_bcm_write (0x00);  												// Clock the data
 
 	AT45_busy();   
 	AT45_deselect();            
-	
+
 	return data;
 }
  

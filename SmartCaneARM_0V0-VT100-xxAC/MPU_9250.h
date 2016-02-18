@@ -82,6 +82,7 @@ void accelgyrocalMPU9250(float * dest1, float * dest2);
 int16_t MPU9250_get_temperature(void);
 int16_t readTempData(void);
 uint8_t MPU9250_WhoAmI(void);
+uint8_t MPU9250_WhoAmIMag(void);
 
 void calibrateMPU9250(float[],float[]);
 void MPU9250_Setup(void);
@@ -91,7 +92,8 @@ void CalibrateMagnetometer(uint16_t count);
 
 uint8_t MPU9250_WhoAmI(void);
 
-
+void MPU9250SelfTest(float * destination);  // 6 values returned as a percentage of factory trim
+	
 void getMres(void);
 void getGres(void);
 void getAres(void);

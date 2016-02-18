@@ -58,7 +58,9 @@ THE SOFTWARE.
 	Note::: SPIMASTER Operation of SFLASH will likely require A2035-H to be held in Reset during SPI Operation
 */
 
-
+/*	:::::::: DRIVER CONFIGURATION NOTE :::::::::::::
+	The I2C TWI Driver V2.00 is currently configured as Software (Previously Setup as Hardware)
+	Possible Issue with device freeze --- Unknown Cause
 /*
   
  ERROR...	180seconds Requires ---> Upon Expire Forces Power Down ---> tried to bump 2 Hours and Avoid Advertising Time Out Event however int > 180 causes a shutdown
@@ -199,8 +201,8 @@ THE SOFTWARE.
 #define MAX_CONN_PARAMS_UPDATE_COUNT     3                                          /**< Number of attempts before giving up the connection parameter negotiation. */
 
 // for Service timer
-#define MS100              				 100
-#define SYSTEM_TIMER_INTERVAL			 APP_TIMER_TICKS(MS100, APP_TIMER_PRESCALER)	/**< sys measurement interval ticks === (100msec) 
+#define MS200              				 200
+#define SYSTEM_TIMER_INTERVAL			 APP_TIMER_TICKS(MS200, APP_TIMER_PRESCALER)	/**< sys measurement interval ticks === (200msec) 
 																						 NOTE: If to small seems to screews up with TWI ???*/
 
 // for GAP param init
@@ -337,15 +339,64 @@ double		main_altitude;
 long		main_nSentences;
 uint16_t	main_signalQuality;
 uint16_t	main_satelitesInUse;
-//test
+
 uint16_t	main_year;
 uint16_t	main_month;
 uint16_t	main_day;
 uint16_t	main_hour;
 uint16_t	main_minute;
 uint16_t	main_second;
+
 float pitch=0; float roll=0; float yaw=0;							// Also resides in global.h
 uint16_t QuaternionCount=0;
+
+/*	@@@@@@@@@@@@  Smartcane System Level Memory Structure Definitions  @@@@@@@@@@@@ */
+typedef struct {													/* STRUCTURE of SRAM data definitions of Current Waypoints ---> as defined within WayPointTrackInfo*/
+	uint16_t	waypoint_IndexTotal;								// Number of WayPoints defined for current Track
+	uint16_t	waypoint_CurrentIndex;								// Current Position within defined waypoints	double		current_Latitude;									// Current live position updated by A2035 GPS
+
+	double		current_Longitude;
+	double		current_Altitude;
+	double		current_Minute;
+	double		current_Second;
+		
+	double		target_Latitude;									// Next Target Position Loaded From SFLASH
+	double		target_Longitude;
+	double		target_Altitude;
+} WaypointInfo_t;
+
+typedef struct {													/* STRUCTURE of SRAM Waypoint Tracks - Allow Eight Tracks to be Defined Allow for four (4) InBound & 4 OutBound Tracks */
+	uint16_t	waypoint_TrackCount;								// Number of defined waypoints
+	uint16_t	current_TrackIndex;									// Current Track 0-7
+	uint16_t	track_WaypointsCount[8];							// Count of defined waypoints per track - eight (8) in total.
+	uint16_t	track_SFLASH_OddEven[8];							// Index to indicate active waypoint sflash page --> Allows one of two pages to hold waypoint data.
+} WaypointTrackInfo_t;
+
+typedef struct {													/*	STRUCTURE of SFLASH Header Info Let it reside at AT45 Page_0 ?? */
+	uint8_t		sflash_FirstLife[8];								//	Assigned Upon Initial FirstLife Configuration
+	uint16_t	waypoint_DefinedFlag;								//	Flag to indicate at least one (1) active WayPoint Definition
+	uint16_t	waypoint_TrackCount;								//	Number of defined waypoints Hardset to eight(8) (Note: absolute maximum 4096/2) 
+	uint16_t	current_TrackIndex;									//	Current Track 0-7
+	uint16_t	track_WaypointsCount[8];							//	Count of defined waypoints per track - eight (8) in total.
+	uint16_t	track_SFLASH_OddEven[8];							//	Index for each track to indicate if Odd or Even At45 Page is in use.
+} SFLASH_HeaderInfo_t;
+	
+
+typedef struct {													/* STRUCTURE of SFLASH Page for Waypoint Definitions ---> Assign One SFLASH Page per defined Track (528 bytes/Pg)*/
+	uint16_t	ActiveTrackFlag;
+	uint16_t	ActivePageFlag;										// Flag to indicate Page Active (Either Odd or Even Page per Waypoint)
+	uint16_t	waypoint_Count;										// Count of defined waypoints along track. (Maximum=64)
+	double		waypoint_latitude[64];									 
+	double		waypoint_longitude[64];
+	double		waypoint_altitude[64];
+	double		waypoint_MagBearing[64];
+} SFLASH_WaypointInfo_t;
+
+
+static WaypointInfo_t			WPI;
+static WaypointTrackInfo_t		WPTI;
+static SFLASH_HeaderInfo_t		SHI;
+static SFLASH_WaypointInfo_t	SWPI;
 
 int	TestFlags = 0;													/* Initialise global.h Test Flags
 	TestFlags.0	= 
@@ -444,6 +495,14 @@ int Process_5  = 0;													/* Initalise Bit Flags Process_5
 	Process_5.5	= Flag SFlash Memory Present
 	Process_5.6	= Flag EEPROM Present
 	Process_5.7	= Flag System Temperatures OK
+	Process_5.8	= Flag Inertial Magnetometer Present
+	Process_5.9	= Flag AccGyro within +/- 6% of factory cal
+	Process_5.10= Flag Spare
+	Process_5.11= Flag Spare
+	Process_5.12= Flag Spare
+	Process_5.13= Flag Spare
+	Process_5.14= Flag Spare
+	Process_5.15= Flag Spare
 */
 int Process_6  = 0;													/* Initalise Bit Flags Process_6	
 	Process_6.0	= Flag to Indicate A2035H GPS Power ON or OFF
@@ -457,7 +516,6 @@ int Process_6  = 0;													/* Initalise Bit Flags Process_6
 */
 
 int Process_7  = 0;													/* Initalise Bit Flags Process_7
-
 	Process_7.0	= Flag to indicate cane in NORMAL user allignment - Buttons UP and cane angled downwards at ~45deg
 	Process_7.1	= Buttons 90deg to RIGHT
 	Process_7.2	= Buttons 90deg to LEFT
@@ -523,7 +581,7 @@ bool testbit(int *Addr, uint8_t Operator) {							// Test  bit at Process_x base
 	}
 	return false;
 }
-bool testbit_int(int *Addr, uint8_t Operator) {							// Duplicate Test to stop interupt driven Foreground-Background conflict
+bool testbit_int(int *Addr, uint8_t Operator) {						// Duplicate Test to stop interupt driven Foreground-Background conflict
 	if(Operator<=16){
 		if (*Addr & (int) pow(2,Operator)) {
 			return true;												// True
@@ -577,7 +635,7 @@ void led_red_TOGGLE(void){											// Function Shortcut to Toggle Assertion of
 	}
 }
 void ad7746_on_write_config_callback (ble_AD7746_t *p_ad7746, 
-	CONFIG_bytes_t *p_config, uint8_t len) {						// Write bytes of config ble device AD7746 Capacitor Sensor --> (Redirected to other sensors)
+	CONFIG_bytes_t *p_config, uint8_t len) {						// Write bytes of config ble device AD7746 Capacior Sensor --> (Redirected to other sensors)
 		
 
 /*	This callback will be active upon write request by BLE softdevice to write config data to CONFIG_CHARacteristic*/		
@@ -889,7 +947,7 @@ static void UART_VT100_Menu_4() {									// $$$$$$ ALTITUDE AND PRESSURE MENU-4
 		
 	MenuLevel=40;
 		
-	printf("\x1B[2J");										// VT100 CLR SCREEN
+	printf("\x1B[2J");												// VT100 CLR SCREEN
 	printf("\x1B[H");												// VT100 CURSOR HOME
 	printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-4  PRESSURE, ALTITUDE & TEMPERATURE");
 
@@ -1060,7 +1118,7 @@ static void UART_VT100_Menu_8() {		    						// $$$$$$ SYSTEM DIAGNOSTIC MENU-8	
 	printf("\x1B[13;05H h = ATxx Command Menu");
 	printf("\x1B[14;05H j = Clr Error Counters");
 	printf("\x1B[15;05H k = Clr Gyro Integrators");
-	printf("\x1B[16;05H l = Calibrate Magnetometer 25sec");
+	printf("\x1B[16;05H l = Calibrate Magnetics 25sec");
 	
 	printf("\x1B[17;05H m = read AT45 WhoAmI");
 	
@@ -1106,53 +1164,63 @@ static void UART_VT100_Menu_9() {		    						// $$$$$$ PERIPHERAL DIAGNOSTIC MEN
 	
 	MenuLevel=90;
 
-	printf("\x1B[2J");														// VT100 CLR SCREEN
-	printf("\x1B[H");														// VT100 CURSOR HOME
+	printf("\x1B[2J");															// VT100 CLR SCREEN
+	printf("\x1B[H");															// VT100 CURSOR HOME
 	printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-8 PERIPHERAL DIAGNOSTIC MENU");
 
 	nrf_delay_ms(50);
 
 	printf("\x1B[05;05H nRF51822 ");
-	printf("\x1B[06;05H QFN AC       ");
+	printf("\x1B[06;05H QFN AC        ");
 	if(testbit(&Process_5,0)) printf("Pass     ");
 	else printf("---> FAIL");
 	
-	printf("\x1B[07;05H uP Flash     %dk", (uint16_t) NRF_FICR->CODESIZE);										// uP Flash size==0x0100 --> 256k
+	printf("\x1B[07;05H uP Flash      %dk", (uint16_t) NRF_FICR->CODESIZE);											// uP Flash size==0x0100 --> 256k
 	
-	printf("\x1B[08;05H uP Ram       %dk", (uint16_t) NRF_FICR->NUMRAMBLOCK * (NRF_FICR->SIZERAMBLOCKS / 1024));	// uP Ram size==0x0020 --> 32k
+	printf("\x1B[08;05H uP Ram        %dk", (uint16_t) NRF_FICR->NUMRAMBLOCK * (NRF_FICR->SIZERAMBLOCKS / 1024));	// uP Ram size==0x0020 --> 32k
 
 	nrf_delay_ms(50);
 
-	printf("\x1B[09;05H Inertial     ");
+	printf("\x1B[09;05H Inertial      ");
 	if(testbit(&Process_5, 1)) printf("Pass     ");
 	else printf("---> FAIL");
 
-	printf("\x1B[10;05H Pressure     ");
+	printf("\x1B[10;05H Pressure      ");
 	if(testbit(&Process_5, 2)) printf("Pass     ");
 	else printf("---> FAIL");
 	
-	printf("\x1B[11;05H Gas Gauge    ");
+	printf("\x1B[11;05H Gas Gauge     ");
 	if(testbit(&Process_5, 3)) printf("Pass     ");
 	else printf("---> FAIL ");
 	
-	printf("\x1B[12;05H GPS          ");
+	printf("\x1B[12;05H GPS           ");
 	if(testbit(&Process_5, 4)) printf("Pass     ");
 	else printf("---> FAIL");
 	
 	nrf_delay_ms(55);
 	
-	printf("\x1B[13;05H SFlash       ");
+	printf("\x1B[13;05H SFlash 16Mbit ");
 	if(testbit(&Process_5, 5)) printf("Pass     ");
 	else printf("---> FAIL");
 	
-	printf("\x1B[14;05H EEPROM       ");
+	printf("\x1B[14;05H EEPROM        ");
 	if(testbit(&Process_5, 6)) printf("Pass     ");
 	else printf("---> FAIL");
 	
-	printf("\x1B[15;05H Temperature  ");
+	printf("\x1B[15;05H Temperature   ");
 	if(testbit(&Process_5, 7)) printf("Pass     ");
 	else printf("---> FAIL");
 
+nrf_delay_ms(50);
+	
+	printf("\x1B[16;05H Magnetometer  ");
+	if(testbit(&Process_5, 8)) printf("Pass     ");
+	else printf("---> FAIL");
+
+	printf("\x1B[17;05H Acc-Gyro Good ");
+	if(testbit(&Process_5, 8)) printf("Pass     ");
+	else printf("---> FAIL");
+	
 	nrf_delay_ms(50);		
 
 	printf("\x1B[24;05H  X... exit    ?...Help");
@@ -1318,10 +1386,9 @@ static void UART_VT100_Refresh_Data_All_Sensors() {					// $$$$$$ ALL SENSORS ME
 		float temp;
 		
 		readAccelFloatMG(Acc);													// ACCELERATION - GRAVITY
-
 		printf("\x1B[05;14H%+2.2f  ", Acc[0]);
 		printf("\x1B[06;14H%+2.2f  ", Acc[1]);
-		printf("\x1B[07;14H%+2.2f  ", Acc[2]);									// Z Axis direction swap as chip mounted on PCB bottom
+		printf("\x1B[07;14H%+2.2f  ", Acc[2]);					// Z Axis direction swap as chip mounted on PCB bottom
 
 		MagGravity = sqrt(Acc[0]*Acc[0] + Acc[1]*Acc[1] + Acc[2]*Acc[2]);
 		printf("\x1B[08;14H%+2.2f  ", MagGravity);
@@ -1404,8 +1471,7 @@ static void UART_VT100_Refresh_Data_Inertial() {					// $$$$$$ INERTIAL MENU 			
 	
 /** @brief 		Function to load INERTIAL MENU Refresh Data MENU-3 to VT100 Screen.  */
 	
-if (testbit(&Process_1, 0)==false) {
-		
+if (testbit(&Process_1, 0)==false) {		
 	double MagGravity, Magnitude, Bearing;
 		float data[4];
 		
@@ -1421,14 +1487,14 @@ if (testbit(&Process_1, 0)==false) {
 		printf("\x1B[07;41H%+6.3f   ",  (float) MagGravity);						// MAGNITUDE X-Y-Z
 		
 	
-		printf("\x1B[04;65H%+06.1f    ", Gyro[0]);									// Updated at System Timer  ---> ERROR NOT WORKING on latest Board ???
+		printf("\x1B[04;65H%+06.1f    ", Gyro[0]);									// Updated at System Timer
 		printf("\x1B[05;65H%+06.1f    ", Gyro[1]);			
 		printf("\x1B[06;65H%+06.1f    ", Gyro[2]);			
 		
 		nrf_delay_ms(50);
 			
-		printf("\x1B[15;65H%+06.2f    ", 0.0);
-		printf("\x1B[16;65H%+06.2f    ", 0.0);
+		printf("\x1B[15;65H%+06.2f    ", 1234.56);
+		printf("\x1B[16;65H%+06.2f    ", 3141.59);
 		printf("\x1B[17;65H%+06.2f    ", 0.0);
 		
 		nrf_delay_ms(50);
@@ -1453,7 +1519,7 @@ if (testbit(&Process_1, 0)==false) {
 		
 		nrf_delay_ms(50);
 			
-		Bearing = 180/pi*atan(Magnetic[0]/Magnetic[1]);			// ---> Maybe use atan2
+		Bearing = 180/pi*atan(Magnetic[0]/Magnetic[1]);								// ---> Maybe use atan2
 		
 		if(data[1]<0)  Bearing = Bearing + 180;
 		printf("\x1B[18;14H%+06.1f   ", Bearing);
@@ -1462,7 +1528,7 @@ if (testbit(&Process_1, 0)==false) {
 		
 		nrf_delay_ms(100);
 		
-		readQuaternion(Quaternion);												// QUARTERNION ---> Updated during sys Timer 200 msec
+		readQuaternion(Quaternion);													// QUARTERNION ---> Updated during sys Timer 200 msec
 		
 		printf("\x1B[11;14H%+07.4f ", Quaternion[0]);
 		printf("\x1B[12;14H%+07.4f ", Quaternion[1]);
@@ -1472,7 +1538,7 @@ if (testbit(&Process_1, 0)==false) {
 		Magnitude = sqrt( Quaternion[0] * Quaternion[0] + 
 						  Quaternion[1] * Quaternion[1] + 
 						  Quaternion[2] * Quaternion[2] +
-						  Quaternion[3] * Quaternion[3]);						// Magnitude of Quaternion ????
+						  Quaternion[3] * Quaternion[3]);							// Magnitude of Quaternion ????
 							
 		printf("\x1B[15;14H%+07.4f  ", Magnitude);
 		
@@ -1915,12 +1981,16 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 					GyroIntegrator[1] = 0;
 					GyroIntegrator[2] = 0;
 					}
+						printf("\x1B[25;30H SYSMSG: Gyro Integrators Cleared");							
+						GyroIntegrator[0]=0;
+						GyroIntegrator[1]=0;
+						GyroIntegrator[2]=0;
 					break;
 				
 				case 'l':
 					if (MenuLevel == 80) { 											// Calibrate Magnetometer Average Min Max Readings 
 					printf("\x1B[25;30H SYSMSG: Calibrate Magnetometer START ");										
-					CalibrateMagnetometer(1000);									// Average 1000 readings
+					CalibrateMagnetometer(500);									// Average 500 readings
 					printf("\x1B[25;30H SYSMSG: Calibrate Magnetometer END   ");
 					
 					float Acc[3];
@@ -1937,6 +2007,7 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 					MagMinCal[1] = +999999;
 					MagMinCal[2] = +999999;
 					}
+					
 					break;	
 				
 				case 'm':
@@ -2104,22 +2175,32 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 
 	nrf_gpio_cfg_output(MOTOR_PIN_NUMBER);
 	
-//	LED setup ToDo
 	nrf_gpio_cfg_output(BSP_LED_0);
 
 //	nrf_temp_init();
 
-//	nrf_gpio_cfg_output(7);											// Haptic Vibration Motor
-	
 	unsigned char status = 0;
 	while(!status)  status = I2C_Init();
 		
-//	calibrateMPU9150()
+
+	MPU9250_setup();												/*  Required at least once on powerup to configure factory defaults
+																		also includes call to magcalMPU9250 to enable AK8963 magBias (mGause) and magScale (mGause) */
 	
-//	MPU9250_setup();		// Passes through however includes long with big Averaging Loop
+	if(MPU9250_WhoAmI()==0x71) setbit(&Process_5, 1);				// Process_5.1	= Flag MPU9250 Inertial Sensor Present
 	
-	initMPU9250();
-	if(MPU9250_WhoAmI()==0x71) setbit(&Process_5,1);				// Process_5.1	= Flag MPU9250 Inertial Sensor Present
+	if(MPU9250_WhoAmIMag()==0x48) setbit(&Process_5, 8);			// Process_5.8	= Flag MPU9250 Magnetometer Sensor Present
+	
+	float AccGyroPercentGood[6];
+	MPU9250SelfTest(AccGyroPercentGood);
+	setbit(&Process_5, 9);											// Set the Bit as good and clear if % test fails
+	
+	if(AccGyroPercentGood[0]>6 || AccGyroPercentGood[0]<-6) clrbit(&Process_5, 9);			// 012 Accel x y z
+	if(AccGyroPercentGood[1]>6 || AccGyroPercentGood[1]<-6) clrbit(&Process_5, 9);
+	if(AccGyroPercentGood[2]>6 || AccGyroPercentGood[2]<-6) clrbit(&Process_5, 9);
+	if(AccGyroPercentGood[3]>6 || AccGyroPercentGood[3]<-6) clrbit(&Process_5, 9);			// 345 Gyro  x y z
+	if(AccGyroPercentGood[4]>6 || AccGyroPercentGood[4]<-6) clrbit(&Process_5, 9);
+	if(AccGyroPercentGood[5]>6 || AccGyroPercentGood[5]<-6) clrbit(&Process_5, 9);
+	
 	
 	float Acc[3];
 	readGyroFloatDeg(Acc);											// Read xyz Raw GYRO registers deg/sec
@@ -2130,7 +2211,7 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	
 	sysLastTime = sysTimeTick;
 	
-	GyroIntegrator[0]=0;
+	GyroIntegrator[0]=0;											// Zero Gyro Integrators
 	GyroIntegrator[1]=0;
 	GyroIntegrator[2]=0;
 
@@ -2140,69 +2221,73 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	MagMeanCal[1] = Acc[1];
 	MagMeanCal[2] = Acc[2];
 	
-	MagMaxCal[0] = -999999;
-	MagMaxCal[1] = -999999;
-	MagMaxCal[2] = -999999;
+	MagMaxCal[0] = -9;
+	MagMaxCal[1] = -9;
+	MagMaxCal[2] = -9;
 	
-	MagMinCal[0] = +999999;
-	MagMinCal[1] = +999999;
-	MagMinCal[2] = +999999;
+	MagMinCal[0] = +9;
+	MagMinCal[1] = +9;
+	MagMinCal[2] = +9;
 
-	sensorADC_config();  										// sensor adc init
-	finishedADC = false;  										// for sensor_adc only	
-	
+
+//	Initialsie the onboard ADC
+	sensorADC_config();  											// sensor adc init
+	finishedADC = false;  											// for sensor_adc only	
+
 /*
-		if(mpu_init(NULL));
-		long gyro,accel;
-		mpu_run_self_test(&gyro, &accel);
+	if(mpu_init(NULL));
+	long gyro,accel;
+	mpu_run_self_test(&gyro, &accel);
 
 
 	
- read compass
-		short data[3];
-		
-		unsigned long timestamp;
-		
-		nrf_delay_us(1000000);
+//	read compass
+	short data[3];
+
+	unsigned long timestamp;
+
+	nrf_delay_us(1000000);
 
 
-		while(mpu_get_compass_reg(data, &timestamp)) 
-			nrf_delay_us(1000);
-			while(1) {
-				status = mpu_get_compass_reg(data, &timestamp);
-				if(data[0]>0 || status == 0)
-				break;
-			}
-		long temperature;
-		while(mpu_get_temperature(&temperature, &timestamp));
-		while(mpu_get_accel_reg(data,&timestamp));
-		while(mpu_get_gyro_reg(data,&timestamp));
-	
-		mpu_run_6500_self_test(&gyro, &accel,0);
+	while(mpu_get_compass_reg(data, &timestamp)) 
+		nrf_delay_us(1000);
+		while(1) {
+			status = mpu_get_compass_reg(data, &timestamp);
+			if(data[0]>0 || status == 0)
+			break;
+		}
+	long temperature;
+	while(mpu_get_temperature(&temperature, &timestamp));
+	while(mpu_get_accel_reg(data,&timestamp));
+	while(mpu_get_gyro_reg(data,&timestamp));
+
+	mpu_run_6500_self_test(&gyro, &accel,0);
 
 */
 
-/*	Process_5.4	= Flag A2035 GPS Sensor Present
-	Process_5.5	= Flag SFlash Memory Present
-	Process_5.6	= Flag EEPROM Present */
+
 
 	MPL3115A2_init();
-	if(MPL3115A2_WhoAmI()==0xC4) setbit(&Process_5,2);				// Process_5.2 = Flag MPL3115 Pressure Sensor Present
+	if(MPL3115A2_WhoAmI()==0xC4) setbit(&Process_5, 2);				// Process_5.2 = Flag MPL3115 Pressure Sensor Present
 	
 	float f = MPL3115A2_getAltitude();
 	
 	ltc294x_init();
 	int temp;
 	ltc294x_get_temperature(&temp);
-	if(temp!=0) setbit(&Process_5,3);								// Process_5.3 = Flag LTC2943 GasGauge Sensor Present cludeged by reading temperature
+	if(temp!=0) setbit(&Process_5, 3);								// Process_5.3 = Flag LTC2943 GasGauge Sensor Present cludeged by reading temperature
 	
 	ltc294x_get_current(&temp);
 	ltc294x_get_voltage(&temp);
 	ltc294x_get_charge_counter(&temp);
-	
-//	initA2035H();													// Initialise the A2035H GPS Module ---> Configured for SPI
-//	setbit(&Process_6,0);											// init Flag to indicate A2035H 3v3GPS Power Asserted
 
+
+//	Process_5.4	= Flag A2035 GPS Sensor Present
+//	initA2035H();													// Initialise the A2035H GPS Module ---> Configured for SPI
+//	setbit(&Process_6,0);											// init Flag to indicate A2035H 3V3GPS Power Asserted
+
+
+//	Process_5.5	= Flag SFlash Memory Present
 //	Test for SFLASH Presence by reading AT45 Device ID
 	nrf_gpio_cfg_output(04U);										// GPS RESET ASSERTED LOW ---> WARNING ---> 1V8 GPS Power is being generated via MISO 3V3 Line Blead ==> Assert 3V3GPS Power
 	NRF_GPIO->OUTCLR = (1UL << 04U);
@@ -2210,16 +2295,15 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	nrf_gpio_cfg_output(10U);										// Assert GPS Power OFF while GPS Held in RESET 
 	NRF_GPIO->OUTCLR = (1UL << 10U);
 
-	AT45DB161E_init();
+	AT45DB161E_init();												// Test SFLASH Device ID
 	int tempx=AT45_WhoAmI();
-//	tempx=AT45_WhoAmI();
 	if (tempx==0x1f26) setbit(&Process_5, 5);
 	
-	
+//	Process_5.6	= Flag EEPROM Present
 //	Test for Presence of 1WI EEPROM DS28E02 by reading Unique Regestration Number 
 	Grab_EEPROM_ID(DS28E02_ID, 16);
-	if((int) DS28E02_ID[1]==0x00 && (int) DS28E02_ID[2]==0x00) setbit(&Process_5, 6);			// ToDo Bypass Fault The Return ID is cludged and hard set to 0x00
-	
+//	if((int) DS28E02_ID[1]==0x00 && (int) DS28E02_ID[2]==0x00) setbit(&Process_5, 6);			// ToDo Bypass Fault The Return ID is cludged and hard set to 0x00
+	if(ds28e02_Read_Factory()==0x55 || ds28e02_Read_Factory()==0xAA) setbit(&Process_5, 6);
 }
 
 
@@ -2407,6 +2491,9 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 	
 	sysTimeTick += 1;															// sysTimeTick Counter in SysTimer Increments	 200msec
 	
+	unsigned char status = 0;
+	while(!status)  status = I2C_Init();										// Test to see if system freeze eleviated by re init of I2C_init()
+		
 	if(!testbit_int(&iProcess_0, 0)) {											// Trap and bypass in case handler busy with previous event 
 		setbit(&iProcess_0, 0);													// Set Flag for active system timer handler
 
@@ -2417,21 +2504,21 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 			Gyro[1] = Acc[1];
 			Gyro[2] = Acc[2];
 			
-//			Gyro[1] = 0.05*Gyro[1] + 0.94*((Acc[1] - Gyro_ManualCal[1]));		// Apply Leaky LP filtering
-//			Gyro[2] = 0.05*Gyro[2] + 0.94*((Acc[2] - Gyro_ManualCal[2]));		// Apply leaky LP filtering
-//			
-//			Gyro[0] = 0.05*Gyro[0] + 0.94*((Acc[0] - Gyro_ManualCal[0]));		// Apply Leaky LP filtering to Manual Calibration (15% old + 84% new)
-//			Gyro[1] = 0.05*Gyro[1] + 0.94*((Acc[1] - Gyro_ManualCal[1]));		// Apply Leaky LP filtering
-//			Gyro[2] = 0.05*Gyro[2] + 0.94*((Acc[2] - Gyro_ManualCal[2]));		// Apply leaky LP filtering
-//			
-//			if(temp <= 10 || temp >= -10) {										// Trap out during big movements Auto cal when moving slow !!!
-//				Gyro_ManualCal[0]=LPFilter(Gyro_ManualCal[0],Acc[0],99.9);		// Slowly Zero ManualCal Registers when during slow or static movement
-//				Gyro_ManualCal[1]=LPFilter(Gyro_ManualCal[1],Acc[1],99.9);
-//				Gyro_ManualCal[2]=LPFilter(Gyro_ManualCal[2],Acc[2],99.9);				
-//			}
+			Gyro[1] = 0.05*Gyro[1] + 0.94*((Acc[1] - Gyro_ManualCal[1]));		// Apply Leaky LP filtering
+			Gyro[2] = 0.05*Gyro[2] + 0.94*((Acc[2] - Gyro_ManualCal[2]));		// Apply leaky LP filtering
+			
+			Gyro[0] = 0.05*Gyro[0] + 0.94*((Acc[0] - Gyro_ManualCal[0]));		// Apply Leaky LP filtering to Manual Calibration (15% old + 84% new)
+			Gyro[1] = 0.05*Gyro[1] + 0.94*((Acc[1] - Gyro_ManualCal[1]));		// Apply Leaky LP filtering
+			Gyro[2] = 0.05*Gyro[2] + 0.94*((Acc[2] - Gyro_ManualCal[2]));		// Apply leaky LP filtering
+			
+			if(temp <= 10 || temp >= -10) {										// Trap out during big movements Auto cal when moving slow !!!
+				Gyro_ManualCal[0]=LPFilter(Gyro_ManualCal[0],Acc[0],99.9);		// Slowly Zero ManualCal Registers when during slow or static movement
+				Gyro_ManualCal[1]=LPFilter(Gyro_ManualCal[1],Acc[1],99.9);
+				Gyro_ManualCal[2]=LPFilter(Gyro_ManualCal[2],Acc[2],99.9);				
+			}
 			
 			if(sysLastTime==0 || sysLastTime>sysTimeTick) sysLastTime = sysTimeTick;
-			float DeltaT = MS100*(sysTimeTick-sysLastTime);						// 100msec increments
+			float DeltaT = MS200*(sysTimeTick-sysLastTime);						// 200msec increments
 
 			if (Gyro[0]<-5 || Gyro[0]>5) GyroIntegrator[0]+=Gyro[0]*DeltaT;		// Integrate if outside deadband +/- 5degs/sec
 																				// convert degs/sec to degrees ie Nominally divide by 100msec sys timer entry
@@ -2486,14 +2573,13 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 				MagMinCal[1] *= 0.99999;
 				MagMinCal[2] *= 0.99999;
 				
-				Magnetic[0]=Acc[0];		//-MagCenterCal[0];
-				Magnetic[1]=Acc[1];		//-MagCenterCal[1];
-				Magnetic[2]=Acc[2];		//-MagCenterCal[2];
+				Magnetic[0]=Acc[0]-MagCenterCal[0];
+				Magnetic[1]=Acc[1]-MagCenterCal[1];
+				Magnetic[2]=Acc[2]-MagCenterCal[2];
 			}
 		}
 		
 		readAccelFloatMG(Acc);													// ACCELERATION-GRAVITY (g) ---> May Require LP Filtering --> Decide on test!!!!
-		
 		if(Acc[0]+Acc[1]+Acc[2]!=0) { 											// Chech for valid Acc Read
 			Acc[2] *= -1;					// Swap z-Axis Alignment
 			
@@ -2501,7 +2587,7 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 //			Gravity[1] = Acc[1];			// y-axis
 //			Gravity[2] = Acc[2];			// z-axis
 			
-			temp = sqrt(pow(Acc[0],2)+pow(Acc[1],2)+pow(Acc[2],2));				// Normalise
+			temp = 1.; //sqrt(pow(Acc[0],2)+pow(Acc[1],2)+pow(Acc[2],2));		// Leave Unnormalised for time being Normalise
 			Acc[0] /= temp;
 			Acc[1] /= temp;
 			Acc[2] /= temp;
@@ -2510,29 +2596,32 @@ static void system_timer_handler(void * p_context) {				// Timer event to prime 
 			Gravity[1] = Acc[1];			// y-axis	(Normalised)
 			Gravity[2] = Acc[2];			// z-axis	(Normalised)
 
-			temp = asin(Acc[1])*180/pi;										// asin(Gravity-y) (Normalised)
-			if (temp>-55 && temp<-35) setbit(&Process_7,0);					// Test if Cane Alignment Angled Down 35deg-to-55deg
+			
+/*			Test Cane Allignment and set Process_7 Flags. 	
+			Note: Process_7 flags used within Switch Selection State Machine*/
+			temp = asin(Acc[1])*180/pi;											// asin(Gravity-y) (Normalised)
+			if (temp>-55 && temp<-35)	setbit(&Process_7,0);					// Test if Cane Alignment Angled Down 35deg-to-55deg
 			else clrbit(&Process_7,0);
 			
-			if(Acc[2] < -0.4) setbit(&Process_7,1);							// Test gZ and Flag for Cane Buttons UP --> Process_7.2 Flags
+			if(Acc[2] < -0.4) 			setbit(&Process_7,1);					// Test gZ and Flag for Cane Buttons UP --> Process_7.2 Flags
 			else clrbit(&Process_7,1);	
 
-			if(Acc[2] > 0.4) setbit(&Process_7,2);							// Test gZ and Flag for Cane Buttons DOWN  --> Process_7.3 Flags
+			if(Acc[2] > 0.4)			setbit(&Process_7,2);					// Test gZ and Flag for Cane Buttons DOWN  --> Process_7.3 Flags
 			else clrbit(&Process_7,2);		
 
-			if(Acc[0] < -0.4) setbit(&Process_7,3);							// Test gX and Flag for Cane Buttons RIGHT --> Process_7.2 Flags
+			if(Acc[0] < -0.4)			setbit(&Process_7,3);					// Test gX and Flag for Cane Buttons RIGHT --> Process_7.2 Flags
 			else clrbit(&Process_7,3);	
 
-			if(Acc[0] > 0.4) setbit(&Process_7,4);							// Test gX and Flag for Cane Buttons LEFT  --> Process_7.3 Flags
+			if(Acc[0] > 0.4)			setbit(&Process_7,4);					// Test gX and Flag for Cane Buttons LEFT  --> Process_7.3 Flags
 			else clrbit(&Process_7,4);	
 
-			if(Acc[1] > 0.9) setbit(&Process_7,5);							// Test and Flag for Cane Vertical-UP (+15deg-to-15deg)  
+			if(Acc[1] > 0.9)			setbit(&Process_7,5);					// Test and Flag for Cane Vertical-UP (+15deg-to-15deg)  
 			else clrbit(&Process_7,5);
 
-			if(Acc[1] < -0.9) setbit(&Process_7,6);							// Test and Flag for Cane Vertical-DOWN (+15deg-to-15deg)  
+			if(Acc[1] < -0.9)			setbit(&Process_7,6);					// Test and Flag for Cane Vertical-DOWN (+15deg-to-15deg)  
 			else clrbit(&Process_7,6);
 		}
-	
+		
 		// Test for Vibration motor initiation and Delay off count
 		if(testbit(&Process_0, 0)==true) {									// Background Test for Active Vibro Motor Flag Auto Countdown of 200msec
 			Count_VibroMotor = 2;
@@ -2872,9 +2961,9 @@ static void ble_stack_init(void) {									// Initalise ble Bluetooth stack also
 }
 
 static void DeviceNameFromID(char* name, int len) {					// Redefine Device name with Device ID + Device Name based on DS2401 Address
-	if(len<16) {
-		strncpy(name, DEVICE_NAME, len);
-	} else {
+	
+	if(len<16) strncpy(name, DEVICE_NAME, len);
+	else {
 		while(!ds2401_initAndRead()) ;
 		int j = 0;
 		bool skipLeading = true;
@@ -2892,7 +2981,7 @@ static void DeviceNameFromID(char* name, int len) {					// Redefine Device name 
 	return;
 }
 
-static void GrabDeviceID(char* name, int len) {							// DS2401 xxxxxxxx
+static void GrabDeviceID(char* name, int len) {						// DS2401  xxxxxxxx
 	if(len<16) strncpy(name, DEVICE_NAME, len);
 	else {
 		while(!ds2401_initAndRead()) ;
@@ -2910,6 +2999,7 @@ static void GrabDeviceID(char* name, int len) {							// DS2401 xxxxxxxx
 }
 
 int Grab_EEPROM_ID(char* name, int len) {							// DS28e02 xxxxxxxx
+	
 	if(len<16) strncpy(name, DEVICE_NAME, len);
 	else {
 		while(!ds28e02_initAndRead()) ;
@@ -3410,13 +3500,84 @@ void WatchDogTimer_init(void){										// Cofigure WatchDog Timer ---> ToDo
 
 }
 
+void init_WayPointData(void){
+		
+/*	WARNING--- Due to possible conflict with A2035 GPS module Access to the At45 SFLASH requires ShutDown of the 3V3GPS Rail 
+	Therfore GPS Needs to be Brought Back to Life after AT45 SFLASH Read
+	---> Up to 30Second  Delays will be exected to reacuire GeoStationary Satellites
+	
+	Initaialise SRAM with LastTrack Waypoint data 
+	If SFLASH not initialised with first life config then FirstLife Config will be performed.
+	A default FirstLife Track to Melbourne CBD will be loaded. 	*/
+
+	nrf_gpio_cfg_output(04U);										// GPS RESET ASSERTED LOW ---> WARNING ---> 1V8 GPS Power is being generated via MISO 3V3 Line Blead ==> Assert 3V3GPS Power
+	NRF_GPIO->OUTCLR = (1UL << 04U);
+	nrf_gpio_cfg_output(10U);										// Assert GPS Power OFF while GPS Held in RESET 
+	NRF_GPIO->OUTCLR = (1UL << 10U);
+
+	AT45DB161E_init();												// Re Initialsie the At45DB161 SFLASH IO Pins
+
+	
+	
+//typedef struct {													/* STRUCTURE of SRAM data definitions of Current Waypoints ---> as defined within WayPointTrackInfo*/
+//	uint16_t	waypoint_IndexTotal;								// Number of WayPoints defined for current Track
+//	uint16_t	waypoint_CurrentIndex;								// Current Position within defined waypoints	double		current_Latitude;									// Current live position updated by A2035 GPS
+
+//	double		current_Longitude;
+//	double		current_Altitude;
+//	double		current_Minute;
+//	double		current_Second;
+//		
+//	double		target_Latitude;									// Next Target Position Loaded From SFLASH
+//	double		target_Longitude;
+//	double		target_Altitude;
+//} WaypointInfo_t;
+
+//typedef struct {													/* STRUCTURE of SRAM Waypoint Tracks - Allow Eight Tracks to be Defined Allow for four (4) InBound & 4 OutBound Tracks */
+//	uint16_t	waypoint_TrackCount;								// Number of defined waypoints
+//	uint16_t	current_TrackIndex;									// Current Track 0-7
+//	uint16_t	track_WaypointsCount[8];							// Count of defined waypoints per track - eight (8) in total.
+//	uint16_t	track_SFLASH_OddEven[8];							// Index to indicate active waypoint sflash page --> Allows one of two pages to hold waypoint data.
+//} WaypointTrackInfo_t;
+
+//typedef struct {													/*	STRUCTURE of SFLASH Header Info Let it reside at AT45 Page_0 ?? */
+//	uint8_t		sflash_FirstLife[8];								//	Assigned Upon Initial FirstLife Configuration
+//	uint16_t	waypoint_DefinedFlag;								//	Flag to indicate at least one (1) active WayPoint Definition
+//	uint16_t	waypoint_TrackCount;								//	Number of defined waypoints Hardset to eight(8) (Note: absolute maximum 4096/2) 
+//	uint16_t	current_TrackIndex;									//	Current Track 0-7
+//	uint16_t	track_WaypointsCount[8];							//	Count of defined waypoints per track - eight (8) in total.
+//	uint16_t	track_SFLASH_OddEven[8];							//	Index for each track to indicate if Odd or Even At45 Page is in use.
+//} SFLASH_HeaderInfo_t;
+//	
+
+//typedef struct {													/* STRUCTURE of SFLASH Page for Waypoint Definitions ---> Assign One SFLASH Page per defined Track (528 bytes/Pg)*/
+//	uint16_t	ActiveTrackFlag;
+//	uint16_t	ActivePageFlag;										// Flag to indicate Page Active (Either Odd or Even Page per Waypoint)
+//	uint16_t	waypoint_Count;										// Count of defined waypoints along track. (Maximum=64)
+//	double		waypoint_latitude[64];									 
+//	double		waypoint_longitude[64];
+//	double		waypoint_altitude[64];
+//	double		waypoint_MagBearing[64];
+//} SFLASH_WaypointInfo_t;
+
+
+//static WaypointInfo_t			WPI;
+//static WaypointTrackInfo_t		WPTI;
+//static SFLASH_HeaderInfo_t		SHI;
+//static SFLASH_WaypointInfo_t	SWPI;
+
+
+}
+
+
+
 int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 
-/**	@brief		Function main() application entry.
-	@details	
-	@note  		
-	@ref		
-	@todo		*/
+/**		@brief		Function main() application entry.
+		@details	
+		@note  		
+		@ref		
+		@todo		*/
 	
 
 	setbit(&Process_4, 7);											// Debug Disable LPFilter --> Force Out=In
@@ -3446,14 +3607,14 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 																	// Note... Moved to VT100 System Menu 6 ---> G
 	
 	const app_uart_comm_params_t comm_params =	{					// Load UART Parameters ... USB UART Virtual COM port BAUD==11500
-		  RX_PIN_NUMBER,
-		  TX_PIN_NUMBER,
-		  RTS_PIN_NUMBER,
-		  CTS_PIN_NUMBER,
-		  APP_UART_FLOW_CONTROL_DISABLED,
-		  false,
-		  UART_BAUDRATE_BAUDRATE_Baud115200
-	  };
+		RX_PIN_NUMBER,
+		TX_PIN_NUMBER,
+		RTS_PIN_NUMBER,
+		CTS_PIN_NUMBER,
+		APP_UART_FLOW_CONTROL_DISABLED,
+		false,
+		UART_BAUDRATE_BAUDRATE_Baud115200
+	};
 	
 	uint32_t err_code;
 	APP_UART_FIFO_INIT(&comm_params,								// Initalise UART FIFO with defined setup parameters
@@ -3472,12 +3633,14 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 	UART_VT100_Main_Menu();											// Initialise Default UART VT100 Main Menu
 	
 //	err_code = spi_slave_example_init();							// Initialise Once -- Events then handled by ---> spi_slave_event_handle
+
 //	APP_ERROR_CHECK(err_code);										// REMOVED from here to ensure SPI init happens after A2035 SPI Mode Activated
-	  
-	  
+
+
+	init_WayPointData();											// 
+
 	int TSA_Count=0;												// Base TSA Initialisation Start Count = 0 of  TSA_Count 0..25	
-	setbit(&Process_0,15);											// Flag used to signal system timer to start 
-	
+	setbit(&Process_0,15);											// Flag used to indicate signal system timer to start 
 	application_timers_start();										// Start Timers
 	  
 	while (true) {													// TSA Time Slot Assigner ---> Endless Loop within main()

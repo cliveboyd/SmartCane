@@ -89,23 +89,23 @@ unsigned char ds28e02_id[8];
 #define OUTP_0() do { NRF_GPIO->OUTCLR = (1UL << One_Wire_Interface_1WI_PIN_NUMBER);  } while(0)   			/*!< Pulls 1-wire pin low  */
 #define OUTP_1() do { NRF_GPIO->OUTSET = (1UL << One_Wire_Interface_1WI_PIN_NUMBER);  } while(0)   			/*!< Pulls 1-wire pin high */
 
-#define PIN_INIT() do{  \
-					SET_PIN_INPUT();    \
-					OUTP_0();           \
+#define PIN_INIT() do{						\
+						SET_PIN_INPUT();	\
+						OUTP_0();			\
 					} while(0)
 
 
 /* Drive the one wire interface low */
-#define OW_DRIVE() do {                    \
-                     SET_PIN_OUTPUT();     \
-                     OUTP_0();             \
+#define OW_DRIVE() do {						\
+						SET_PIN_OUTPUT();	\
+						OUTP_0();			\
                    } while (0)
 
 /* Release the one wire by turning on the internal pull-up. */
-#define OW_RELEASE() do {                  \
+#define OW_RELEASE() do {					\
 						SET_PIN_INPUT();    \
 						OUTP_1();           \
-						} while (0)
+					} while (0)
 
 /* Read one bit. */
 #define INP()  ((NRF_GPIO->IN >> One_Wire_Interface_1WI_PIN_NUMBER) & 0x1UL)                     /*!< Reads current state of 1-wire pin */
@@ -135,8 +135,9 @@ unsigned char ds28e02_id[8];
 #define tJ 410        				/* min-410,	recommended-410,	max-N/A */
 /*---------------------------------------------------------------------------*/
 #define udelay(u) nrf_delay_us((u))
+
 /*---------------------------------------------------------------------------*/
-static uint8_t reset(void) {
+static uint8_t ds28_reset(void) {
 	uint8_t result;
 	OW_DRIVE();
 	udelay(500);     					/* 480 < tH < 640 */
@@ -148,39 +149,38 @@ static uint8_t reset(void) {
 }
 
 /*---------------------------------------------------------------------------*/
-static void write_byte(uint8_t byte) {
-  uint8_t i = 7;
-  do {
-    if (byte & 0x01) {
-      OW_DRIVE();
-      udelay(tA);
-      OW_RELEASE();    				/* Releases the bus */
-      udelay(tB);
-    } 
+static void ds28_write_byte(uint8_t byte) {
+	uint8_t i = 7;
+	
+	do {
+		if (byte & 0x01) {
+			OW_DRIVE();
+			udelay(tA);
+			OW_RELEASE();					/* Releases the bus */
+			udelay(tB);
+		} 
 	else {
-      OW_DRIVE();
-      udelay(tC);
-      OW_RELEASE();    				/* Releases the bus */
-      udelay(tD);
-    }
-    if (i == 0)
-      return;
-    i--;
-    byte >>= 1;
-  } while (1);
+		OW_DRIVE();
+		udelay(tC);
+		OW_RELEASE();						/* Releases the bus */
+		udelay(tD);
+	}
+	if (i == 0) return;
+	i--;
+	byte >>= 1;
+	} while (1);
 }
 
 /*---------------------------------------------------------------------------*/
-static unsigned read_byte(void) {
+static unsigned ds28_read_byte(void) {
 	unsigned result = 0;
 	int i = 7;
 	do {
 		OW_DRIVE();
 		udelay(tA);
-		OW_RELEASE();       			/* Releases the bus */
+		OW_RELEASE();					/* Releases the bus */
 		udelay(tE);
-		if (INP())
-		result |= 0x80;					/* LSbit first */
+		if (INP()) result |= 0x80;		/* LSbit first */
 		udelay(tF);
 		if (i == 0) return result;
 		i--;
@@ -199,7 +199,7 @@ static unsigned crc8_add(unsigned acc, unsigned byte) {
 		return acc;
 }
 
-int ds28e02_Read_Factory() {
+int ds28e02_Read_Factory(void) {
 
 	unsigned factory;
 
@@ -212,10 +212,10 @@ int ds28e02_Read_Factory() {
 
 	PIN_INIT();
 
-if (reset() == 0) {
-		write_byte(0x8b);    							/* Read Factory Byte at address 0x8b  --> returns 0x55 or 0xAA*/   
-		factory = read_byte();
-		return factory;  								/* Pass == 0x55 or 0xAA */
+if (ds28_reset() == 0) {
+		ds28_write_byte(0x8b);    						/* Read Factory Byte at address 0x8b  --> returns 0x55 or 0xAA*/   
+		factory = ds28_read_byte();
+	return factory;  									/* Note: Expect Value of 0x55 or 0xAA */
 	}
 	return 1;											// fail
 }
@@ -236,15 +236,15 @@ int ds28e02_initAndRead() {
 	// clear id first
 	memset(ds28e02_id, 0x0, sizeof(ds28e02_id));
 
-if (reset() == 0) {
+if (ds28_reset() == 0) {
 	
-	write_byte(0x90);    							/* Read ROM Registration (64bits) command. Adrr=90_to_97 family id at lower byte 90 or 97 ??*/   
+	ds28_write_byte(0x90);    							/* Read ROM Registration (64bits) command. Adrr=90_to_97 family id at lower byte 90 or 97 ??*/   
 	
-	family = read_byte();
+	family = ds28_read_byte();
 	
-	for (i = 7; i >= 2; i--) ds28e02_id[i] = read_byte(); // Get 48 bits ID --> Actual EEPROM ID size == 64bits
+	for (i = 7; i >= 2; i--) ds28e02_id[i] = ds28_read_byte(); // Get 48 bits ID --> Actual EEPROM ID size == 64bits
 	
-	crc = read_byte();
+	crc = ds28_read_byte();
 
 	if(family != 0x4f) 	goto fail;					// Family code always 0x4fh == DS28E02 --> Seeing 0x46 ?????
 		
@@ -263,12 +263,12 @@ fail:
 
 
 
-int ds28e02_Write_ScratchPad (void){				// cmd = 0x0F   (Scratchpad Size==64-bit)
+int ds28e02_write_ScratchPad (void){				// cmd = 0x0F   (Scratchpad Size==64-bit)
 	
 	return 1;  										/* Fail! */
 }
 
-int ds28e02_Read_ScratchPad (void){					// cmd = 0xAA   (Scratchpad Size==64-bit)
+int ds28e02_read_ScratchPad (void){					// cmd = 0xAA   (Scratchpad Size==64-bit)
 	
 	return 1;  										/* Fail! */
 }

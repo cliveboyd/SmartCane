@@ -19,11 +19,15 @@ THE SOFTWARE.
 #define DS28E02_H
 
 extern unsigned char ds28e02_id[8];
-extern int ds28e02_initAndRead(void);
 
+extern int ds28e02_initAndRead(void);
 
 int ds28e02_Read_ScratchPad (void);
 
 int ds28e02_Write_ScratchPad (void);
+
+int ds28e02_Read_Factory(void);
+
+
 	
 #endif /* DS28E02_H */

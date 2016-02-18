@@ -34,7 +34,7 @@
  
 
 
-#include <stdint.h>  			// for uint32_t etc.
+#include <stdint.h>  											// for uint32_t etc.
 #include <stdbool.h>
 #include <stdio.h>
 #include <MPU_9250.h>
@@ -136,7 +136,7 @@ Mscale_t Mscale = MFS_16BITS;
 #define I2C_SLV4_DI      0x35
 #define I2C_MST_STATUS   0x36
 
-#define INT_piN_CFG      0x37
+#define INT_PIN_CFG      0x37
 #define INT_ENABLE       0x38
 #define DMP_INT_STATUS   0x39  								// Check DMP interrupt
 #define INT_STATUS       0x3A
@@ -281,7 +281,7 @@ float zeta = 0;				   										// compute zeta, ---> zeta = sqrt(3.0f / 4.0f) *
 #define Kp 2.0f * 5.0f 												// these are the free parameters in the Mahony filter and fusion scheme, Kp for proportional feedback, Ki for integral
 #define Ki 0.0f
 
-float deltat = 0.100; 			         							// integration interval for both filter schemes --> main.sysTimerHandler 100msec
+float deltat = 0.200; 			         							// integration interval for both filter schemes --> main.sysTimerHandler 100msec
 
 float ax, ay, az, gx, gy, gz, mx, my, mz; 							// variables to hold latest sensor data values 
 
@@ -383,7 +383,7 @@ void MPU9250_setup() {
 }
 
 void CalibrateMagnetometer(uint16_t count) {;
-	magcalMPU9250(magBias, magScale, count);							//	AK8963 magBias (mGause) and magScale (mGause)
+	magcalMPU9250(magBias, magScale, count);						//	AK8963 magBias (mGause) and magScale (mGause)
 }
 
 void MPU9250_Timed_Interupt() {  									/*	This Pipe needs to be transfered to interupt service
@@ -541,6 +541,13 @@ void getAres() {
   }
 }
 
+
+uint8_t MPU9250_WhoAmIMag() {
+//	Read the WHO_AM_I register of the magnetometer.
+	int8_t d = MPU9250_readByte(AK8963_ADDRESS, WHO_AM_I_AK8963);			//	Read magnetometer WHO_AM_I for AK8963 ---> Should return 0x48
+	return d;
+}
+
 uint8_t MPU9250_WhoAmI() {
 	uint8_t  d = MPU9250_readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);		// Should Return 0x71
 	return d;
@@ -549,6 +556,10 @@ uint8_t MPU9250_WhoAmI() {
 void readAccelData(int16_t * destination) {
   uint8_t rawData[6];  														// xyz accel register data stored here
   MPU9250_readBytes(MPU9250_ADDRESS, ACCEL_XOUT_H, 6, &rawData[0]);			// Read the six raw data registers into data array
+  destination[0] = ((int16_t)rawData[0] << 8) | rawData[1] ;				// Turn the MSB and LSB into a signed 16-bit value
+  destination[1] = ((int16_t)rawData[2] << 8) | rawData[3] ;  
+  destination[2] = ((int16_t)rawData[4] << 8) | rawData[5] ; 
+MPU9250_readBytes(MPU9250_ADDRESS, ACCEL_XOUT_H, 6, &rawData[0]);			// Read the six raw data registers into data array
   destination[0] = ((int16_t)rawData[0] << 8) | rawData[1] ;				// Turn the MSB and LSB into a signed 16-bit value
   destination[1] = ((int16_t)rawData[2] << 8) | rawData[3] ;  
   destination[2] = ((int16_t)rawData[4] << 8) | rawData[5] ; 
@@ -592,7 +603,7 @@ void readMagData(int16_t * destination) {
 }
 
 void initAK8963(float * destination) {
-  // First extract the factory calibration for each magnetometer axis
+//	First extract the factory calibration for each magnetometer axis
 	
 	uint8_t rawData[3];  													// xyz magnetometer calibration data stored here
 	MPU9250_writeByte(AK8963_ADDRESS, AK8963_CNTL, 0x00); 					// Power down magnetometer  
@@ -667,7 +678,7 @@ void initMPU9250(void) {
 	Set interrupt pin active high, push-pull, hold interrupt pin level HIGH until interrupt cleared,
 	clear on read of INT_STATUS, and enable I2C_BYPASS_EN so additional chips 
 	can join the I2C bus and all can be controlled by the Arduino as master */
-	MPU9250_writeByte(MPU9250_ADDRESS, INT_piN_CFG, 0x22);    
+	MPU9250_writeByte(MPU9250_ADDRESS, INT_PIN_CFG, 0x22);    
 	MPU9250_writeByte(MPU9250_ADDRESS, INT_ENABLE, 0x01);					// Enable data ready (bit 0) interrupt
 	delay_msec(100);
 }
@@ -878,8 +889,9 @@ void magcalMPU9250(float * dest1, float * dest2, uint16_t sample_count) {
     dest2[2] = avg_rad/((float)mag_scale[2]);
 }
 
+
 void MPU9250SelfTest(float * destination) {									/*	Should return percent deviation from factory trim 
-																				values, +/- 14 or less deviation is a pass */
+//	Returns 6 values as a percent of factory trim vs self test for gyro and acc																				values, +/- 14 or less deviation is a pass */
 	uint8_t rawData[6] = {0, 0, 0, 0, 0, 0};
 	uint8_t selfTest[6];
 	uint8_t FS = 0;	
@@ -964,8 +976,7 @@ void readAccelFloatMG(float *xyz) { 												// in milli g
 	int16_t Acc[3];
 	readAccelData(Acc);
 	getAres();
-	for(int i=0;i<3;i++) 
-		xyz[i] = aRes*Acc[i];
+	for(int i=0;i<3;i++) xyz[i] = aRes*Acc[i];
 }
 
 void readGyroFloatDeg(float *xyz) {					  								// in degree
@@ -973,8 +984,7 @@ void readGyroFloatDeg(float *xyz) {					  								// in degree
 	int16_t Gyro[3];
 	readGyroData(Gyro);
 	getGres();
-	for(int i=0;i<3;i++) 
-		xyz[i] = gRes*Gyro[i];
+	for(int i=0;i<3;i++) xyz[i] = gRes*Gyro[i];
 }
 
 void readMagFloatUT(float *xyz) {					 								// in micro tesla
@@ -991,7 +1001,6 @@ void readMagFloatUT(float *xyz) {					 								// in micro tesla
 		xyz[1]=0;
 		xyz[2]=0;
 	}
-
 }
 
 void readMagTest(float *xyz){														// Read Calibrated Magnetometer (mGauss)
@@ -1003,7 +1012,7 @@ void readMagTest(float *xyz){														// Read Calibrated Magnetometer (mGau
 	Include factory calibration per data sheet and user environmental corrections */
 	if(Mag[0]+Mag[1]+Mag[2]!=0) {
 		mx = (float)Mag[0];
-		mx = mx*mRes*magCalibration[0] - magBias[0];  						// Get actual magnetometer value, this depends on scale being set
+		mx = mx*mRes*magCalibration[0] - magBias[0];  								// Get actual magnetometer value, this depends on scale being set
 		my = (float)Mag[1];
 		my = my*mRes*magCalibration[1] - magBias[1];  
 		mz = (float)Mag[2];
@@ -1022,7 +1031,6 @@ void readMagTest(float *xyz){														// Read Calibrated Magnetometer (mGau
 		xyz[1]=0;
 		xyz[2]=0;
 	 }
-		 
 }
 
 

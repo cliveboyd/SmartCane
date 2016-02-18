@@ -9,6 +9,10 @@ void AT45_flashwrite(int x,int y);
 
 void AT45_flashread(int x, int y);
 
+int AT45_FAT_read(char* data, int page);
+
+int AT45_FAT_write(char* data, int page);
+
 void AT45_sramwrite(int x, int y, int z);
 
 void AT45_deselect (void);

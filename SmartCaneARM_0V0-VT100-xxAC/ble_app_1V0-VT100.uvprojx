@@ -716,7 +716,7 @@
           <targetInfo name="ble_app_temp"/>
         </targetInfos>
       </component>
-      <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware">
+      <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Software" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Software">
         <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
         <targetInfos>
           <targetInfo name="ble_app_temp"/>
@@ -1002,14 +1002,6 @@
           <targetInfo name="ble_app_temp"/>
         </targetInfos>
       </file>
-      <file attr="config" category="source" name="twi_master\twi_hw_master.c" version="2.0.0">
-        <instance index="0">RTE\nRF_Drivers\nRF51822_xxAC\twi_hw_master.c</instance>
-        <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware"/>
-        <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
-        <targetInfos>
-          <targetInfo name="ble_app_temp"/>
-        </targetInfos>
-      </file>
       <file attr="config" category="header" name="twi_master\twi_master.h" version="2.0.0">
         <instance index="0">RTE\nRF_Drivers\nRF51822_xxAC\twi_master.h</instance>
         <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware"/>
@@ -1021,6 +1013,14 @@
       <file attr="config" category="header" name="twi_master\config\twi_master_config.h" version="2.0.0">
         <instance index="0">RTE\nRF_Drivers\nRF51822_xxAC\twi_master_config.h</instance>
         <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Hardware" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Hardware"/>
+        <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
+        <targetInfos>
+          <targetInfo name="ble_app_temp"/>
+        </targetInfos>
+      </file>
+      <file attr="config" category="source" name="twi_master\twi_sw_master.c" version="2.0.0">
+        <instance index="0">RTE\nRF_Drivers\nRF51822_xxAC\twi_sw_master.c</instance>
+        <component Cclass="nRF_Drivers" Cgroup="twi_master" Cvariant="Software" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="twi_master_Software"/>
         <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
         <targetInfos>
           <targetInfo name="ble_app_temp"/>
