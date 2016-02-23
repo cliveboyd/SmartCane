@@ -254,12 +254,15 @@ int16_t gyroCount[3];   											// Stores the 16-bit signed gyro sensor outpu
 int16_t magCount[3];    											// Stores the 16-bit signed magnetometer sensor output
 
 float magCalibration[3] = {0, 0, 0};								// Factory mag calibration and mag bias
-float gyroBias[3]	= {0, 0, 0}	;									// Bias corrections for gyro 
+float gyroBias[3]	= {0, 0, 0};									// Bias corrections for gyro 
 float accelBias[3]	= {0, 0, 0};									// Bias corrections for accelerometer
 float magBias[3]	= {0, 0, 0};									// Bias corrections for magnetometer
+
 float magScale[3]	= {0, 0, 0};
+
 int16_t tempCount;            										// Temperature raw count output
 float temperature;													// Stores the MPU9250 gyro internal chip temperature in degrees Celsius
+
 float SelfTest[6];													// holds results of gyro and accelerometer self test
 
 //	Global constants for 9 DoF fusion and AHRS (Attitude and Heading Reference System)
@@ -281,7 +284,7 @@ float zeta = 0;				   										// compute zeta, ---> zeta = sqrt(3.0f / 4.0f) *
 #define Kp 2.0f * 5.0f 												// these are the free parameters in the Mahony filter and fusion scheme, Kp for proportional feedback, Ki for integral
 #define Ki 0.0f
 
-float deltat = 0.200; 			         							// integration interval for both filter schemes --> main.sysTimerHandler 100msec
+float deltat = 0.100; 			         							// integration interval for both filter schemes --> main.sysTimerHandler 100msec
 
 float ax, ay, az, gx, gy, gz, mx, my, mz; 							// variables to hold latest sensor data values 
 
@@ -554,21 +557,28 @@ uint8_t MPU9250_WhoAmI() {
 }
 
 void readAccelData(int16_t * destination) {
-  uint8_t rawData[6];  														// xyz accel register data stored here
-  MPU9250_readBytes(MPU9250_ADDRESS, ACCEL_XOUT_H, 6, &rawData[0]);			// Read the six raw data registers into data array
-  destination[0] = ((int16_t)rawData[0] << 8) | rawData[1] ;				// Turn the MSB and LSB into a signed 16-bit value
-  destination[1] = ((int16_t)rawData[2] << 8) | rawData[3] ;  
-  destination[2] = ((int16_t)rawData[4] << 8) | rawData[5] ; 
-MPU9250_readBytes(MPU9250_ADDRESS, ACCEL_XOUT_H, 6, &rawData[0]);			// Read the six raw data registers into data array
-  destination[0] = ((int16_t)rawData[0] << 8) | rawData[1] ;				// Turn the MSB and LSB into a signed 16-bit value
-  destination[1] = ((int16_t)rawData[2] << 8) | rawData[3] ;  
-  destination[2] = ((int16_t)rawData[4] << 8) | rawData[5] ; 
+	uint8_t rawData[6];  													// xyz accel register data stored here
+	
+	MPU9250_readBytes(MPU9250_ADDRESS, ACCEL_XOUT_H, 6, &rawData[0]);		// Read the six raw data registers into data array
+	destination[0] = ((int16_t)rawData[0] << 8) | rawData[1] ;				// Turn the MSB and LSB into a signed 16-bit value
+	destination[1] = ((int16_t)rawData[2] << 8) | rawData[3] ;  
+	destination[2] = ((int16_t)rawData[4] << 8) | rawData[5] ; 
+	
+	MPU9250_readBytes(MPU9250_ADDRESS, ACCEL_XOUT_H, 6, &rawData[0]);		// Read Again the six raw data registers into data array
+	destination[0] = ((int16_t)rawData[0] << 8) | rawData[1] ;				// Turn the MSB and LSB into a signed 16-bit value
+	destination[1] = ((int16_t)rawData[2] << 8) | rawData[3] ;  
+	destination[2] = ((int16_t)rawData[4] << 8) | rawData[5] ; 
 }
 
 void readGyroData(int16_t * destination) {
 	uint8_t rawData[6];  													// xyz gyro register data stored here
-	MPU9250_readBytes(MPU9250_ADDRESS, GYRO_XOUT_H, 6, &rawData[0]);		// Read the six raw data registers sequentially into data array
 
+	MPU9250_readBytes(MPU9250_ADDRESS, GYRO_XOUT_H, 6, &rawData[0]);		// Read the six raw data registers sequentially into data array
+	destination[0] = ((int16_t)rawData[0] << 8) | rawData[1] ;				// Turn the MSB and LSB into a signed 16-bit value
+	destination[1] = ((int16_t)rawData[2] << 8) | rawData[3] ;  
+	destination[2] = ((int16_t)rawData[4] << 8) | rawData[5] ; 
+	
+	MPU9250_readBytes(MPU9250_ADDRESS, GYRO_XOUT_H, 6, &rawData[0]);		// Read again the six raw data registers sequentially into data array
 	destination[0] = ((int16_t)rawData[0] << 8) | rawData[1] ;				// Turn the MSB and LSB into a signed 16-bit value
 	destination[1] = ((int16_t)rawData[2] << 8) | rawData[3] ;  
 	destination[2] = ((int16_t)rawData[4] << 8) | rawData[5] ; 
@@ -576,21 +586,16 @@ void readGyroData(int16_t * destination) {
 
 void readMagData(int16_t * destination) {
 
-	uint8_t rawData[7];								// xyz gyro register data + ST2 register stored here, must read ST2 at end of data acquisition
+	uint8_t rawData[7];														// xyz register data + ST2 register stored here, must read ST2 at end of data acquisition
 	
 	destination[0] = 0;
 	destination[1] = 0;
 	destination[2] = 0;
 	
-	if(MPU9250_readByte(AK8963_ADDRESS, AK8963_ST1) & 0x01) { 				// wait for magnetometer data ready bit to be set, Bypass if not ready
-		
-		delay_msec(10);
-		
+	if(MPU9250_readByte(AK8963_ADDRESS, AK8963_ST1) & 0x01) { 				// Wait for magnetometer data ready bit to be set, Bypass if not ready
+			
+		uint8_t c = rawData[6]; 
 		MPU9250_readBytes(AK8963_ADDRESS, AK8963_XOUT_L, 7, &rawData[0]);  	// Read the six raw data and ST2 registers sequentially into data array
-		
-//		MPU9250_readBytes(AK8963_ADDRESS, AK8963_ST2, 1, &rawData[6]);		// End data read by reading ST2 register
-		
-		uint8_t c = rawData[6]; 											
 		
 		if(!(c & 0x08)) { 													// Check if magnetic sensor overflow set, if not then continue
 			if(!(c & 0x04)) {												// Check if magnetic sensor read error,   if not then load mag data
@@ -599,6 +604,29 @@ void readMagData(int16_t * destination) {
 				destination[2] = ((int16_t) rawData[5] << 8) | rawData[4]; 				
 			}
 		}
+		
+//		Try Again
+		delay_msec(10);
+		MPU9250_readBytes(AK8963_ADDRESS, AK8963_XOUT_L, 7, &rawData[0]);  	// Read the six raw data and ST2 registers sequentially into data array
+		if(!(c & 0x08)) { 													// Check if magnetic sensor overflow set, if not then continue
+			if(!(c & 0x04)) {												// Check if magnetic sensor read error,   if not then load mag data
+				destination[0] = ((int16_t) rawData[1] << 8) | rawData[0];	// Turn the MSB and LSB into a signed 16-bit value & stored as little Endian
+				destination[1] = ((int16_t) rawData[3] << 8) | rawData[2];
+				destination[2] = ((int16_t) rawData[5] << 8) | rawData[4]; 				
+			}
+		}
+		
+//		Try Again and exit
+		delay_msec(10);
+		MPU9250_readBytes(AK8963_ADDRESS, AK8963_XOUT_L, 7, &rawData[0]);  	// Read the six raw data and ST2 registers sequentially into data array
+		if(!(c & 0x08)) { 													// Check if magnetic sensor overflow set, if not then continue
+			if(!(c & 0x04)) {												// Check if magnetic sensor read error,   if not then load mag data
+				destination[0] = ((int16_t) rawData[1] << 8) | rawData[0];	// Turn the MSB and LSB into a signed 16-bit value & stored as little Endian
+				destination[1] = ((int16_t) rawData[3] << 8) | rawData[2];
+				destination[2] = ((int16_t) rawData[5] << 8) | rawData[4]; 				
+			}
+		}
+		
 	}
 }
 
@@ -975,15 +1003,12 @@ void MPU9250SelfTest(float * destination) {									/*	Should return percent dev
 void readAccelFloatMG(float *xyz) { 												// in milli g
 	int16_t Acc[3];
 	readAccelData(Acc);
-	getAres();
 	for(int i=0;i<3;i++) xyz[i] = aRes*Acc[i];
 }
 
-void readGyroFloatDeg(float *xyz) {					  								// in degree
-	
+void readGyroFloatDeg(float *xyz) {					  								// degree/sec
 	int16_t Gyro[3];
 	readGyroData(Gyro);
-	getGres();
 	for(int i=0;i<3;i++) xyz[i] = gRes*Gyro[i];
 }
 
