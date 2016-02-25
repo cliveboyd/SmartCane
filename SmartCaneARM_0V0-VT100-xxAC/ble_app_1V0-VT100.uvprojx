@@ -710,7 +710,7 @@
           <targetInfo name="ble_app_temp"/>
         </targetInfos>
       </component>
-      <component Cclass="nRF_Drivers" Cgroup="spi_slave" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="spi_slave">
+      <component Cclass="nRF_Drivers" Cgroup="spi_master" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="spi_master">
         <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
         <targetInfos>
           <targetInfo name="ble_app_temp"/>
@@ -986,17 +986,17 @@
           <targetInfo name="ble_app_temp"/>
         </targetInfos>
       </file>
-      <file attr="config" category="source" name="spi_slave\spi_slave.c" version="2.0.0">
-        <instance index="0">RTE\nRF_Drivers\nRF51822_xxAC\spi_slave.c</instance>
-        <component Cclass="nRF_Drivers" Cgroup="spi_slave" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="spi_slave"/>
+      <file attr="config" category="source" name="spi_master\spi_master.c" version="2.0.0">
+        <instance index="0">RTE\nRF_Drivers\nRF51822_xxAC\spi_master.c</instance>
+        <component Cclass="nRF_Drivers" Cgroup="spi_master" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="spi_master"/>
         <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
         <targetInfos>
           <targetInfo name="ble_app_temp"/>
         </targetInfos>
       </file>
-      <file attr="config" category="header" name="spi_slave\spi_slave.h" version="2.0.0">
-        <instance index="0">RTE\nRF_Drivers\nRF51822_xxAC\spi_slave.h</instance>
-        <component Cclass="nRF_Drivers" Cgroup="spi_slave" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="spi_slave"/>
+      <file attr="config" category="header" name="spi_master\spi_master.h" version="2.0.0">
+        <instance index="0">RTE\nRF_Drivers\nRF51822_xxAC\spi_master.h</instance>
+        <component Cclass="nRF_Drivers" Cgroup="spi_master" Cvendor="NordicSemiconductor" Cversion="2.0.0" condition="spi_master"/>
         <package name="nRF_Drivers" schemaVersion="1.2" supportContact="http://www.nordicsemi.com/About-us/Contact-us" url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" version="2.0.0"/>
         <targetInfos>
           <targetInfo name="ble_app_temp"/>

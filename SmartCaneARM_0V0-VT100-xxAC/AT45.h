@@ -23,15 +23,11 @@ void AT45_busy(void);
 
 int AT45_status(void);
 
-int spi_bcm_write (int x);
-
 void AT45_sendaddr (int x);
 
 int AT45_getpaddr (int x);							// Page   Address
 
 int AT45_getbaddr (int x);							// Buffer Address
-
-int AT45_init(void);
 
 int AT45_memread(int x);
 
@@ -47,8 +43,6 @@ int AT45_initialize(void);
 
 void AT45DB161E_init(void);
 
-void AT45_Congigure_IO_Pins(void);
 
-int BCM_Out_Low(void);
 
-int BCM_Out_High(void);
+

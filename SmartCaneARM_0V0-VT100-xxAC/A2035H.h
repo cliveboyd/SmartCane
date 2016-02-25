@@ -28,6 +28,30 @@ THE SOFTWARE.
 
  */
  
+ 
+ /*
+ MANUFACTURERS NOTES... Clarification from Ambigueous and Flakey Application Note
+ 
+ GSD4e-Host-Platform-Interfaces-Application-Note-CS-211776-AN-3.pdf
+ 
+ In general the A2035 supports SSPI (Slave SPI).
+ The A2035-H is an SPI SLAVE (The HOST is the MASTER)
+- Your µP (the host) is the master.
+- The Host SPI_CLK (is an output)
+- The Host SPI_CS (is an output)
+
+
+SPI-CS  on the A2035 ..	Pin 8,	input,	1V8 (3V3 tolerant)
+SPI-TX  on the A2035 ..	Pin 20,	output,	3V3
+SPI-RX  on the A2035 ..	Pin 21,	Input,	1V8 (3V3 tolerant)
+SPI-CLK on the A2035 ..	Pin 7,	Input,	1V8 (3V3 tolerant)
+
+Leave the A2305H nRST open (triState) upon Power UP NOT pulled high to 3V3 or 1V8.
+Leave the A2305H nCS  open (triState) upon Power UP NOT pulled high to 3V3 or 1V8.
+ 
+ */
+ 
+ 
 /******************************************************************************/
 /* Include Files                                                              */
 /******************************************************************************/
@@ -59,20 +83,18 @@ void A2035H_Init_IO(void);
 /* Reset the A2035H. */
 void A2035H_Reset(void);
 
-
 /* Writes a 16bit value to the A2035. */
-void A2035H_SetRegisterValue(unsigned short regValue);
+void A2035H_SPI_WriteReg(unsigned short regValue);
 
-/* Read a 8bit value from the A2035. */
-char A2035H_SPI_ReadBytes(void);
+
+/* Read a single 8bit value from the A2035. */
+char A2035H_SPI_ReadByte(void);
 
 /* Read a A Packet of characters from the A2035. */
 void A2035H_SPI_ReadPacket(int *RxPacket, int ByteCount);
 
 /* Scheduled Read of A2035 GPS SPI - Load 32 byte packet and send on to NEMA parser*/
 void A2035H_Sheduled_SPI_Read(void);
-
-uint32_t spi_slave_example_init(void);
 
 void A2035H_Toggle_ONOFF(void);
 
@@ -84,8 +106,6 @@ void A2035H_POWER_OFF(void);
 
 void A2035H_POWER_ON(void);
 
-void init_A2035H_UART(void);
+void A2035H_tristate_SPI_Bus_Pins(void);			// Also tristates A2035 NRST Reset ---. re manufacture suggestion upon 3V3GPS power-up
 
-void A2035H_disable_SPI_Bus_Pins(void);
-
-
+void A2035H_Configure_Non_SPI_IOPins(void);

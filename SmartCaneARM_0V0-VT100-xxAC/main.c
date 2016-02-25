@@ -128,6 +128,7 @@ THE SOFTWARE.
 #include <stdint.h>  					// for uint32_t etc.
 #include <stdio.h>
 #include <math.h>
+#include "main.h"
 
 #include "app_uart.h"
 #include "app_error.h"
@@ -172,6 +173,7 @@ THE SOFTWARE.
 
 #include "AT45.h"						// SPI Serial Flash AT45DB161E 16Mbit
 
+
 //#include "MPU_9150.h"  				// I2C Inertial Sensor 9-Axis Gyro Accel Magnetis + Temperature
 //#include "inv_mpu.h"					// Inertial Sensor Drivers
 #include "MPU_9250.h"  					// I2C Inertial Sensor 9-Axis Gyro Accel Magnetis + Temperature (EXTRACT FROM ADRINO SAMPLE CODE INCLUDES  AUX PRESS SENDSOR)
@@ -183,7 +185,7 @@ THE SOFTWARE.
 #include "MPL3115.h"					// I2C Peripheral Pressure, Altitude and Temperature Sensor
 #include "ltc2943.h"					// I2C Gas Gauge Battery Monitor
 
-#include "Communication.h"				// I2C and Other Communications
+#include "Communication.h"				// TWI I2C and SPI Master0 and SPI Master1 definitions and Other Communications
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT  0                                          /**< Include or not the service_changed characteristic. */
 
@@ -315,8 +317,8 @@ uint16_t	SW_Count1;												// Counter to check for Push button SW1 Hold Time
 uint16_t	VibroCount=0;											// Down Counter for Vibro Strobe State Machine
 uint16_t	VibroOnOffDelay=0;										// An extra delay count within sysTimer
 
-uint16_t	CurrentNavTrack=0;
-uint16_t	CurrentWaypoint=0;
+uint16_t	CurrentNavTrack=1;
+uint16_t	CurrentWaypoint=1;
 
 uint16_t	ToDo=0;													// Dummy ToDo variable used to negate warning from unused unpopulated functions
 
@@ -404,9 +406,6 @@ typedef struct {													/* STRUCTURE of SFLASH Page for Waypoint Definition
 	double		waypoint_altitude[64];
 	double		waypoint_MagBearing[64];
 } SFLASH_WaypointInfo_t;
-
-
-
 
 static WaypointInfo_t			WPI;
 static WaypointTrackInfo_t		WPTI;
@@ -667,7 +666,7 @@ float Mag4(float A, float B, float C, float D) {					// Calculate Magnitude Over
 }
 
 void ad7746_on_write_config_callback (ble_AD7746_t *p_ad7746, 
-	CONFIG_bytes_t *p_config, uint8_t len) {						// Write bytes of config ble device AD7746 Capacior Sensor --> (Redirected to other sensors)
+	 CONFIG_bytes_t *p_config, uint8_t len) {						// Write bytes of config ble device AD7746 Capacior Sensor --> (Redirected to other sensors)
 		
 
 /*	This callback will be active upon write request by BLE softdevice to write config data to CONFIG_CHARacteristic*/		
@@ -781,14 +780,14 @@ static void button_event_handler(bsp_event_t event) {
 
 //			If BUTTONS LEFT --> Roll UP --> Through 0-7 Tracks.
 			if (testbit(&Process_7, 4)) {							// Buttons to LEFT at 90deg (Track Selection ---> Increment UP) 
-				CurrentNavTrack++;									// CurrentNavTrack Range from 0 to 7 (Eight (8) Tracks in Total)
-				if(CurrentNavTrack==8) CurrentNavTrack=0;
-				VibroCount=0x1F00 + 2*(CurrentNavTrack+1);			/*  Add in 0x1F00 to provide an initiation delay to allow multiple button pushes before start 
-																		Double for Odd-Even Count plus add in one to strobe Track=0 as 1 Pulse and Track=7 as 8 pulses 
-																		ToDo ---> Redifine Tracks from 1-8 to make haptics signalling easier */
-				
+				CurrentNavTrack++;									// CurrentNavTrack Range from 0 to 8 Tracks)
+				if(CurrentNavTrack==9) CurrentNavTrack=1;
+				VibroCount=0x1F00 + 2*(CurrentNavTrack);			/*  Add in 0x1F00 to provide an initiation delay to allow multiple button pushes before start 
+																		Double for Odd-Even Count plus add in one to strobe Track=1 as 1 Pulse and Track=8 as 8 pulses*/ 
+								
 																	// ToDo  Add in a PWM Speaker Tone
 																	// ToDo Store Current Config to NV SFLASH or Raise Flag to Schedule later
+				CurrentWaypoint=1;									// Reset CurrentWayPoint to Start
 				goto beh_Button0_exit;
 			}
 
@@ -842,14 +841,15 @@ beh_Button0_exit:
 
 //			If BUTTONS LEFT --> Roll DOWN --> Through 7-0 Tracks
 			if (testbit(&Process_7, 4)) {							// Buttons to LEFT at 90deg (Track Selection ---> Decrement DOWN) 
-				if (CurrentNavTrack==0) CurrentNavTrack=7;
-				else CurrentNavTrack--;								// CurrentNavTrack Range from 0 to 7 (Eight (8) Tracks in Total)
-				VibroCount=0x1F00 + 2*(CurrentNavTrack+1);			/*  Add in 0x1F00 to provide an initiation delay to allow multiple button pushes before start 
-																		Double for Odd-Even Count plus add in one to strobe Track=0 as 1 Pulse and Track=7 as 8 pulses 
-																		ToDo ---> Redifine Tracks from 1-8 to make haptics signalling easier */
+				if (CurrentNavTrack==1) CurrentNavTrack=8;
+				else CurrentNavTrack--;								// CurrentNavTrack Range from 1 to 8 Tracks)
+				VibroCount=0x1F00 + 2*(CurrentNavTrack);			/*  Add in 0x1F00 to provide an initiation delay to allow multiple button pushes before start 
+																		Double for Odd-Even Count plus add in one to strobe Track=1 as 1 Pulse and Track=8 as 8 pulses */
+																		
 
 																	// ToDo Add in a PWM Speaker tone ??
 																	// ToDo Store Current Config to NV SFLASH or Raise Flag to Schedule later
+				CurrentWaypoint=1;									// Reset CurrentWayPoint to Start
 				goto beh_Button1_exit;
 			}
 
@@ -1964,9 +1964,9 @@ static void UART_VT100_Refresh_Data_System() {						// $$$$$$ SYSTEM DIAGNOSTICS
 
 		printf("\x1B[21;47H IO = ");
 		int temp = Read32_ALL_IO();
-		Print_byte_to_binary(temp>>16);	
-		Print_byte_to_binary(temp>>8);											// Print out bits as a string
-		Print_byte_to_binary(temp);
+		Print_byte_as_binary(temp>>16);	
+		Print_byte_as_binary(temp>>8);											// Print out bits as a string
+		Print_byte_as_binary(temp);
 		
 		printf("\x1B[22;47H SP = 0x%X ", Read32_ASM_SP());				// Current Stack Position
 	}
@@ -2504,7 +2504,6 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 */
 
 
-
 	MPL3115A2_init();
 	if(MPL3115A2_WhoAmI()==0xC4) setbit(&Process_5, 2);				// Process_5.2 = Flag MPL3115 Pressure Sensor Present
 	
@@ -2520,22 +2519,21 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	ltc294x_get_charge_counter(&temp);
 
 
-//	Process_5.4	= Flag A2035 GPS Sensor Present
-//	initA2035H();													// Initialise the A2035H GPS Module ---> Configured for SPI
-//	setbit(&Process_6,0);											// init Flag to indicate A2035H 3V3GPS Power Asserted
-
+	initA2035H();													// Initialise the A2035H GPS Module ---> Configured for SPI
+	setbit(&Process_5, 4);											// Flag A2035 GPS Sensor Present
+	
 
 //	Process_5.5	= Flag SFlash Memory Present
 //	Test for SFLASH Presence by reading AT45 Device ID
-	nrf_gpio_cfg_output(04U);										// GPS RESET ASSERTED LOW ---> WARNING ---> 1V8 GPS Power is being generated via MISO 3V3 Line Blead ==> Assert 3V3GPS Power
-	NRF_GPIO->OUTCLR = (1UL << 04U);
+//	nrf_gpio_cfg_output(04U);										// GPS RESET ASSERTED LOW ---> WARNING ---> 1V8 GPS Power is being generated via MISO 3V3 Line Blead ==> Assert 3V3GPS Power
+//	NRF_GPIO->OUTCLR = (1UL << 04U);
 
-	nrf_gpio_cfg_output(10U);										// Assert GPS Power OFF while GPS Held in RESET 
-	NRF_GPIO->OUTCLR = (1UL << 10U);
+//	nrf_gpio_cfg_output(10U);										// Assert GPS Power OFF while GPS Held in RESET 
+//	NRF_GPIO->OUTCLR = (1UL << 10U);
 
-	AT45DB161E_init();												// Test SFLASH Device ID
-	int tempx=AT45_WhoAmI();
-	if (tempx==0x1f26) setbit(&Process_5, 5);
+//	AT45DB161E_init();												// Test SFLASH Device ID
+//	int tempx=AT45_WhoAmI();
+//	if (tempx==0x1f26) setbit(&Process_5, 5);
 	
 //	Process_5.6	= Flag EEPROM Present
 //	Test for Presence of 1WI EEPROM DS28E02 by reading Unique Regestration Number 
@@ -2550,7 +2548,7 @@ int32_t Read32_ALL_IO(void){
 }
 
 
-int Print_byte_to_binary(int x) {									// Function to generate a binary printf binary output function as a string
+int Print_byte_as_binary(int x) {									// Function to generate a binary printf binary output function as a string
     
 	static char bx[17];
     bx[0] = '\0';
@@ -2707,7 +2705,10 @@ unsigned int resumeSendData() {  									// Only called by on_ble_evt when BLE_
 //    }
 //} */
 
-void system_timer_handler(void * p_context) {				// Timer event to prime quaternion inertial filter 100msec rate + System Background Tasks
+
+/*	$$$$$ SYSTEM TIMER HANDLER $$$$$ 
+*/
+void system_timer_handler(void * p_context) {						// Timer event to prime quaternion inertial filter 100msec rate + System Background Tasks
 	
 /** @brief 		Function to service background timer interupt 
     @details 	This routine is designed provide real time delay functions and load inertial sensor MPU9250
@@ -2960,17 +2961,19 @@ VibroCount_Exit:
 			if (Count_VibroMotor ==0)nrf_gpio_pin_clear(MOTOR_PIN_NUMBER);
 		}
 
-
-		
 	
-//	A2035H_Sheduled_SPI_Read();													// A2035 GPS Read and Recursive Parser (Prototype Routine Under Construction)
-		
+	A2035H_Sheduled_SPI_Read();													// A2035 GPS Read and Recursive Parser (Prototype Routine Under Construction)
+	char test;
+	test = A2035H_SPI_ReadByte();		
+	test = A2035H_SPI_ReadByte();		
+	test = A2035H_SPI_ReadByte();		
+	test = A2035H_SPI_ReadByte();		
 		
 		
 //		Bluetooth Analog Variable Broadcast Options
 		readAccelFloatMG(Acc);			//[0]==Left=+ive    Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
-	//	readGyroFloatDeg(Acc);			//[0]==Pitch Up=+ive Down=-ive		[1]==Roll CW=+ive   ACW=-ive		[2]==Yaw Right=+ive  Left=-ive
-	//	readMagFloatUT(Acc);			//[0]==Front=+ive    Rear=-ive		[1]==Right=+ive     Left=-ive		[2]==Z Down=+ive     Z Up=-ive
+//		readGyroFloatDeg(Acc);			//[0]==Pitch Up=+ive Down=-ive		[1]==Roll CW=+ive   ACW=-ive		[2]==Yaw Right=+ive  Left=-ive
+//		readMagFloatUT(Acc);			//[0]==Front=+ive    Rear=-ive		[1]==Right=+ive     Left=-ive		[2]==Z Down=+ive     Z Up=-ive
 				
 		err_code = ble_AD7746_send_temp_notify(&m_AD7746, Acc[2]);				// Currently ASSIGNED TO transmit z-Gravity Gyro Yaw to ble pipe when ble connected
 		
@@ -3819,12 +3822,12 @@ void init_WayPointData(void){
 	If SFLASH not initialised with first life config then FirstLife Config will be performed.
 	A default FirstLife Track to Melbourne CBD will be loaded. 	*/
 
-	nrf_gpio_cfg_output(04U);										// GPS RESET ASSERTED LOW ---> WARNING ---> 1V8 GPS Power is being generated via MISO 3V3 Line Blead ==> Assert 3V3GPS Power
-	NRF_GPIO->OUTCLR = (1UL << 04U);
-	nrf_gpio_cfg_output(10U);										// Assert GPS Power OFF while GPS Held in RESET 
-	NRF_GPIO->OUTCLR = (1UL << 10U);
+//	nrf_gpio_cfg_output(04U);										// GPS RESET ASSERTED LOW ---> WARNING ---> 1V8 GPS Power is being generated via MISO 3V3 Line Blead ==> Assert 3V3GPS Power
+//	NRF_GPIO->OUTCLR = (1UL << 04U);
+//	nrf_gpio_cfg_output(10U);										// Assert GPS Power OFF while GPS Held in RESET 
+//	NRF_GPIO->OUTCLR = (1UL << 10U);
 
-	AT45DB161E_init();												// Re Initialsie the At45DB161 SFLASH IO Pins
+//	AT45DB161E_init();												// Re Initialsie the At45DB161 SFLASH IO Pins
 
 	
 	
@@ -3992,6 +3995,7 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 			break;
 			
 		case 6:														// Spare
+			
 			break;
 		
 		case 18:													// To Be Assigned

@@ -24,9 +24,45 @@ THE SOFTWARE.
 #define _COMMUNICATION_H_
 
 
+
+/******************************************************************************/
+/* Include Files                                                              */
+/******************************************************************************/
+#include <stdint.h>  // for uint32_t etc.
+#include <stdbool.h>
+#include "spi_master.h"
+
+#ifndef u8
+typedef				uint8_t     u8;
+typedef 			uint16_t    u16;
+typedef 			uint32_t    u32;
+typedef				uint64_t    u64;
+
+typedef volatile	u8			vu8;
+typedef volatile	u32			vu32;
+typedef volatile	u64			vu64;
+#endif
+
 /******************************************************************************/
 /* Functions Prototypes                                                       */
 /******************************************************************************/
+
+/* Initializes the I2C communication peripheral. */
+char SPI_write(	const spi_master_hw_instance_t	spi_master_hw_instance,
+						uint8_t * const					p_tx_data,
+						uint8_t * const					p_rx_data,
+						const uint16_t					len);
+
+char AT45_spi_write(uint8_t Byte);
+						
+uint16_t AT45_SPIM0_write_16b(unsigned short regValue);
+
+uint16_t A2035H_SPIM0_Write_16b(unsigned short regValue);
+						
+unsigned char SPI_Init(void);
+
+
+						
 
 /* Initializes the I2C communication peripheral. */
 unsigned char I2C_Init(void);

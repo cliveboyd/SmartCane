@@ -76,10 +76,6 @@
 #endif // SPI_MASTER_1_ENABLE
 
 
-#define SPIFREQ_TO_USE SPI_FREQUENCY_FREQUENCY_M1
-#define SPICPOL_TO_USE SPI_CONFIG_CPOL_ActiveLow
-#define SPICPHA_TO_USE SPI_CONFIG_CPHA_Leading
-
 
 #define TX_RX_MSG_LENGTH         3
 static uint8_t m_rx_data_spi[TX_RX_MSG_LENGTH]; /**< SPI master RX buffer. */
@@ -136,9 +132,9 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
     }
 	// bit order
     spi_config.SPI_CONFIG_ORDER = (lsb ? SPI_CONFIG_ORDER_LsbFirst : SPI_CONFIG_ORDER_MsbFirst);
-	spi_config.SPI_Freq = SPIFREQ_TO_USE;
-	spi_config.SPI_CONFIG_CPHA = SPICPHA_TO_USE;
-	spi_config.SPI_CONFIG_CPOL = SPICPOL_TO_USE;
+////////	spi_config.SPI_Freq = SPIFREQ_TO_USE;
+////////	spi_config.SPI_CONFIG_CPHA = SPICPHA_TO_USE;
+////////	spi_config.SPI_CONFIG_CPOL = SPICPOL_TO_USE;
 	spi_config.SPI_PriorityIRQ = APP_IRQ_PRIORITY_HIGH;
 	
     err_code = spi_master_open(spi_master_instance, &spi_config);

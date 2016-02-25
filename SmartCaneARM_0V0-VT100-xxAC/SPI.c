@@ -39,42 +39,188 @@
   
  */
  
+#include <AT45.h>
+
 #include <stdbool.h> 
 #include <stdint.h>
 #include <stdio.h>
-#include "AT45.h"
 
 #include "nrf_gpio.h"
 #include "app_error.h"
 #include "app_util_platform.h"
-#include "nrf_delay.h"
-#include "Communication.h"				// includes I2C and SPI master definitions
 #include "spi_master.h"
+#include "nrf_delay.h"
+
+#include "A2035H.h"																// Include to allow access to A2035H_RESET_ON();
+#include "global.h"
 
 
-#define SPI_BCM_SCK_PIN       (19U)     										//	AT45DB161E SFLASH BIT CRUNCH MASTER SCLK  
-#define SPI_BCM_MISO_PIN      (20U)     										//	AT45DB161E SFLASH BIT CRUNCH MASTER MOSI
-#define SPI_BCM_MOSI_PIN      (17U)     										//	AT45DB161E SFLASH BIT CRUNCH MASTER MISO
-#define SPI_BCM_SS_PIN        (18U)  											//	AT45DB161E SFLASH BIT CRUNCH MASTER nCS
+#define SPI_SCK_PIN       (19U)     										//	AT45DB161E SFLASH BIT CRUNCH MASTER SCLK  
+#define SPI_MISO_PIN      (20U)     										//	AT45DB161E SFLASH BIT CRUNCH MASTER MOSI
+#define SPI_MOSI_PIN      (17U)     										//	AT45DB161E SFLASH BIT CRUNCH MASTER MISO
+#define SPI_SS_PIN        (18U)  											//	AT45DB161E SFLASH BIT CRUNCH MASTER nCS
 
 
-//	WARNING...	A2035H GPS Module needs to be in Reset State during operation of AT45DB161E SFLASH
+//	WARNING...	A2035H GPS Module needs to be in Reset State during operation of At45DB161E SFLASH
 
-#define AT45_NCS_HIGH		NRF_GPIO->OUTSET = (1UL << SPI_BCM_SS_PIN)			// Macro to Assert   AT45DB161 NCS HIGH (OFF)
-#define AT45_NCS_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_BCM_SS_PIN)			// Macro to Deassert AT45DB161 NCS LOW  (ON)
+#define AT45DB_NCS_HIGH		NRF_GPIO->OUTSET = (1UL << SPI_SS_PIN)			// Macro to Assert   AT45DB161 NCS HIGH (OFF)
+#define AT45DB_NCS_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_SS_PIN)			// Macro to Deassert AT45DB161 NCS LOW  (ON)
 
-#define AT45_SCLK_HIGH		NRF_GPIO->OUTSET = (1UL << SPI_BCM_SCK_PIN)			// Macro to Deassert AT45DB161 SCLK HIGH
-#define AT45_SCLK_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_BCM_SCK_PIN)			// Macro to Deassert AT45DB161 NCS LOW
+#define AT45DB_SCLK_HIGH	NRF_GPIO->OUTSET = (1UL << SPI_SCK_PIN)			// Macro to Deassert AT45DB161 SCLK HIGH
+#define AT45DB_SCLK_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_SCK_PIN)			// Macro to Deassert AT45DB161 NCS LOW
 
-#define AT45_MOSI_HIGH		NRF_GPIO->OUTSET = (1UL << SPI_BCM_MOSI_PIN)		// Macro to Deassert AT45DB161 MOSI PIN HIGH
-#define AT45_MOSI_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_BCM_MOSI_PIN)		// Macro to Deassert AT45DB161 MOSI PIN LOW
+#define AT45DB_MOSI_HIGH	NRF_GPIO->OUTSET = (1UL << SPI_MOSI_PIN)		// Macro to Deassert AT45DB161 MOSI PIN HIGH
+#define AT45DB_MOSI_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_MOSI_PIN)		// Macro to Deassert AT45DB161 MOSI PIN LOW
 
-#define AT45_MISO_READ() 	((NRF_GPIO->IN >> SPI_BCM_MISO_PIN) & 0x1UL)		//  Reads current state of MISO Pin 
+#define AT45_MISO_READ() 	((NRF_GPIO->IN >> SPI_MISO_PIN) & 0x1UL)		//  Reads current state of MISO Pin 
+
+#define AT45_CS_PIN			(18U)
+#define A2035H_NCS			(15U)
 
 
-#define TX_RX_MSG_LENGTH	3
+#define SPI_TO_USE SPI_MASTER_0
 
-static uint8_t AT45_spi_RxData[TX_RX_MSG_LENGTH];					/**< AT45 SPI RX buffer. */
+#ifdef SPI_MASTER_0_ENABLE						// MASTER SPI-0 ===> AT45
+#define SPIM0_SCK_PIN       (19U)     			/**< SPI clock GPIO pin number. */
+#define SPIM0_MOSI_PIN      (17U)     			/**< SPI Master Out Slave In GPIO pin number. */
+#define SPIM0_MISO_PIN      (20U)    			/**< SPI Master In Slave Out GPIO pin number. */
+#define SPIM0_SS_PIN        (18U)		     	/**< AT45 SPI CS Select GPIO pin number. */
+#endif // SPI_MASTER_0_ENABLE
+
+#ifdef SPI_MASTER_1_ENABLE						// MASTER SPI-1 ===> A2035H
+#define SPIM1_SCK_PIN       (19U)     			/**< SPI clock GPIO pin number. */
+#define SPIM1_MOSI_PIN      (17U)     			/**< SPI Master Out Slave In GPIO pin number. */
+#define SPIM1_MISO_PIN      (20U)     			/**< SPI Master In Slave Out GPIO pin number. */
+#define SPIM1_SS_PIN        (15U)  				// A2035H SPI CS Pin Number   (NOTE: SPI Needs to be floating during powerup to configure SPI Mode Initialise A2035H FIRST) 
+#endif // SPI_MASTER_1_ENABLE
+
+
+#define SPIFREQ_TO_USE SPI_FREQUENCY_FREQUENCY_M1
+#define SPICPOL_TO_USE SPI_CONFIG_CPOL_ActiveLow
+#define SPICPHA_TO_USE SPI_CONFIG_CPHA_Leading
+
+
+#define TX_RX_MSG_LENGTH         16
+static uint8_t m_rx_data_spi[TX_RX_MSG_LENGTH];					/**< SPI master RX buffer. */
+static volatile bool m_transfer_completed = true;
+
+
+#define SPI_DUMMY_BYTE   0xCC
+ 
+#define CS_HIGH     NRF_GPIO->OUTSET = (1UL << AT45_CS_PIN)
+#define CS_LOW      NRF_GPIO->OUTCLR = (1UL << AT45_CS_PIN)
+ 
+
+/**@brief Function for initializing a SPI master driver.
+ *
+ * @param[in] spi_master_instance       An instance of SPI master module.
+ * @param[in] spi_master_event_handler  An event handler for SPI master events.
+ * @param[in] lsb                       Bits order LSB if true, MSB if false.
+ */
+static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
+                            spi_master_event_handler_t spi_master_event_handler,
+                            const bool                 lsb)
+{
+    uint32_t err_code = NRF_SUCCESS;
+
+    // Configure SPI master.
+    spi_master_config_t spi_config = SPI_MASTER_INIT_DEFAULT;
+
+    switch (spi_master_instance) {
+
+#ifdef SPI_MASTER_0_ENABLE
+		case SPI_MASTER_0:
+			{
+			spi_config.SPI_Pin_SCK  = SPIM0_SCK_PIN;
+			spi_config.SPI_Pin_MISO = SPIM0_MISO_PIN;
+			spi_config.SPI_Pin_MOSI = SPIM0_MOSI_PIN;
+			spi_config.SPI_Pin_SS   = SPIM0_SS_PIN;
+			}
+			break;
+#endif /* SPI_MASTER_0_ENABLE */
+
+#ifdef SPI_MASTER_1_ENABLE
+		case SPI_MASTER_1:
+			{
+			spi_config.SPI_Pin_SCK  = SPIM1_SCK_PIN;
+			spi_config.SPI_Pin_MISO = SPIM1_MISO_PIN;
+			spi_config.SPI_Pin_MOSI = SPIM1_MOSI_PIN;
+			spi_config.SPI_Pin_SS   = SPIM1_SS_PIN;
+			}
+			break;
+#endif 	/* SPI_MASTER_1_ENABLE */
+
+		default:
+			break;
+    }
+	
+	// bit order
+	spi_config.SPI_CONFIG_ORDER = (lsb ? SPI_CONFIG_ORDER_LsbFirst : SPI_CONFIG_ORDER_MsbFirst);
+	spi_config.SPI_Freq 		= SPIFREQ_TO_USE;
+	spi_config.SPI_CONFIG_CPHA	= SPICPHA_TO_USE;
+	spi_config.SPI_CONFIG_CPOL	= SPICPOL_TO_USE;
+	spi_config.SPI_PriorityIRQ	= APP_IRQ_PRIORITY_HIGH;
+
+	err_code = spi_master_open(spi_master_instance, &spi_config);
+
+	APP_ERROR_CHECK(err_code);
+
+//	Register event handler for SPI master. ---> Need to investigate
+//	spi_master_evt_handler_reg(spi_master_instance, spi_master_event_handler);			// ToDo Chase Up Event Handler
+}
+
+
+/***************************************************************************//**
+ * @brief Initializes the SPI communication peripheral and resets the part.
+ *
+ * @return 1.
+*******************************************************************************/
+unsigned char AT45_Init(void) {
+
+	NRF_GPIO->PIN_CNF[A2035H_NCS] =     							\
+		(GPIO_PIN_CNF_SENSE_Disabled	<< GPIO_PIN_CNF_SENSE_Pos)	\
+	  | (GPIO_PIN_CNF_DRIVE_H0D1		<< GPIO_PIN_CNF_DRIVE_Pos)	\
+	  | (GPIO_PIN_CNF_PULL_Pullup		<< GPIO_PIN_CNF_PULL_Pos)	\
+	  | (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	\
+	  | (GPIO_PIN_CNF_DIR_Output		<< GPIO_PIN_CNF_DIR_Pos);	
+		
+	NRF_GPIO->DIRSET = (1UL	<< A2035H_NCS);
+	NRF_GPIO->OUTSET = (1UL << A2035H_NCS); 									// Set A2035H CS HIGH
+
+//	Pull up this chip's CS pin as well Init AT45 SFLASH CS===>HIGH
+	NRF_GPIO->PIN_CNF[AT45_CS_PIN] =									\
+		(GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	\
+		| (GPIO_PIN_CNF_DRIVE_H0D1			<< GPIO_PIN_CNF_DRIVE_Pos)	\
+		| (GPIO_PIN_CNF_PULL_Pullup			<< GPIO_PIN_CNF_PULL_Pos)	\
+		| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	\
+		| (GPIO_PIN_CNF_DIR_Output			<< GPIO_PIN_CNF_DIR_Pos);
+	
+	NRF_GPIO->DIRSET = (1UL << AT45_CS_PIN);
+	NRF_GPIO->OUTSET = (1UL << AT45_CS_PIN); 									// Set AT45 CS HIGH
+
+	spi_master_init(SPI_TO_USE, NULL, false);  									// No handler, msb first
+
+    return (1);
+}
+
+/**@brief Function for sending and receiving data.
+ *
+ * @param[in]   spi_master_hw_instance  SPI master instance.
+ * @param[in]   p_tx_data               A pointer to a buffer TX.
+ * @param[out]  p_rx_data               A pointer to a buffer RX.
+ * @param[in]   len                     A length of the data buffers.
+ */
+static void SPI_Write(const spi_master_hw_instance_t spi_master_hw_instance,
+                      uint8_t * const	p_tx_data,
+                      uint8_t * const	p_rx_data,
+                      const uint16_t	len)
+{
+	// Start transfer.
+	uint32_t err_code = spi_master_send_recv(spi_master_hw_instance, p_tx_data, len, p_rx_data, len);
+	APP_ERROR_CHECK(err_code);
+}
+
+
 
 //=============================================================================
 // Public functions
@@ -91,45 +237,27 @@ bool deep_down = true;															// Variable for deep power down function (a
 bool deep_down_onoff = false;													// Variable for deep power down function (On/Off) 
  
 void AT45DB161E_init(void) {													// AT45DB161E == 16Mbit --> http://www.adestotech.com/wp-content/uploads/doc8782.pdf
-	AT45_initialize();
 	
-//	nrf_delay_us(100000);														// 100ms Delay required to return correct during initial read of WhoAmI Value!!!
+	A2035H_RESET_ON();
+	nrf_delay_us(250);
+	
+	AT45_init();																// Initialises SPI MASTER-0
+	
+//	A2035H_POWER_OFF();															// RESET ASSERTED and 3V3GPS Power Maintained Forced OFF
+//	nrf_delay_us(100000);
+
+//////	
+//////	AT45_Congigure_IO_Pins();												// ToDo Sort Out PIN Config at A2035H.c
+//////	
+//////	AT45_initialize();
+	
+//////	nrf_delay_us(100000);													// 100ms Delay required to return correct during initial read of WhoAmI Value!!!
 }
 
 char AT45_read_byte(int address) {												// Return byte from address	---> This function returns the char
 	return (AT45_memread( address ));
 }  
 
-/***************************************************************************//**
- * @brief Writes the value to a register.
- *
- * @param -  regValue - The value to write to the register.
- *
- * @return  None.    
-*******************************************************************************/
-void AT45_SPI_write(unsigned short regValue) {
-	unsigned char data[2] = {0x00, 0x00};
-	
-	data[0] = (unsigned char)((regValue & 0xFF00) >> 8);
-	data[1] = (unsigned char)((regValue & 0x00FF) >> 0);
-
-	AT45_NCS_LOW;
-	SPI_write(SPI_MASTER_0, data, AT45_spi_RxData ,2);
-	AT45_NCS_HIGH;
-}
-
-///////**@brief Function for sending and receiving data.  COPY... Primary Held at Communication.c
-////// *
-////// * @param[in]   spi_master_hw_instance  SPI master instance.
-////// * @param[in]   p_tx_data               A pointer to a buffer TX.
-////// * @param[out]  p_rx_data               A pointer to a buffer RX.
-////// * @param[in]   len                     A length of the data buffers.
-////// */
-//////static void SPI_Write(const spi_master_hw_instance_t spi_master_hw_instance,
-//////                      uint8_t * const	p_tx_data,
-//////                      uint8_t * const	p_rx_data,
-//////                      const uint16_t	len)
-//////{
 
 
 int AT45_read_page(char* data, int page) {
@@ -152,12 +280,12 @@ int AT45_read_page(char* data, int page) {
 	// This is done directly as we are reading back an entire buffer, and this can be done more optimally than using _sramread
 
 	AT45_select();
-	AT45_spi_write (0xd4);
-	AT45_sendaddr  (0x0);
-	AT45_spi_write (0x0);														// Don't care byte
+	spi_write(0xd4);
+	AT45_sendaddr (0x0);
+	spi_write (0x0);														// Don't care byte
 		
 	for(int i=0; i<pagesize ;i++) {
-		data[i] = AT45_spi_write (0x0);  
+		data[i] = spi_write (0x0);  
 	}
 	AT45_deselect();            
 	return (0);																	// Exit OK
@@ -189,19 +317,19 @@ int AT45_write_page(char* data, int page) {
 
 	AT45_select();
 
-	AT45_spi_write(0x84);														// Writing to buffer #1
+	spi_write(0x84);														// Writing to buffer #1
 
 	AT45_sendaddr (0);															// We are writing to the entire buffer
 
 	for(int i=0; i<pagesize ;i++) {
-		AT45_spi_write ((char) data[i]);  
+		spi_write ((char) data[i]);  
 	}
 
 	//   AT45_deselect();        
 	//   AT45_busy();																// Make sure the Flash isn't busy
 																				// Issue command to write buffer 1 to the appropraite flash page
 	AT45_select();  
-	AT45_spi_write (0x83);  														// SRAM Buffer 1 to SFLASH Main Memory (Pg Size = 512 byte)
+	spi_write (0x83);  														// SRAM Buffer 1 to SFLASH Main Memory (Pg Size = 512 byte)
 	AT45_sendaddr (AT45_getpaddr(address));										// Get Page Address
 	AT45_deselect();
 
@@ -242,12 +370,12 @@ int AT45_FAT_read(char* data, int page) {										// Read FAT --> File Allocati
 
 		// This is done directly as we are reading back an entire buffer, and this can be done more optimally as a Flash read rather then using _sramread
 		AT45_select();
-		AT45_spi_write (0xd4);
+		spi_write (0xd4);
 		AT45_sendaddr (0x00);
-		AT45_spi_write (0x00);													// Don't care byte
+		spi_write (0x00);													// Don't care byte
 
 		for(int i=0;i<256;i++) {
-			data[i] = AT45_spi_write (0x00);  
+			data[i] = spi_write (0x00);  
 		}
 		AT45_deselect();            
 		
@@ -257,12 +385,12 @@ int AT45_FAT_read(char* data, int page) {										// Read FAT --> File Allocati
 		// Now the second page is loaded, pull this out into the second half of the data buffer
 		// This is done directly as we are reading back an entire buffer, and this can be done more optimally than using _sramread
 		AT45_select();
-		AT45_spi_write (0xd4);
+		spi_write (0xd4);
 		AT45_sendaddr (0x00);
-		AT45_spi_write (0x00);													// Don't care byte
+		spi_write (0x00);													// Don't care byte
 		
 		for(int i=0;i<256;i++) {
-			data[256+i] = AT45_spi_write (0x0);  
+			data[256+i] = spi_write (0x0);  
 		}
 		AT45_deselect();                
 		return (0);
@@ -279,12 +407,12 @@ int AT45_FAT_read(char* data, int page) {										// Read FAT --> File Allocati
 		// Now the page has loaded, simply transfer it from the sram buffer to the data array
 		// This is done directly as we are reading back an entire buffer, and this can be done more optimally than using _sramread
 		AT45_select();
-		AT45_spi_write (0xd4);
+		spi_write (0xd4);
 		AT45_sendaddr (0x00);
-		AT45_spi_write (0x00);													// Don't care byte
+		spi_write (0x00);													// Don't care byte
 
 		for(int i=0;i<512;i++) {
-			data[i] = AT45_spi_write (0x00);  
+			data[i] = spi_write (0x00);  
 		}
 		AT45_deselect();            
 		return (0);
@@ -304,7 +432,7 @@ int AT45_FAT_read(char* data, int page) {										// Read FAT --> File Allocati
 		// This is done directly as we are reading back an entire buffer, and this can be done more optimally than using _sramread
 
 		AT45_select();
-		AT45_spi_write(0xd4);
+		spi_write(0xd4);
 
 		if (page %2) {															// Odd numbered block, read from adress 0x200
 			AT45_sendaddr (0x200);
@@ -313,10 +441,10 @@ int AT45_FAT_read(char* data, int page) {										// Read FAT --> File Allocati
 			AT45_sendaddr (0x00);
 		}
 
-		AT45_spi_write (0x00);   													// Don't care byte
+		spi_write (0x00);   													// Don't care byte
 
 		for(int i=0;i<512;i++) {
-			data[i] = AT45_spi_write (0x00);  
+			data[i] = spi_write (0x00);  
 		}
 		AT45_deselect();            
 		return (0);
@@ -333,11 +461,11 @@ int AT45_FAT_write(char* data, int page) {
 																				// Fill the first buffer with the first half of the block
 																				// Do this directly, for better performance
 		AT45_select();
-		AT45_spi_write(0x84);													// Writing to buffer #1
+		spi_write(0x84);													// Writing to buffer #1
 		AT45_sendaddr (0);														// We are writing to the entire buffer
 
 		for(int i=0;i<256;i++) {
-			AT45_spi_write (data[i]);  
+			spi_write (data[i]);  
 		}
 		AT45_deselect();        
 				
@@ -346,11 +474,11 @@ int AT45_FAT_write(char* data, int page) {
 																				// Fill the buffer with the second half of the block
 																				// Do this directly, for better performance
 		AT45_select();
-		AT45_spi_write(0x84);													// Writing to buffer #1
+		spi_write(0x84);													// Writing to buffer #1
 		AT45_sendaddr (0);														// We are writing to the entire buffer
 
 		for(int i=0;i<256;i++) {
-			AT45_spi_write (data[256+i]);  
+			spi_write (data[256+i]);  
 		}
 		AT45_deselect();        
 
@@ -363,11 +491,11 @@ int AT45_FAT_write(char* data, int page) {
 																				// Fill the first buffer with the block data
 																				// Do this directly, for better performance
 		AT45_select();
-		AT45_spi_write(0x84);													// Writing to buffer #1
+		spi_write(0x84);													// Writing to buffer #1
 		AT45_sendaddr (0);														// We are writing to the entire buffer
 
 		for(int i=0;i<512;i++) {
-			AT45_spi_write (data[i]);  
+			spi_write (data[i]);  
 		}
 
 		AT45_deselect();        
@@ -375,7 +503,7 @@ int AT45_FAT_write(char* data, int page) {
 				
 																				// Issue command to write buffer 1 to the appropraite flash page
 		AT45_select();  
-		AT45_spi_write (0x83);  
+		spi_write (0x83);  
 		AT45_sendaddr (AT45_getpaddr(page * 512));  
 		AT45_deselect();                
 	}
@@ -396,7 +524,7 @@ int AT45_FAT_write(char* data, int page) {
 																				// Overwrite the appropriate half
 																				// Do this directly, for better performance
 		AT45_select();	
-		AT45_spi_write(0x84);													// Writing to buffer #1
+		spi_write(0x84);													// Writing to buffer #1
 
 		if(page%2) {															// This is an odd block number, overwrite second half of buffer 
 			AT45_sendaddr (0x200); 												// We are writing to the entire buffer
@@ -406,7 +534,7 @@ int AT45_FAT_write(char* data, int page) {
 		}
 
 		for(int i=0;i<512;i++) {
-			AT45_spi_write (data[i]);  
+			spi_write (data[i]);  
 		}
 		AT45_deselect();        
 		
@@ -427,10 +555,10 @@ void AT45_chip_erase(void) { 													// Erase the entire chip
 
 	AT45_select();
 																				// Four (4) byte command sequence
-	AT45_spi_write(0xc7);
-	AT45_spi_write(0x94);
-	AT45_spi_write(0x80);
-	AT45_spi_write(0x9a);
+	spi_write(0xc7);
+	spi_write(0x94);
+	spi_write(0x80);
+	spi_write(0x9a);
 	AT45_deselect();  
 
 	AT45_busy();																// Make erase a blocking function
@@ -449,7 +577,7 @@ void AT45_(int block) {															// Erase one block
 				
 		AT45_busy();
 		AT45_select();
-		AT45_spi_write(0x50);
+		spi_write(0x50);
 		AT45_sendaddr (address);
 		AT45_deselect();
 		AT45_busy();   
@@ -473,7 +601,7 @@ void AT45_page_erase(int erase_page) {											// Erase one page  AT45DB161 --
 		
 		AT45_busy();
 		AT45_select();
-		AT45_spi_write(0x81);
+		spi_write(0x81);
 		AT45_sendaddr (address);
 		AT45_deselect();
 		AT45_busy();   
@@ -498,7 +626,7 @@ void AT45_sector_erase(int erase_sector) {										// Erase a Sector 0-15... On
 		
 		AT45_busy();
 		AT45_select();
-		AT45_spi_write(0x7c);													// Erase sector command
+		spi_write(0x7c);													// Erase sector command
 		AT45_sendaddr (address);
 		AT45_deselect();
 		AT45_busy();   
@@ -523,7 +651,7 @@ void AT45_block_erase(int erase_block) {										// Erase a Block... One block 
 		
 		AT45_busy();
 		AT45_select();
-		AT45_spi_write(0x50);													// Erase Block Command
+		spi_write(0x50);													// Erase Block Command
 		AT45_sendaddr (address);
 		AT45_deselect();
 		AT45_busy();   
@@ -550,10 +678,10 @@ void AT45_setpagesize_to_binary(void) {											// A one-time programmable con
 	AT45_busy();																// Make sure flash isn't already in busy.
 
 	AT45_select();																// Four (4) byte command sequence
-	AT45_spi_write(0x3d);
-	AT45_spi_write(0x2a);
-	AT45_spi_write(0x80);
-	AT45_spi_write(0xa6);
+	spi_write(0x3d);
+	spi_write(0x2a);
+	spi_write(0x80);
+	spi_write(0xa6);
 
 	AT45_deselect();  
 	AT45_busy();																// Make erase a blocking function   
@@ -567,9 +695,9 @@ int AT45DB161E_blocks (void) {													// Return the number of blocks in thi
 int AT45_WhoAmI(void) { 
 	int id = 0;
 	AT45_select();
-	AT45_spi_write(0x9f);														// cmd to read Manufactures id ==0x1f, Device id Byte 1 == 0x26h, device id byte 2 == 0x00
-	id = (AT45_spi_write(0x00) << 8);
-	id |= AT45_spi_write(0x00);
+	spi_write(0x9f);														// cmd to read Manufactures id ==0x1f, Device id Byte 1 == 0x26h, device id byte 2 == 0x00
+	id = (spi_write(0x00) << 8);
+	id |= spi_write(0x00);
 	AT45_deselect();
 	return id;
 }
@@ -577,9 +705,9 @@ int AT45_WhoAmI(void) {
 int AT45_id(void) { 															// Return id of the part == 0x1f26
 	int id = 0;
 	AT45_select();
-	AT45_spi_write(0x9f);														// cmd to read Manufactures id ==0x1f, Device id Byte 1 == 0x26h, device id byte 2 == 0x00
-	id = (AT45_spi_write(0x00) << 8);
-	id |= AT45_spi_write(0x00);
+	spi_write(0x9f);														// cmd to read Manufactures id ==0x1f, Device id Byte 1 == 0x26h, device id byte 2 == 0x00
+	id = (spi_write(0x00) << 8);
+	id |= spi_write(0x00);
 	AT45_deselect();
 	return id;
 }
@@ -593,8 +721,8 @@ int AT45_id(void) { 															// Return id of the part == 0x1f26
 int AT45_status(void) { 														// Return the Status  ready xx.7=1 busy xx.7=0
     int status = 0;
     AT45_select();
-	AT45_spi_write(0xd7);														// cmd to read status register
-    status = (AT45_spi_write(0x00));												// write out dummy and read back first(1st) byte of status
+	spi_write(0xd7);														// cmd to read status register
+    status = (spi_write(0x00));												// write out dummy and read back first(1st) byte of status
     AT45_deselect();            
     return status; 
 }
@@ -616,7 +744,7 @@ int AT45_test_pagesize_512(void) { 												// Test Page Size via status.0 (x
 void AT45_deep_power_down(bool deep_down_onoff) {								// Wake up from deep power down
 	if(deep_down_onoff == false) {				
 		AT45_select();
-		AT45_spi_write(0xab);
+		spi_write(0xab);
 		AT45_deselect();
 		deep_down = true;
 //		nrf_delay_us(35);														// Remember to wait 35us before reusing the device.          
@@ -625,7 +753,7 @@ void AT45_deep_power_down(bool deep_down_onoff) {								// Wake up from deep po
 	else if(deep_down_onoff == true) { 											// Go to deep power down
 		AT45_busy();
 		AT45_select();
-		AT45_spi_write(0xb9);
+		spi_write(0xb9);
 		AT45_deselect();
 		deep_down = false;
 	} 
@@ -712,12 +840,12 @@ int AT45_initialize(void) {
  
 void AT45_select(void) {
 //	AT45_ncs = 0;
-//	AT45DB_NCS_LOW;
+	AT45DB_NCS_LOW;
 }
 
 void AT45_deselect(void) {
 //	AT45_ncs = 1;
-//	AT45DB_NCS_HIGH;
+	AT45DB_NCS_HIGH;
 }
  
 void AT45_busy(void) {
@@ -742,9 +870,9 @@ void AT45_sramwrite(int buffer, int address, int data) {						// Write to an SRA
 	if (buffer == 1)	{cmd = 0x84;}											// SRAM Buffer#1 Write
 	else 				{cmd = 0x87;}											// SRAM Buffer#2 Write
 
-	AT45_spi_write(cmd);
+	spi_write(cmd);
 	AT45_sendaddr (baddr);
-	AT45_spi_write (data);  
+	spi_write (data);  
 
 	AT45_deselect();            
 }
@@ -764,10 +892,10 @@ int AT45_sramread(int buffer, int address) {									// Read from an SRAM buffer
 	if(buffer == 1)		{cmd = 0xd4;}											// SRAM Buffer#1 High Frequency Read 0xd4  -->  Buff#1 Alternative Low Frequency Read use 0xd1
 	else				{cmd = 0xd6;}											// SRAM Buffer#2 High Frequency Read 0xd6  -->  Buff#2 Alternative Low Frequency Read use 0xd3
 
-	AT45_spi_write(cmd);
+	spi_write(cmd);
 	AT45_sendaddr (baddr);	
-	AT45_spi_write (0x00);   													// Don't care byte
-	bufdata = AT45_spi_write (0x00);  
+	spi_write (0x00);   													// Don't care byte
+	bufdata = spi_write (0x00);  
 
 	AT45_deselect();            
 
@@ -787,7 +915,7 @@ void AT45_flashwrite (int buffer, int address) {								// Write and SRAM buffer
 	if (buffer == 1)	{cmd = 0x83;}											// Write SRAM Buffer#1 to Main Memory Page Program with Built-In Erase
 	else 		        {cmd = 0x86;}											// Write SRAM Buffer#2 to Main Memory Page Program with Built-In Erase
 	  
-	AT45_spi_write (cmd);  
+	spi_write (cmd);  
 	AT45_sendaddr (paddr);  
 	AT45_deselect();     
 
@@ -806,7 +934,7 @@ void AT45_flashread (int buffer, int address) {									// Read from Flash memor
 	if (buffer == 1)	{cmd = 0x53;}											// Main Memory Page to Buffer 1 Transfer
 	else 				{cmd = 0x55;}											// Main Memory Page to Buffer 2 Transfer
 
-	AT45_spi_write (cmd);  
+	spi_write (cmd);  
 	AT45_sendaddr (paddr);
 	AT45_deselect();            
 }
@@ -823,15 +951,15 @@ int AT45_memread (int address) {												// Read directly from main memory
 
 	AT45_select();
 
-	AT45_spi_write (0xd2);														// Direct main memory page read command
+	spi_write (0xd2);														// Direct main memory page read command
 	AT45_sendaddr (addr);
 
-	AT45_spi_write (0x00);														// 4 don't care bytes
-	AT45_spi_write (0x00);  
-	AT45_spi_write (0x00);  
-	AT45_spi_write (0x00);
+	spi_write (0x00);														// 4 don't care bytes
+	spi_write (0x00);  
+	spi_write (0x00);  
+	spi_write (0x00);
 
-	data = AT45_spi_write (0x00);  												// Clock the data
+	data = spi_write (0x00);  												// Clock the data
 
 	AT45_busy();   
 	AT45_deselect();            
@@ -862,8 +990,8 @@ int AT45_getbaddr(int address) {												// Get the Buffer Address
  
 	int baddr;
 
-	if      ((pagesize == 256)  || (pagesize == 264  ))	{baddr = address & 0xff;}
-	else if ((pagesize == 512)  || (pagesize == 528  ))	{baddr = address & 0x1ff;}
+	if ((pagesize == 256) || (pagesize == 264 ))		{baddr = address & 0xff;}
+	else if ((pagesize == 512) || (pagesize == 528 ))	{baddr = address & 0x1ff;}
 	else if ((pagesize == 1024) || (pagesize == 1056 ))	{baddr = address & 0x3ff;}
 	else {
 	baddr = -1;}
@@ -872,11 +1000,83 @@ int AT45_getbaddr(int address) {												// Get the Buffer Address
  
 // Sends the three lest significant bytes of the supplied address
 void AT45_sendaddr (int sendadd) {
-	AT45_spi_write(sendadd >> 16);
-	AT45_spi_write(sendadd >> 8);
-	AT45_spi_write(sendadd);      
+    
+	spi_write(sendadd >> 16);
+	spi_write(sendadd >> 8);
+	spi_write(sendadd);      
 }
 
+
+void AT45_disable_IO_Pins(void) {										// Disable the AT45 nCS SLCK MISO MOSI Lines
+	
+	NRF_GPIO->PIN_CNF[SPI_SS_PIN] = 							
+	(GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)	
+	| (GPIO_PIN_CNF_PULL_Disabled		<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Input			<< GPIO_PIN_CNF_DIR_Pos);		// Configure The SPI-CS  Line as InputIO Pin as Input	
+
+	NRF_GPIO->PIN_CNF[SPI_SCK_PIN] =								
+	  (GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)		
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)	
+	| (GPIO_PIN_CNF_PULL_Disabled		<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Input			<< GPIO_PIN_CNF_DIR_Pos);		// Configure SPI1 Slave CLK Pin as Input
+
+
+	NRF_GPIO->PIN_CNF[SPI_MISO_PIN] = 							
+	  (GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)	
+	| (GPIO_PIN_CNF_PULL_Disabled		<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Input			<< GPIO_PIN_CNF_DIR_Pos);		// Configure MISO IO Pin as Input
+
+	NRF_GPIO->PIN_CNF[SPI_MOSI_PIN] = 							
+	  (GPIO_PIN_CNF_SENSE_Disabled 		<< GPIO_PIN_CNF_SENSE_Pos)		
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)		
+	| (GPIO_PIN_CNF_PULL_Disabled    	<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Input			<< GPIO_PIN_CNF_DIR_Pos);		// Configure The MOSI IO Pin as Input
+  
+	  
+	SFLASH_GPS_flag=999;												// Bus released ---> IO Pins No longer defined --> Now Safe to Assert AT45 SFLASH Read
+}
+
+void AT45_Congigure_IO_Pins(void) {										// Configure the AT45 nCS SLCK MISO MOSI Lines
+	
+	NRF_GPIO->PIN_CNF[SPI_SS_PIN] = 							
+	  (GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)	
+	| (GPIO_PIN_CNF_PULL_Pullup			<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Output			<< GPIO_PIN_CNF_DIR_Pos);		// Configure The SPI-CS  Line as InputIO Pin as Output
+
+	NRF_GPIO->PIN_CNF[SPI_SCK_PIN] =								
+	  (GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)		
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)	
+	| (GPIO_PIN_CNF_PULL_Pulldown		<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Output			<< GPIO_PIN_CNF_DIR_Pos);		// Configure SPI1 Slave CLKIO Pin as Output
+
+
+	NRF_GPIO->PIN_CNF[SPI_MISO_PIN] = 								// MASTER IN
+	  (GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)	
+	| (GPIO_PIN_CNF_PULL_Disabled		<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Connect		<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Input			<< GPIO_PIN_CNF_DIR_Pos);		// Configure MISO IO Pin as Input
+
+
+
+	NRF_GPIO->PIN_CNF[SPI_MOSI_PIN] = 								// MASTER OUT
+	  (GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)		
+	| (GPIO_PIN_CNF_DRIVE_S0S1			<< GPIO_PIN_CNF_DRIVE_Pos)		
+	| (GPIO_PIN_CNF_PULL_Disabled		<< GPIO_PIN_CNF_PULL_Pos)	
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	
+	| (GPIO_PIN_CNF_DIR_Output			<< GPIO_PIN_CNF_DIR_Pos);		// Configure The MOSI IO Pin as Output
+  
+	SFLASH_GPS_flag=2;													// AT45 has the Bus
+}
 
 
 //	#define AT45DB_NCS_HIGH		NRF_GPIO->OUTSET = (1UL << SPI_SS_PIN)			// Macro to Assert   AT45DB161 NCS HIGH (OFF)
@@ -890,6 +1090,60 @@ void AT45_sendaddr (int sendadd) {
 
 //	#define AT45_MISO_READ() 	((NRF_GPIO->IN >> SPI_MISO_PIN) & 0x1UL)		//  Reads current state of MISO Pin 
 
+int spi_write(int databyte){										// ToDo   SPI MASTER BIT CRUNCH Routine (Output a byte and get one back)
+	uint8_t i=0;														// MSB First 76543210
+	uint8_t dataout=0;
+	
+	int bit_in=0;
+
+	AT45DB_NCS_LOW;														// Should Already be LOW upon Entry
+
+	nrf_delay_us(5);
+
+	int mask=0x80;
+	for(i=0;i<8;i++){
+//		int temptest=(databyte & mask);
+		if((databyte & mask)==0)	bit_in = BCM_Out_Low();
+		else 						bit_in = BCM_Out_High();
+		
+		dataout = dataout << 1;											// Shift Recovered byte to the left and add in new bit
+		if(bit_in==1) 	dataout = dataout | 0x01;
+		else			dataout = dataout & 0xFE;
+		
+		mask = mask >> 1;												// Shift mask right 1 bit  1000 0000 --> 0000 0001
+}
+	return dataout;
+}
 
 
+int BCM_Out_Low(void) {													// Strobe out a LOW bit and receive a bit in return
+		
+	AT45DB_MOSI_LOW;													// Data Out LOW Setup
+		
+	AT45DB_SCLK_HIGH;													// SCLK High_to_Low Primes new data from AT45 for 
+	nrf_delay_us(10);													// Add a short delay
+
+	uint32_t MISO_bit=((NRF_GPIO->IN >> SPI_MISO_PIN) & 0x1UL);		// Read MISO Input Pin
+
+	AT45DB_SCLK_LOW;													// SCLK Edge Positive for AT45 to Latch Data Out bit
+	nrf_delay_us(5);													// Add a short delay
+
+	return MISO_bit;
+}
+
+
+int BCM_Out_High(void) {												// Strobe out a HIGH bit and receive a bit in return
+
+	AT45DB_MOSI_HIGH;													// Setup Data Out bit
+	
+	AT45DB_SCLK_HIGH;													// SCLK High_to_Low Primes new data from AT45 for 
+	nrf_delay_us(10);													// Add a short delay
+	
+	uint32_t MISO_bit=((NRF_GPIO->IN>> SPI_MISO_PIN) & 0x1UL);		// Read MISO Input Pin
+
+	AT45DB_SCLK_LOW;													// SCLK Edge Positive for AT45 to Latch Data Out bit
+	nrf_delay_us(5);													// Add a short delay
+
+	return MISO_bit;
+}
 
