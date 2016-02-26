@@ -270,15 +270,19 @@ void A2035H_Sheduled_SPI_Read() {
 	while (A2035H_RawDataOutPointer!=A2035H_RawDataInPointer) {			// Loop until Out pointer catches up to in or until temp buffer full
 		char temp[33];
 		uint8_t count=0;
+		uint8_t ParseCount=0;
 		A2035H_RawDataOutPointer++;
 		if (A2035H_RawDataOutPointer == 128) A2035H_RawDataOutPointer=0;
 		while (count<32) {;
 			count++;
 			if (A2035H_RawData[A2035H_RawDataOutPointer]!= (char) 0xB4 || A2035H_RawData[A2035H_RawDataOutPointer]!= (char) 0xA7) {		// Skip pad characters
-				temp[count]=A2035H_RawData[A2035H_RawDataOutPointer];
+				ParseCount++;
+				temp[ParseCount]=A2035H_RawData[A2035H_RawDataOutPointer];
 			}
 		}
-		Parse(temp, count);												// Load recursive data to NEMAParser
+		if (ParseCount>0) {
+			Parse(temp, ParseCount);									// Load recursive data to NEMAParser
+		}
 	}
 }
 
@@ -344,9 +348,9 @@ void A2035H_RESET_OFF(void) {
 
 void A2035H_POWER_OFF(void) {											// WARNING Abrust Power Down may corrupt FLASH
 	A2035H_Toggle_ONOFF();
+	nrf_delay_us(50000); 												// Delay 50ms	
 	nrf_gpio_pin_clear(A2035H_NRST_PIN);								// A2035 Reset ---> Pull HIGH Also Pulled High via 33k
-	nrf_delay_us(50000); 												// Delay 50ms
-	
+	nrf_delay_us(50000); 												// Delay 50ms	
 	nrf_gpio_pin_clear(A2035H_NEN_PIN);									// A2035 NEN 3V3GPS OFF ---> ASSERT LOW
 	nrf_delay_us(50000); 												// Delay 50ms
 }
@@ -359,26 +363,31 @@ void A2035H_POWER_ON(void) {											// WARNING Abrust Power Down may corrupt 
 
 void initA2035H(void) {
 	
-	A2035H_POWER_OFF();													// Strobes ON-OFF First then kills Power
+	A2035H_POWER_OFF();													// POWER OFF Strobes ON-OFF First then After Delay Kills Power
 	A2035H_tristate_SPI_Bus_Pins();	
+	
 	nrf_delay_us(500000); 												// Wait for rails to settle ---> Delay 500ms
+	
 	A2035H_POWER_ON();													// Initiates spi_init after Power ON
 	
-	nrf_delay_us(250000); 
-	A2035H_Configure_Non_SPI_IOPins();
+	nrf_delay_us(1000000); 												// Wait 1 second
+	A2035H_Configure_Non_SPI_IOPins();									// Gonfigures Inputs and Sets Output Defaults --> Reasserts 3vV3GPS Power, Asserts Reset HIGH, Sets ON-OFF to LOW
 	
-	SPI_Init();															// Restart the SPI Master ---> Required only after A2035 Powerup
+	SPI_Init();															// Restart the SPI Master ---> Required only after A2035 Powerup Note: A2035 Initialised First before AT45
 	
-	nrf_delay_us(1000000); 												// Delay 1 seconds then initiate Off-On-Off
+	nrf_delay_us(500000); 												// Delay 500msec then initiate Off-On-Off
 	A2035H_Toggle_ONOFF();
 }
 
 void A2035H_Configure_Non_SPI_IOPins(void) {
 	pullupdown_gpio_cfg_output(A2035H_ON_OFF_PIN,	Pull_down);	
-	pullupdown_gpio_cfg_output(A2035H_NEN_PIN,		Pull_down);	
+	pullupdown_gpio_cfg_output(A2035H_NRST_PIN,		Pull_up);	
+	pullupdown_gpio_cfg_output(A2035H_NEN_PIN,		Pull_up);
 	
-	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN);								// Assert Low
-	nrf_gpio_pin_clear(A2035H_NEN_PIN);									// Assert Low
+	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN);								// Assert Low  ---> ON-OFF Default LOW
+	nrf_gpio_pin_set(A2035H_NRST_PIN);									// Assert High ---> RESET ALLOW NORMAL OPERATION
+	nrf_gpio_pin_set(A2035H_NEN_PIN);									// Assert High ---> 3V3GPS ON
+	
 	
 	NRF_GPIO->PIN_CNF[A2035H_INT_PIN] = 								
 	(GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	

@@ -362,6 +362,8 @@ uint16_t	main_hour;
 uint16_t	main_minute;
 uint16_t	main_second;
 
+char		cNEMA_TST[25];
+
 float pitch=0; float roll=0; float yaw=0;							// Also resides in global.h
 uint16_t	QuaternionCount=0;
 
@@ -1334,7 +1336,7 @@ static void UART_VT100_Menu_8() {		    						// $$$$$$ SYSTEM DIAGNOSTIC MENU-8	
 	
 	printf("\x1B[05;37H KEY COMMANDS");	
 	printf("\x1B[06;37H n = Clr Tap_Yaw Count");
-	printf("\x1B[07;37H p = Not Defined");
+	printf("\x1B[07;37H p = GPS ON-OFF");
 	printf("\x1B[08;37H r = Not Defined");
 	printf("\x1B[09;37H s = Not Defined");
 	printf("\x1B[10;37H t = Not Defined");
@@ -2242,8 +2244,9 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 					break;	
 
 				case 'p':
-					if (MenuLevel == 80) { 											// Spare p
-					printf("\x1B[25;30H SYSMSG: p Not Defined");										
+					if (MenuLevel == 80) { 											// Routine to Trigger GPS ON-OFF Strobe
+					printf("\x1B[25;30H SYSMSG: GPS ON-OFF");										
+					A2035H_Toggle_ONOFF();
 					}
 					break;
 				
@@ -2438,7 +2441,6 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	if(AccGyroPercentGood[3]>6 || AccGyroPercentGood[3]<-6) clrbit(&Process_5, 9);			// 345 Gyro  x y z
 	if(AccGyroPercentGood[4]>6 || AccGyroPercentGood[4]<-6) clrbit(&Process_5, 9);
 	if(AccGyroPercentGood[5]>6 || AccGyroPercentGood[5]<-6) clrbit(&Process_5, 9);
-	
 	
 	float Acc[3];
 	readGyroFloatDeg(Acc);											// Read xyz Raw GYRO registers deg/sec
@@ -2872,7 +2874,6 @@ void system_timer_handler(void * p_context) {						// Timer event to prime quate
 			else clrbit(&Process_7,6);
 		}
 
-
 		
 		
 		
@@ -2926,7 +2927,7 @@ void system_timer_handler(void * p_context) {						// Timer event to prime quate
 VibroCount_Exit:
 		
 
-//		Test for Vibration motor initiation and Delay off count
+//		Test for Vibration Motor initiation and Delay off count
 		if(testbit(&Process_0, 0)==true) {										// Background Test for Active Vibro Motor Flag Auto Countdown of 200msec
 			Count_VibroMotor = 2;
 			clrbit(&Process_0, 0);
@@ -2962,16 +2963,44 @@ VibroCount_Exit:
 		}
 
 	
-	A2035H_Sheduled_SPI_Read();													// A2035 GPS Read and Recursive Parser (Prototype Routine Under Construction)
-	char test;
-	test = A2035H_SPI_ReadByte();		
-	test = A2035H_SPI_ReadByte();		
-	test = A2035H_SPI_ReadByte();		
-	test = A2035H_SPI_ReadByte();		
+
+
+//		A2035H_Sheduled_SPI_Read();												// A2035 GPS Read and Recursive Parser (Prototype Routine Under Construction)
 		
+		cNEMA_TST[0] = A2035H_SPI_ReadByte();			
+		if((int) cNEMA_TST[0] == 0x24){											// == $
+
+			cNEMA_TST[1] = A2035H_SPI_ReadByte();
+			cNEMA_TST[2] = A2035H_SPI_ReadByte();
+			cNEMA_TST[3] = A2035H_SPI_ReadByte();
+			cNEMA_TST[4] = A2035H_SPI_ReadByte();
+			cNEMA_TST[5] = A2035H_SPI_ReadByte();
+			cNEMA_TST[6] = A2035H_SPI_ReadByte();
+			cNEMA_TST[7] = A2035H_SPI_ReadByte();
+			cNEMA_TST[8] = A2035H_SPI_ReadByte();
+			cNEMA_TST[9] = A2035H_SPI_ReadByte();
+			cNEMA_TST[10] = A2035H_SPI_ReadByte();
+			cNEMA_TST[11] = A2035H_SPI_ReadByte();
+			cNEMA_TST[12] = A2035H_SPI_ReadByte();
+			cNEMA_TST[13] = A2035H_SPI_ReadByte();
+			cNEMA_TST[14] = A2035H_SPI_ReadByte();
+			cNEMA_TST[15] = A2035H_SPI_ReadByte();
+			cNEMA_TST[16] = A2035H_SPI_ReadByte();
+			cNEMA_TST[17] = A2035H_SPI_ReadByte();
+			cNEMA_TST[18] = A2035H_SPI_ReadByte();
+			cNEMA_TST[19] = A2035H_SPI_ReadByte();
+			cNEMA_TST[20] = A2035H_SPI_ReadByte();
+			cNEMA_TST[21] = A2035H_SPI_ReadByte();
+			cNEMA_TST[22] = A2035H_SPI_ReadByte();
+			cNEMA_TST[23] = A2035H_SPI_ReadByte();
+			cNEMA_TST[24] = A2035H_SPI_ReadByte();
+			
+			printf("  \x1B[02;02H %s",  cNEMA_TST);				// Output a NEMA String to VT100 Screen --->>> NEMA SPI Data --- Validated --- Yeaaaa Need to send to Parser
+		}
+				
 		
 //		Bluetooth Analog Variable Broadcast Options
-		readAccelFloatMG(Acc);			//[0]==Left=+ive    Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
+		readAccelFloatMG(Acc);			//[0]==Left=+ive     Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
 //		readGyroFloatDeg(Acc);			//[0]==Pitch Up=+ive Down=-ive		[1]==Roll CW=+ive   ACW=-ive		[2]==Yaw Right=+ive  Left=-ive
 //		readMagFloatUT(Acc);			//[0]==Front=+ive    Rear=-ive		[1]==Right=+ive     Left=-ive		[2]==Z Down=+ive     Z Up=-ive
 				
@@ -2992,7 +3021,7 @@ VibroCount_Exit:
 	//	readAccelData(data);
 	// 	do measurement and notify
 	// 	real AD7746 temp data
-	//		unsigned long tempData = AD7746_GetVTData();
+	//		unsigned long tempData = AD7746_GetVTData()
 	//		float tempf;
 	//		tempf = MPL3115A2_getAltitude();
 	//	
