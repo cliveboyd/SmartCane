@@ -19,6 +19,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+
 /*	
 	NORDIC nrf51822 QFN CHIP variants and S110 SoftDevice Configurations
 
@@ -83,14 +84,20 @@ THE SOFTWARE.
  ERROR		uP ADC Vbat rail initially reads high and slowly goes to steady state. C cludge facto applied to scale to measured DVM Battery voltage
 
  ERROR		ToDo Power up when buttons alligned sideways causes spatial allignments to be WRONG ---> Requires Investigation need to Store Factory Cal in SFLASH
-
+ 
+ TODO...	Driver for Serial Flash AT45DB161 (To ReDo after A2035 SPI Driver Config)
+ 
+ ToDo		Test of SFLASH --- Do A full Memory Write/Read of address and address complement 
+ 
+ TODO...	Write Driver for SHA-1 EEPROM DS28e02 (Security Option APPLY - Hide from GitHub)
+ Error		Grab_EEPROM_ID currently under developement Not Reading Correct ---> Family ID
+ Note		Security Restriction Apply ---> Keep Away from GitHub  --> Started but TWI not reading correctly.
+  
  TODO...	Calibrate Inertial Sensors especially magnetometer.
  
  TODO...	Inertial Quaternion needs to be scheduled with correct MPU_9150.DeltaT upadtes derived from time interval currently hard set to Zero
 
  TODO...	Sort out Digital Motion Processor Routines including factory and user calibration
- 
- TODO...	Driver for Serial Flash AT45DB161 (To ReDo after A2035 SPI Driver Config)
  
  TODO...	Fix GasGauge Manager (Readings need to be fixed) 
  
@@ -111,12 +118,7 @@ THE SOFTWARE.
  TODO...	sensorADC_singleMeasure Battery Voltage Measurement stabalises after multiple reads --> Should be available upon first read ?????
  
  TODO...	iPhone Application via bluetooth (Fix up broadcast headers) ---> Not within current Scope
- 
- TODO...	Write Driver for SHA-1 EEPROM DS28e02 (Security Option APPLY - Hide from GitHub)
- Error		Grab_EEPROM_ID currently under developement Not Reading Correct ---> Family ID
- Note		Security Restriction Apply ---> Keep Away from GitHub  --> Started but TWI not reading correctly.
- 
- 
+  
  */
   
 //#define DEBUG							// Test to Place Application in DEBUG mode to allow error recording within app_error.h
