@@ -48,14 +48,20 @@ THE SOFTWARE.
 /*
 	HARDWARE MODIFICATION LIST.... SMARTCANE Version 1V0
 	Remove D1 (Auxillary 3V3GPS diode
-	Remove R27 Pullup on A2035-H SCLK line ---> Force SPI-SLAVE Mode upon Reset (Currently Not Working as SPI)
+	Remove R27 Pullup on A2035-H SCLK line
 	Remove LED3 and R3 Forces full control of GPS via nRF51822 with no Standby Battery Default.
 	Remove R37 INT 33k Pull-down Resistor - Use nRF51 pull up or Down as required
+	Remove R29 Pullup on A2035-H NRST Leave Open For Correct SPI Mode at PowerUp (Probably bleeds current to internal 1V8 Linear Reg)
+	
+	Note:
+	Leave the A2305H nRST open (triState) upon Power UP NOT pulled high to 3V3 or 1V8.
+	Leave the A2305H nCS  open (triState) upon Power UP NOT pulled high to 3V3 or 1V8.
+	
 	Unresolved Issues...
 	Pick and Place Build Possibly Overheating (Damaging) Haptic Motor NRS-2574. Fails to run as intended (Note::: 1V2 Drive rail OK)
 	Also possible issue with inertial sensor MPU9250 as the code for magnetometer and gyro failed to work as intended upon new PCB -- requires Investigation.
 	
-	Note::: SPIMASTER Operation of SFLASH will likely requires A2035-H to be held in Reset and 3V3GPS removed during SPI Operation ;-(
+	 ;-(
 */
 
 /*	:::::::: DRIVER CONFIGURATION NOTE :::::::::::::
@@ -70,26 +76,21 @@ THE SOFTWARE.
 
  ERROR		Hang Error Aggrevated by FIFO Size may also be problem not using nrf51822xAC current processor is _AA
  ERROR		UART failure while in ATxx Command Mode. Note ---> No Screen Refresh UART FIFO que still dies after a period of time probably related to flakey I2C.
- WORKAROUND	Regular I2C_init() loaded within system_interupt_handler seems to fix UART Hang ERROR !!!
+ WORKAROUND	Regular I2C_init() loaded within system_interupt_handler seems to fix UART Hang ERROR !!! NOTE: No Hang since regular I2C reinits
+
+
 
  ERROR		uP ADC Vbat rail initially reads high and slowly goes to steady state. C cludge facto applied to scale to measured DVM Battery voltage
 
- ERROR		ToDo Power up when buttons alligned sideways causes spatial allignments to be WRONG ---> Requires Investigation
-
-
- TODO		Driver for A2035-H GPS Module Operating in SPI Mode A2035-H not responding awaiting data from manufacturer.
+ ERROR		ToDo Power up when buttons alligned sideways causes spatial allignments to be WRONG ---> Requires Investigation need to Store Factory Cal in SFLASH
 
  TODO...	Calibrate Inertial Sensors especially magnetometer.
  
  TODO...	Inertial Quaternion needs to be scheduled with correct MPU_9150.DeltaT upadtes derived from time interval currently hard set to Zero
 
- TODO...	Run an interative LPF on accelerometer (Gravity=1) scaler ---> Maybe do the same on Magnetometer
- 
  TODO...	Sort out Digital Motion Processor Routines including factory and user calibration
  
- TODO...	Driver for Serial Flash AT45DB161
- 
- TODO...	Driver for SPI A2035 GPS Extraction (requires SPI Module variant shared with SFLASH SPI)
+ TODO...	Driver for Serial Flash AT45DB161 (To ReDo after A2035 SPI Driver Config)
  
  TODO...	Fix GasGauge Manager (Readings need to be fixed) 
  
@@ -99,13 +100,13 @@ THE SOFTWARE.
  
  TODO...	Iniatiate Watch Dog Timer and Pat_the_Dog within main()
  
- TODO...	Do some further tests on Pressure/Altimeter and incorportae into GIS awarness tracking
+ TODO...	Do some further tests on Pressure/Altimeter and incorportae into GIS awarness tracking Secondary Altimiter via GPS
  
- TODO...	Command-Control via Aux. USB-UART (Write PC app to Manage GIS and Client data sets)
+ TODO...	Command-Control via Aux. USB-UART (Write PC app to Manage GIS and Client data sets) maybe send to Google Earth Track ---> Not within Current Scope
  
  TODO...	SPI Parsed NEMA stream to UART at 4800Baud (Setup ATxx command for VT100 Overide/Initiation OF NEMA Stream) Migrate to SPI Mode
  
- TODO...	Investigate Bluetooth ble_nus Nordic UART service as alternate command control (Requires Further Applet Develeopement) Not within Current Scope
+ TODO...	Investigate Bluetooth ble_nus Nordic UART service as alternate command control (Requires Further Applet Develeopement) ---> Not within Current Scope
  
  TODO...	sensorADC_singleMeasure Battery Voltage Measurement stabalises after multiple reads --> Should be available upon first read ?????
  
@@ -173,7 +174,6 @@ THE SOFTWARE.
 
 #include "AT45.h"						// SPI Serial Flash AT45DB161E 16Mbit
 
-
 //#include "MPU_9150.h"  				// I2C Inertial Sensor 9-Axis Gyro Accel Magnetis + Temperature
 //#include "inv_mpu.h"					// Inertial Sensor Drivers
 #include "MPU_9250.h"  					// I2C Inertial Sensor 9-Axis Gyro Accel Magnetis + Temperature (EXTRACT FROM ADRINO SAMPLE CODE INCLUDES  AUX PRESS SENDSOR)
@@ -181,6 +181,7 @@ THE SOFTWARE.
 //#include "ble_nus.h"  				// Bluetooth nordic uart service currently not used may use later for GPS NEMA streaming etc
 
 #include "A2035H.h"						// GPS Hybrid Module ---> Configured for UART needs to be reworked for SPI operation
+#include "NEMAParser.h"
 
 #include "MPL3115.h"					// I2C Peripheral Pressure, Altitude and Temperature Sensor
 #include "ltc2943.h"					// I2C Gas Gauge Battery Monitor
@@ -351,6 +352,11 @@ char		ATxx[4];												// AT Command mode Ascii buffer
 double		main_latitude;											// Also resides in global.h
 double		main_longitude;
 double		main_altitude;
+
+double		mean_latitude;											// Also resides in global.h
+double		mean_longitude;
+double		mean_altitude;
+
 long		main_nSentences;
 uint16_t	main_signalQuality;
 uint16_t	main_satelitesInUse;
@@ -362,7 +368,9 @@ uint16_t	main_hour;
 uint16_t	main_minute;
 uint16_t	main_second;
 
-char		cNEMA_TST[25];
+uint16_t	local_hour=0;
+
+char		cNEMA_TST[86];
 
 float pitch=0; float roll=0; float yaw=0;							// Also resides in global.h
 uint16_t	QuaternionCount=0;
@@ -522,7 +530,7 @@ int Process_5  = 0;													/* Initalise Bit Flags Process_5
 */
 int Process_6  = 0;													/* Initalise Bit Flags Process_6	
 	Process_6.0	= Flag to Indicate A2035H GPS Power ON or OFF
-	Process_6.1	= 
+	Process_6.1	= Flag to Indicate Prime LatLon Average mean values
 	Process_6.2	= 
 	Process_6.3	= 
 	Process_6.4	= 
@@ -633,7 +641,7 @@ float BearingMag(float lat1, float lon1, float lat2, float lon2) {	// Function t
 }
 
 float LPFilter(float Out, float In, float percent) {				// Low Pass Filter Function (If Process_4.7 asserted then function bypassed and Out=In)
-	if (testbit(&Process_4,7)) Out = In;
+	if (testbit(&Process_4, 7)) Out = In;
 	else Out = percent*Out/100 + (In-In*percent/100);
 	return Out;
 }
@@ -1018,43 +1026,42 @@ static void UART_VT100_Menu_2() {									// $$$$$$ GPS GLOBAL POSITION MENU-2  
 
 	printf("\x1B[2J");													// VT100 CLR SCREEN
 	printf("\x1B[H");													// VT100 CURSOR HOME
-	printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-2  GPS GLOBAL POSITION SENSOR");
+	printf("\x1B[01;05H GDV-UoM SMARTCANE MENU-2  GPS GLOBAL POSITIONING SYSTEM");
 
 	nrf_delay_ms(50);
-			 
+	
 	printf("\x1B[04;05H GPS");
 	printf("\x1B[05;05H Latitude   = ");			// main_latitude
-	printf("\x1B[06;05H Longditude = ");			// main_longitude
+	printf("\x1B[06;05H Longitude  = ");			// main_longitude
 	printf("\x1B[07;05H Altitude   = ");			// main_altitude
-	printf("\x1B[08;05H UTC Time   = ");
-
+	
+	nrf_delay_ms(50);
+	printf("\x1B[08;05H UTC   Time = ");
+	printf("\x1B[09;05H Local Time = ");
 	nrf_delay_ms(50);
 	 
-	printf("\x1B[09;05H SatInUse   = ");			// main_satelitesInUse
-	printf("\x1B[10;05H SignalQlty = ");			// main_signalQuality
-	printf("\x1B[11;05H Sentence   = ");			// main_nSentences
-	printf("\x1B[12;05H Spare      = ");
-	printf("\x1B[13;05H Spare      = ");
+	printf("\x1B[10;05H SatInUse   = ");			// main_satelitesInUse
+	printf("\x1B[11;05H SignalQlty = ");			// main_signalQuality
+	printf("\x1B[12;05H Sentence   = ");			// main_nSentences
 	
 	nrf_delay_ms(80);
 	
-	printf("\x1B[04;40H UTC Date/Time");
-	printf("\x1B[05;40H Year       = ");			
-	printf("\x1B[06;40H Month      = ");			
-	printf("\x1B[07;40H Day        = ");			
-	printf("\x1B[08;40H Hour       = ");
+	printf("\x1B[04;36H UTC Date/Time");
+	printf("\x1B[05;36H Year       = ");			
+	printf("\x1B[06;36H Month      = ");			
+	printf("\x1B[07;36H Day        = ");			
+	printf("\x1B[08;36H Hour       = ");
 
 	nrf_delay_ms(50);
 	 
-	printf("\x1B[09;40H Minute     = ");			// 
-	printf("\x1B[10;40H Second     = ");			// 
+	printf("\x1B[09;36H Minute     = ");			// 
+	printf("\x1B[10;36H Second     = ");			// 
 
 	
 	nrf_delay_ms(50);
-	printf("\x1B[15;40H KEY COMMANDS");
-	printf("\x1B[16;40H a = A2035-ONOFF");
-	printf("\x1B[17;40H b = A2035-nRST ");
-	printf("\x1B[18;40H c = A2035-3V3GPS");
+	printf("\x1B[04;58H KEY COMMANDS");
+	printf("\x1B[05;58H a = A2035-ONOFF");
+
 
 
   printf("\x1B[24;05H  X... exit    ?...Help");
@@ -1658,28 +1665,50 @@ static void UART_VT100_Refresh_Data_GPS() {							// $$$$$$ GPS MENU 						DATA 
 		
 if (testbit(&Process_1, 0)==false) {	
 
-	printf("\x1B[05;18H %012.7f ", main_latitude);
-	printf("\x1B[06;18H %012.7f ", main_longitude);
-	printf("\x1B[07;18H %012.7f ", main_altitude);
+	printf("  \x1B[21;30H                                                    ");				// Clear the tail end of the screen
+	nrf_delay_ms(50);
+	printf("  \x1B[21;01H %s",  cNEMA_TST);	
+	nrf_delay_ms(100);
+	printf("  \x1B[22;01H                                                    ");				// Clear the next line
+	
+	printf("\x1B[05;18H %012.7f ", mean_latitude);
+	printf("\x1B[06;18H %012.7f ", mean_longitude);
+	printf("\x1B[07;18H %07.2f  ", mean_altitude);
+
+	nrf_delay_ms(100);
+	
+	printf("\x1B[10;18H %d ", main_satelitesInUse);
+	printf("\x1B[11;18H %d ", main_signalQuality);	
+	printf("\x1B[12;18H %07.0f ", (float)main_nSentences);
+	
+	nrf_delay_ms(100);
+	
+	printf("\x1B[05;49H %d ", main_year);
+	printf("\x1B[06;49H %d ", main_month);
+	printf("\x1B[07;49H %d ", main_day);
 
 	nrf_delay_ms(100);
 	 
-	printf("\x1B[09;18H %d ", main_satelitesInUse);
-	printf("\x1B[10;18H %d ", main_signalQuality);	
-	printf("\x1B[11;18H %012.7f ", (float)main_nSentences);
+	printf("\x1B[08;49H %d ", main_hour);
+	printf("\x1B[09;49H %d ", main_minute);	
+	printf("\x1B[10;49H %d ", main_second);
 	
-	nrf_delay_ms(100);
+	printf("\x1B[08;18H ");
+	if(main_hour<10) printf("0%d:", main_hour);
+	else printf("%d:", main_hour);
+	if(main_minute<10) printf("0%d:", main_minute);
+	else printf("%d:", main_minute);
+	if(main_second<10) printf("0%d ", main_second);
+	else printf("%d ", main_second);
 	
-	printf("\x1B[05;53H %d ", main_year);
-	printf("\x1B[06;53H %d ", main_month);
-	printf("\x1B[07;53H %d ", main_day);
-
-	nrf_delay_ms(100);
-	 
-	printf("\x1B[08;53H %d ", main_hour);
-	printf("\x1B[09;53H %d ", main_minute);	
-	printf("\x1B[10;53H %d ", main_second);
 	
+	printf("\x1B[09;18H ");
+	if(local_hour<10) printf("0%d:", local_hour);
+	else printf("%d:", local_hour);
+	if(main_minute<10) printf("0%d:", main_minute);
+	else printf("%d:", main_minute);
+	if(main_second<10) printf("0%d ", main_second);
+	else printf("%d ", main_second);	
 	}
 }	
 
@@ -2072,6 +2101,7 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 					switch (MenuLevel) {
 						case 20:
 							A2035H_Toggle_ONOFF();
+							printf("\x1B[25;30H SYSMSG: Strobe A2035H Off-On-Off");
 							break;
 						
 						case 80:	
@@ -2091,10 +2121,11 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 				case 'b':
 					switch (MenuLevel) {	
 						case 20:
-							A2035H_RESET_ON();
-							A2035H_RESET_ON();
-							A2035H_RESET_ON();
-							A2035H_RESET_OFF();
+//							A2035H_RESET_ON();
+//							A2035H_RESET_ON();
+//							A2035H_RESET_ON();
+//							A2035H_RESET_OFF();
+//							printf("\x1B[25;30H SYSMSG: Strobe A2035H Off-On-Off");
 							break;
 						
 						case 80:	
@@ -2116,11 +2147,11 @@ static void VT100_Scan_Keyboard_All_Menues() {		    			// $$$$$$ LOAD ALL VT100 
 						case 20:
 							if (testbit(&Process_6,0)){
 								clrbit(&Process_6,0);
-								A2035H_POWER_OFF();
+								//A2035H_POWER_OFF();
 							}
 							else {
 								setbit(&Process_6,0);
-								A2035H_POWER_ON();
+								//A2035H_POWER_ON();
 							}
 							break;
 						
@@ -2522,8 +2553,7 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 
 
 	initA2035H();													// Initialise the A2035H GPS Module ---> Configured for SPI
-	setbit(&Process_5, 4);											// Flag A2035 GPS Sensor Present
-	
+		
 
 //	Process_5.5	= Flag SFlash Memory Present
 //	Test for SFLASH Presence by reading AT45 Device ID
@@ -2906,7 +2936,7 @@ void system_timer_handler(void * p_context) {						// Timer event to prime quate
 					test--;
 					test*=0xFF;													// Reprime with decremented delay
 					VibroCount=test+VibroCount&0x00FF;							// Reload the Action Strobe Count
-					goto VibroCount_Exit;
+					goto sth_VibroCount_Exit;
 				}
 				
 				test=VibroCount&0x00FF;											// Load current number of Vibro Strobes to assert 
@@ -2924,7 +2954,7 @@ void system_timer_handler(void * p_context) {						// Timer event to prime quate
 				else nrf_gpio_pin_clear(MOTOR_PIN_NUMBER);
 			}
 		}
-VibroCount_Exit:
+sth_VibroCount_Exit:
 		
 
 //		Test for Vibration Motor initiation and Delay off count
@@ -2966,38 +2996,46 @@ VibroCount_Exit:
 
 
 //		A2035H_Sheduled_SPI_Read();												// A2035 GPS Read and Recursive Parser (Prototype Routine Under Construction)
-		
-		cNEMA_TST[0] = A2035H_SPI_ReadByte();			
-		if((int) cNEMA_TST[0] == 0x24){											// == $
 
-			cNEMA_TST[1] = A2035H_SPI_ReadByte();
-			cNEMA_TST[2] = A2035H_SPI_ReadByte();
-			cNEMA_TST[3] = A2035H_SPI_ReadByte();
-			cNEMA_TST[4] = A2035H_SPI_ReadByte();
-			cNEMA_TST[5] = A2035H_SPI_ReadByte();
-			cNEMA_TST[6] = A2035H_SPI_ReadByte();
-			cNEMA_TST[7] = A2035H_SPI_ReadByte();
-			cNEMA_TST[8] = A2035H_SPI_ReadByte();
-			cNEMA_TST[9] = A2035H_SPI_ReadByte();
-			cNEMA_TST[10] = A2035H_SPI_ReadByte();
-			cNEMA_TST[11] = A2035H_SPI_ReadByte();
-			cNEMA_TST[12] = A2035H_SPI_ReadByte();
-			cNEMA_TST[13] = A2035H_SPI_ReadByte();
-			cNEMA_TST[14] = A2035H_SPI_ReadByte();
-			cNEMA_TST[15] = A2035H_SPI_ReadByte();
-			cNEMA_TST[16] = A2035H_SPI_ReadByte();
-			cNEMA_TST[17] = A2035H_SPI_ReadByte();
-			cNEMA_TST[18] = A2035H_SPI_ReadByte();
-			cNEMA_TST[19] = A2035H_SPI_ReadByte();
-			cNEMA_TST[20] = A2035H_SPI_ReadByte();
-			cNEMA_TST[21] = A2035H_SPI_ReadByte();
-			cNEMA_TST[22] = A2035H_SPI_ReadByte();
-			cNEMA_TST[23] = A2035H_SPI_ReadByte();
-			cNEMA_TST[24] = A2035H_SPI_ReadByte();
-			
-			printf("  \x1B[02;02H %s",  cNEMA_TST);				// Output a NEMA String to VT100 Screen --->>> NEMA SPI Data --- Validated --- Yeaaaa Need to send to Parser
-		}
+		char tempChar = A2035H_SPI_ReadByte();									// Grab single characters until we find a Start of String "$"
+		int charTest = tempChar;
+		if(charTest == 0x24){													// == $
+			cNEMA_TST[0] = tempChar;
+			setbit(&Process_5, 4);												// Flag A2035 GPS Sensor Present
+			for (int k=1; k<82; k++) {											// Grab up to another 84 characters from A2035H GPS --> exit upon $
+				tempChar = A2035H_SPI_ReadByte();
+				if ((int) tempChar == 0xB4 ||
+					(int) tempChar == 0xA7 ||
+					(int) tempChar == 0x24	) break;
 				
+				if ((int) tempChar == 0x0D ||
+					(int) tempChar == 0x0A  ) {
+					cNEMA_TST[k]   = (char) 0x0D;								// Add in one occurence of CRLF  (Need to check order CRLF orrrr LFCR
+					cNEMA_TST[k+1] = (char) 0x0A;
+					cNEMA_TST[k+2] = '\0';										// Terminate the String
+
+					goto sth_tstNEMA_exit;
+				}
+				else cNEMA_TST[k] = tempChar;
+			}
+
+sth_tstNEMA_exit:
+			Parse(cNEMA_TST, sizeof(cNEMA_TST));								// Send string size:85 to NEMAParser
+			if (testbit(&Process_6, 1)==0) {
+				if (main_latitude != 0) {
+					setbit(&Process_6, 1);
+					mean_latitude  = main_latitude;								// Prime current LatLonAlt
+					mean_longitude = main_longitude;
+					mean_altitude  = main_altitude;
+				}
+			}
+			if(testbit(&Process_6, 1)==1) {
+				LPFilter(mean_latitude,  main_latitude,  99);					// Load LPFilter Average of current LatLonAlt
+				LPFilter(mean_longitude, main_longitude, 99);					// 99% old + 1% New
+				LPFilter(mean_altitude,  main_altitude,  99);
+			}
+		}
+	
 		
 //		Bluetooth Analog Variable Broadcast Options
 		readAccelFloatMG(Acc);			//[0]==Left=+ive     Right=-ive		[1]==Pitch Up=+ive  Down=-ive		[2]==Z Up=+ive       Z Down-ive
@@ -3014,6 +3052,10 @@ VibroCount_Exit:
 			APP_ERROR_HANDLER(err_code);
 		}
 
+		local_hour = main_hour + ((int)(main_longitude*24/360+.5) +1);			// Calculate local time based on Longitude also +1 for daylight saving
+		if (local_hour>24) local_hour-=24;
+		
+		
 /*
 	//	short data[3];
 	//	unsigned long timestamp;
@@ -3843,22 +3885,12 @@ void WatchDogTimer_init(void){										// Cofigure WatchDog Timer ---> ToDo
 
 void init_WayPointData(void){
 		
-/*	WARNING--- Due to possible conflict with A2035 GPS module Access to the At45 SFLASH requires ShutDown of the 3V3GPS Rail 
-	Therfore GPS Needs to be Brought Back to Life after AT45 SFLASH Read
-	---> Up to 30Second  Delays will be exected to reacuire GeoStationary Satellites
-	
-	Initaialise SRAM with LastTrack Waypoint data 
+/*	Initaialise SRAM with LastTrack Waypoint data 
 	If SFLASH not initialised with first life config then FirstLife Config will be performed.
-	A default FirstLife Track to Melbourne CBD will be loaded. 	*/
+	A default FirstLife Track to Melbourne CBD will be loaded. 
+	An Alternate Default could be GDV HQ*/
 
-//	nrf_gpio_cfg_output(04U);										// GPS RESET ASSERTED LOW ---> WARNING ---> 1V8 GPS Power is being generated via MISO 3V3 Line Blead ==> Assert 3V3GPS Power
-//	NRF_GPIO->OUTCLR = (1UL << 04U);
-//	nrf_gpio_cfg_output(10U);										// Assert GPS Power OFF while GPS Held in RESET 
-//	NRF_GPIO->OUTCLR = (1UL << 10U);
 
-//	AT45DB161E_init();												// Re Initialsie the At45DB161 SFLASH IO Pins
-
-	
 	
 //typedef struct {													/* STRUCTURE of SRAM data definitions of Current Waypoints ---> as defined within WayPointTrackInfo*/
 //	uint16_t	waypoint_IndexTotal;								// Number of WayPoints defined for current Track
@@ -3906,7 +3938,6 @@ void init_WayPointData(void){
 //static WaypointTrackInfo_t	WPTI;
 //static SFLASH_HeaderInfo_t	SHI;
 //static SFLASH_WaypointInfo_t	SWPI;
-
 
 }
 
@@ -4024,7 +4055,7 @@ int main(void) {													// $$$$$$$$$$$  PROGRAM ENTRY ---> main()
 			break;
 			
 		case 6:														// Spare
-			
+	
 			break;
 		
 		case 18:													// To Be Assigned

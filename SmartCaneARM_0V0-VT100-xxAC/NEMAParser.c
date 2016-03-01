@@ -69,25 +69,26 @@ int axtoi( const char *hexStg ) {
 
 void Parse(const char *buf, const uint16_t bufSize) {		// CSB---> Main recursive parser entry. Feed text *buf into here
 
+	m_State = SearchForSOS;
+	
 //
-	for( uint16_t i = 0; i < bufSize; i++ )
-		ParseRecursive(buf[i]);
+	for( uint16_t i = 0; i < bufSize; i++ ) ParseRecursive(buf[i]);
+		
 
 //	load up Global Buffers and direct up to main()
 	main_latitude=m_GPSInfo.m_latitude;						// Pass back the values of m_GPSInfo up to main global variables
 	main_longitude=m_GPSInfo.m_longitude;
 	main_altitude=m_GPSInfo.m_altitude;
 	main_nSentences=m_GPSInfo.m_nSentences;
-//	main_signalQuality=m_GPSInfo.m_signalQuality;			// CSB CSB TEST TEST TEST
-	main_signalQuality=main_signalQuality+1;				// CSB CSB TEST TEST TEST
+	main_signalQuality=m_GPSInfo.m_signalQuality;
 	main_satelitesInUse=m_GPSInfo.m_satelitesInUse;
 	
-	main_year=m_GPSInfo.m_year;
-	main_month=m_GPSInfo.m_month;
-	main_day=m_GPSInfo.m_day;
-	main_hour=m_GPSInfo.m_hour;
-	main_minute=m_GPSInfo.m_minute;
-	main_second=m_GPSInfo.m_second;
+	main_year	=	m_GPSInfo.m_year;
+	main_month	=	m_GPSInfo.m_month;
+	main_day	=	m_GPSInfo.m_day;
+	main_hour	=	m_GPSInfo.m_hour;
+	main_minute	=	m_GPSInfo.m_minute;
+	main_second	=	m_GPSInfo.m_second;
 }
 
 void ParseRecursive(const char ch) {
@@ -95,7 +96,6 @@ void ParseRecursive(const char ch) {
 	static const uint16_t ADDRESS_FIELD_MAX_LENGTH = 10;
 	static const uint16_t NMEA_SEQUENCE_MAX_LENGTH = 81;
 	
-	m_State = SearchForSOS;
 	
 	static uint16_t m_CalcChecksum;
 	static char m_Checksum[3];
@@ -106,7 +106,7 @@ void ParseRecursive(const char ch) {
 						 
 	switch( m_State ) {
 		
-	case SearchForSOS:
+	case SearchForSOS:												// Search for Start of String
 	{
 		if( ch == '$' ) {
 			m_AddressFieldIndex = 0;
@@ -208,14 +208,12 @@ void ParseRecursive(const char ch) {
 
 }
 
-void ParseNMEASentence(const char *addressField,
-								   const char *buf, const uint16_t bufSize)
-{
+void ParseNMEASentence(const char *addressField, const char *buf, const uint16_t bufSize) {
 	if		( strcmp(addressField, "GPGGA") == NULL ) ProcessGPGGA(buf, bufSize);		// $GPGGA - Global Positioning System Fix Data
 	else if	( strcmp(addressField, "GPGSA") == NULL ) ProcessGPGSA(buf, bufSize);		// $GPGSA - GPS DOP and active satellites 
 	else if	( strcmp(addressField, "GPGSV") == NULL ) ProcessGPGSV(buf, bufSize);		// $GPGSV - GPS Satellites in view
 	else if	( strcmp(addressField, "GPRMB") == NULL ) ProcessGPRMB(buf, bufSize);		// $GPRMB - Recommended minimum navigation info
-	else if	( strcmp(addressField, "GPRMC") == NULL ) ProcessGPRMC(buf, bufSize);		// $GPRMC - Recommended minimum specific GPS/Transit data
+	else if	( strcmp(addressField, "GPRMC") == NULL ) ProcessGPRMC(buf, bufSize);		// $GPRMC - Recommended minimum specific GPS Transit data
 	else if	( strcmp(addressField, "GPZDA") == NULL ) ProcessGPZDA(buf, bufSize);		// $GPZDA - Date & Time
 
 
@@ -223,7 +221,7 @@ void ParseNMEASentence(const char *addressField,
 //	return m_GPSInfo;
 }
 
-
+void ProcessGPGGA(const char *buf, const uint16_t bufSize) {			// Global Positioning System Fix Data
 /*
 GPGGA Sentence format
 $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M, ,*47
@@ -259,7 +257,6 @@ $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M, ,*47
    GGA Global Positioning System Fix Data
 
 */
-void ProcessGPGGA(const char *buf, const uint16_t bufSize) {						// Global Positioning System Fix Data
 	// To disable handling this sentence uncomment the next line --->
 	// return;
 
@@ -397,7 +394,7 @@ void ProcessGPGGA(const char *buf, const uint16_t bufSize) {						// Global Posi
 
 	m_GPSInfo.m_nSentences++;
 
-m_GPSInfo.m_signalQuality	= quality;
+	m_GPSInfo.m_signalQuality	= quality;
 	m_GPSInfo.m_satelitesInUse	= satelitesInUse;
 //	m_GPSInfo.m_year			= year;
 //	m_GPSInfo.m_month			= month;
@@ -516,6 +513,7 @@ eg3. $GPRMB,A,x.x,a,c--c,d--d,llll.ll,e,yyyyy.yy,f,g.g,h.h,i.i,j*kk
 
 }
 
+void ProcessGPRMC(const char *buf, const uint16_t bufSize) {			// Recommended minimum specific GPS/Transit data
 /*
 	Format
 	$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A
@@ -541,7 +539,6 @@ eg3. $GPRMB,A,x.x,a,c--c,d--d,llll.ll,e,yyyyy.yy,f,g.g,h.h,i.i,j*kk
 	 RMC Recommended Minimum sentence C
 
 */
-void ProcessGPRMC(const char *buf, const uint16_t bufSize) {		// Recommended minimum specific GPS/Transit data
 	char auxBuf[10];
 	const char *p1 = buf, *p2;
 
@@ -668,7 +665,7 @@ void ProcessGPRMC(const char *buf, const uint16_t bufSize) {		// Recommended min
 	m_GPSInfo.m_second			= sec;	
 }
 
-void ProcessGPZDA(const char *buf, const uint16_t bufSize) { 			// Date & Time
+void ProcessGPZDA(const char *buf, const uint16_t bufSize) { 			// Date & Time  Note: Currently Untested as No GPZDA data from A2035H
 /*	$GPZDA	Date & Time
 
 	UTC, day, month, year, and local time zone.
@@ -681,4 +678,86 @@ void ProcessGPZDA(const char *buf, const uint16_t bufSize) { 			// Date & Time
 	xx = Local zone description, 00 to +/- 13 hours 
 	xx = Local zone minutes description (same sign as hours) 	*/
 	
+	// To disable handling this sentence uncomment the next line --->
+	// return;
+
+	char auxBuf[10];
+	const char *p1 = buf, *p2;
+
+	// GPZ
+	if((uint16_t)(p1 - buf) >= bufSize) 	return;
+	if(bufSize < 6) 						return;
+	
+	strncpy(auxBuf, buf, 5);
+	auxBuf[5] = '\0';
+	if(strcmp(auxBuf, "GPZDA") != 0 || buf[5] != ',') return;
+	
+	p1 += 6;
+
+	// UTC Time HHMMSS.SS
+	if((uint16_t)(p1 - buf) >= bufSize)		return;
+	if((p2 = strchr(p1, ',')) == NULL)		return;
+	
+	uint16_t hour, min, sec;
+	strncpy(auxBuf, p1, 2);
+	auxBuf[2] = '\0';
+	hour = atoi(auxBuf);
+	p1 += 2;
+	strncpy(auxBuf, p1, 2);
+	auxBuf[2] = '\0';
+	min = atoi(auxBuf);
+	p1 += 2;
+	strncpy(auxBuf, p1, 2);
+	auxBuf[2] = '\0';
+	sec = atoi(auxBuf);
+	p1 = p2 + 1;
+
+    // Day
+	uint16_t day, month, year;
+	if((uint16_t)(p1 - buf) >= bufSize)		return;
+	if((p2 = strchr(p1, ',')) == NULL)		return;
+	
+	strncpy(auxBuf, p1, 2);
+	auxBuf[2] = '\0';
+	day = atoi(auxBuf);
+	p1 = p2 + 1;
+	
+	if((uint16_t)(p1 - buf) >= bufSize)		return;
+	if((p2 = strchr(p1, ',')) == NULL)		return;
+	
+	strncpy(auxBuf, p1, 2);
+	auxBuf[2] = '\0';
+	month = atoi(auxBuf);
+	p1 = p2 + 1;
+	
+	if((uint16_t)(p1 - buf) >= bufSize)		return;
+	if((p2 = strchr(p1, ',')) == NULL)		return;
+	
+	strncpy(auxBuf, p1, 4);
+	auxBuf[2] = '\0';
+	year = atoi(auxBuf);
+	p1 = p2 + 1;
+	
+	uint16_t localhourzone;											// ToDo Currrently not used
+	if((uint16_t)(p1 - buf) >= bufSize)		return;
+	if((p2 = strchr(p1, ',')) == NULL)		return;
+	strncpy(auxBuf, p1, 2);
+	auxBuf[2] = '\0';
+	localhourzone = atoi(auxBuf);
+	p1 = p2 + 1;
+	
+	uint16_t localminutezone;										// ToDo Currrently not used
+	if((uint16_t)(p1 - buf) >= bufSize)		return;
+	if((p2 = strchr(p1, ',')) == NULL)		return;
+	strncpy(auxBuf, p1, 2);
+	auxBuf[2] = '\0';
+	localhourzone = atoi(auxBuf);
+	p1 = p2 + 1;
+	
+	m_GPSInfo.m_year			= year;
+	m_GPSInfo.m_month			= month;
+	m_GPSInfo.m_day				= day;
+	m_GPSInfo.m_hour			= hour;
+	m_GPSInfo.m_minute			= min;
+	m_GPSInfo.m_second			= sec;
 }

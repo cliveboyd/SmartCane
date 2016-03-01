@@ -370,12 +370,12 @@ void initA2035H(void) {
 	
 	A2035H_POWER_ON();													// Initiates spi_init after Power ON
 	
-	nrf_delay_us(1000000); 												// Wait 1 second
+	nrf_delay_us(250000); 												// Wait 250ms
 	A2035H_Configure_Non_SPI_IOPins();									// Gonfigures Inputs and Sets Output Defaults --> Reasserts 3vV3GPS Power, Asserts Reset HIGH, Sets ON-OFF to LOW
 	
 	SPI_Init();															// Restart the SPI Master ---> Required only after A2035 Powerup Note: A2035 Initialised First before AT45
 	
-	nrf_delay_us(500000); 												// Delay 500msec then initiate Off-On-Off
+	nrf_delay_us(250000); 												// Delay 250msec then initiate Off-On-Off
 	A2035H_Toggle_ONOFF();
 }
 
@@ -387,7 +387,6 @@ void A2035H_Configure_Non_SPI_IOPins(void) {
 	nrf_gpio_pin_clear(A2035H_ON_OFF_PIN);								// Assert Low  ---> ON-OFF Default LOW
 	nrf_gpio_pin_set(A2035H_NRST_PIN);									// Assert High ---> RESET ALLOW NORMAL OPERATION
 	nrf_gpio_pin_set(A2035H_NEN_PIN);									// Assert High ---> 3V3GPS ON
-	
 	
 	NRF_GPIO->PIN_CNF[A2035H_INT_PIN] = 								
 	(GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	
