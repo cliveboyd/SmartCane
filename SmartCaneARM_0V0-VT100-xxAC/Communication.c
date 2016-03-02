@@ -45,7 +45,7 @@ THE SOFTWARE.
 
 // Note for GPS SPI Mode-1 CPOL:0 CPHA:1
 
-#define TX_RX_MSG_LENGTH	3
+#define TX_RX_MSG_LENGTH	4
 
 static uint8_t m_rx_data_spi[TX_RX_MSG_LENGTH];								/**< SPI master RX buffer. */
 static volatile bool m_transfer_completed = true;
@@ -67,20 +67,19 @@ uint16_t	SPI_Event=0;						// Dummy Variable
 
 												// MASTER-0 Shared between AT45 SFLASH and A2035H GPS
 #define SPIM0_SCK_PIN       (19U)     			/**< SPI clock GPIO pin number. */
-#define SPIM0_MOSI_PIN      (17U)     			/**< SPI Master Out Slave In GPIO pin number. */
-#define SPIM0_MISO_PIN      (20U)    			// dummy pin /**< SPI Master In Slave Out GPIO pin number. */
-#define SPIM0_SS_PIN        A2035H_NCS_PIN     	/**< SPI NCS pin number. */
+#define SPIM0_MOSI_PIN      (17U)     			/**< SPI Master Out Slave In  GPIO pin number. */
+#define SPIM0_MISO_PIN      (20U)    			/**< SPI Master In  Slave Out GPIO pin number. */
 
 
-/**@brief Function for initializing a SPI master driver.
+/**@brief Function for initializing a SPI master driver For SPI Mode 1.    ---> SFLASH AT45
  *
  * @param[in] spi_master_instance       An instance of SPI master module.
  * @param[in] spi_master_event_handler  An event handler for SPI master events.
  * @param[in] lsb                       Bits order LSB if true, MSB if false.
  */
-static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
-							spi_master_event_handler_t spi_master_event_handler,
-							const bool                 lsb)
+static void spi_master_mode0_init(spi_master_hw_instance_t	spi_master_instance,
+							spi_master_event_handler_t 		spi_master_event_handler,
+							const bool                 		lsb)
 {
     uint32_t err_code = NRF_SUCCESS;
 
@@ -95,7 +94,7 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
             spi_config.SPI_Pin_SCK  = SPIM0_SCK_PIN;
             spi_config.SPI_Pin_MISO = SPIM0_MISO_PIN;
             spi_config.SPI_Pin_MOSI = SPIM0_MOSI_PIN;
-            spi_config.SPI_Pin_SS   = SPIM0_SS_PIN;				// SPIM0_SS_PIN;
+            spi_config.SPI_Pin_SS   = 22U;						// SPIM0_SS_PIN;
         }
         break;
         #endif /* SPI_MASTER_0_ENABLE */
@@ -103,10 +102,68 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
         #ifdef SPI_MASTER_1_ENABLE								// ---> NOT USED
         case SPI_MASTER_1:
         {
-//            spi_config.SPI_Pin_SCK  = SPIM1_SCK_PIN;
-//            spi_config.SPI_Pin_MISO = SPIM1_MISO_PIN;
-//            spi_config.SPI_Pin_MOSI = SPIM1_MOSI_PIN;
-//            spi_config.SPI_Pin_SS   = SPIM1_SS_PIN;
+
+        }
+        break;
+        #endif 	/* SPI_MASTER_1_ENABLE */
+
+        default:
+            break;
+    }
+	// bit order and Clocking SPI Mode 0 ---> AT45 SFLASH
+    spi_config.SPI_CONFIG_ORDER	= SPI_CONFIG_ORDER_MsbFirst;			//	(lsb ? SPI_CONFIG_ORDER_LsbFirst : SPI_CONFIG_ORDER_MsbFirst);
+	spi_config.SPI_Freq			= SPI_FREQUENCY_FREQUENCY_M1;			// 	500KHz chip rated to 66MHz (Was 1MHz)
+	spi_config.SPI_CONFIG_CPHA	= SPI_CONFIG_CPHA_Leading;
+	spi_config.SPI_CONFIG_CPOL	= SPI_CONFIG_CPOL_ActiveLow;
+	spi_config.SPI_PriorityIRQ	= APP_IRQ_PRIORITY_HIGH;
+	
+    err_code = spi_master_open(spi_master_instance, &spi_config);
+    
+	APP_ERROR_CHECK(err_code);
+
+//	Register event handler for SPI master.
+//	spi_master_evt_handler_reg(spi_master_instance, spi_master_event_handler);  // Not Used??
+}
+
+//void spi_master_event_handler(void){									// Dummy to see what happens
+//	SPI_Event++;
+//}
+
+
+/**@brief Function for initializing a SPI master driver For SPI Mode 1.
+ *
+ * @param[in] spi_master_instance       An instance of SPI master module.
+ * @param[in] spi_master_event_handler  An event handler for SPI master events.
+ * @param[in] lsb                       Bits order LSB if true, MSB if false.
+*/
+
+
+static void spi_master_mode1_init(spi_master_hw_instance_t	spi_master_instance,
+							spi_master_event_handler_t 		spi_master_event_handler,
+							const bool                 		lsb)
+{
+    uint32_t err_code = NRF_SUCCESS;
+
+//	Configure SPI master.spi_master_init
+	spi_master_config_t spi_config = SPI_MASTER_INIT_DEFAULT;
+
+    switch (spi_master_instance) {
+        
+		#ifdef SPI_MASTER_0_ENABLE
+        case SPI_MASTER_0:
+        {
+            spi_config.SPI_Pin_SCK  = SPIM0_SCK_PIN;
+            spi_config.SPI_Pin_MISO = SPIM0_MISO_PIN;
+            spi_config.SPI_Pin_MOSI = SPIM0_MOSI_PIN;
+            spi_config.SPI_Pin_SS   = A2035H_NCS_PIN;			// SPIM0_SS_PIN;
+        }
+        break;
+        #endif /* SPI_MASTER_0_ENABLE */
+
+        #ifdef SPI_MASTER_1_ENABLE								// ---> NOT USED
+        case SPI_MASTER_1:
+        {
+
         }
         break;
         #endif 	/* SPI_MASTER_1_ENABLE */
@@ -116,9 +173,9 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
     }
 	// bit order
     spi_config.SPI_CONFIG_ORDER	= (lsb ? SPI_CONFIG_ORDER_LsbFirst : SPI_CONFIG_ORDER_MsbFirst);
-	spi_config.SPI_Freq			= SPIFREQ_TO_USE;
-	spi_config.SPI_CONFIG_CPHA	= SPICPHA_TO_USE;
-	spi_config.SPI_CONFIG_CPOL	= SPICPOL_TO_USE;
+	spi_config.SPI_Freq			= SPIFREQ_TO_USE;				//1MHz
+	spi_config.SPI_CONFIG_CPHA	= SPI_CONFIG_CPHA_Trailing;
+	spi_config.SPI_CONFIG_CPOL	= SPI_CONFIG_CPOL_ActiveHigh;
 	spi_config.SPI_PriorityIRQ	= APP_IRQ_PRIORITY_HIGH;
 	
     err_code = spi_master_open(spi_master_instance, &spi_config);
@@ -126,21 +183,18 @@ static void spi_master_init(spi_master_hw_instance_t   spi_master_instance,
 	APP_ERROR_CHECK(err_code);
 
 //	Register event handler for SPI master.
-	spi_master_evt_handler_reg(spi_master_instance, spi_master_event_handler);
+//	spi_master_evt_handler_reg(spi_master_instance, spi_master_event_handler);
 }
 
-void spi_master_event_handler(void){							// Dummy to see what happens
-	SPI_Event++;
-}
 
 
 /***************************************************************************************
  *	@brief Reset NCS Pins on AT45 and A2035H and then Initializes the SPI communication 
- *	for NCS==AT45
+ *	for NCS==A2035 with AT45 NCS==HIGH
  *
  *	@return 1.
 ****************************************************************************************/
-unsigned char SPI_Init(void) {
+unsigned char SPI_A2035H_Init(void) {
 	
 	// pull up all CS pins first
 	NRF_GPIO->PIN_CNF[A2035H_NCS_PIN] =								\
@@ -164,7 +218,7 @@ unsigned char SPI_Init(void) {
 	NRF_GPIO->DIRSET = (1UL << AT45_NCS_PIN);
 	NRF_GPIO->OUTSET = (1UL << AT45_NCS_PIN); 
 	
-	spi_master_init(SPI_TO_USE, NULL, false);  										// NULL ---> No handler, msb first
+	spi_master_mode1_init(SPI_TO_USE, NULL, false);  										// NULL ---> No handler, msb first
 
 //	AD9837_Reset();
 //	AD9837_SetFrequency(FREQREG_TO_USE, freq);
@@ -173,6 +227,45 @@ unsigned char SPI_Init(void) {
     return (1);
 }
 
+
+/***************************************************************************************
+ *	@brief Reset NCS Pins on AT45 and A2035H and then Initializes the SPI communication 
+ *	for NCS==A2035 with AT45 NCS==HIGH
+ *
+ *	@return 1.
+****************************************************************************************/
+unsigned char SPI_AT45_Init(void) {
+	
+	// pull up all CS pins first
+	NRF_GPIO->PIN_CNF[AT45_NCS_PIN] =								\
+	  (GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	\
+	| (GPIO_PIN_CNF_DRIVE_H0D1			<< GPIO_PIN_CNF_DRIVE_Pos)	\
+	| (GPIO_PIN_CNF_PULL_Pullup			<< GPIO_PIN_CNF_PULL_Pos)	\
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	\
+	| (GPIO_PIN_CNF_DIR_Output			<< GPIO_PIN_CNF_DIR_Pos);	
+	
+	NRF_GPIO->DIRSET = (1UL << AT45_NCS_PIN);
+	NRF_GPIO->OUTSET = (1UL << AT45_NCS_PIN); 
+	
+//	Pull up this chip's CS pin as well
+	NRF_GPIO->PIN_CNF[A2035H_NCS_PIN] =								\
+	  (GPIO_PIN_CNF_SENSE_Disabled		<< GPIO_PIN_CNF_SENSE_Pos)	\
+	| (GPIO_PIN_CNF_DRIVE_H0D1			<< GPIO_PIN_CNF_DRIVE_Pos)	\
+	| (GPIO_PIN_CNF_PULL_Pullup			<< GPIO_PIN_CNF_PULL_Pos)	\
+	| (GPIO_PIN_CNF_INPUT_Disconnect	<< GPIO_PIN_CNF_INPUT_Pos)	\
+	| (GPIO_PIN_CNF_DIR_Output			<< GPIO_PIN_CNF_DIR_Pos);	
+		
+	NRF_GPIO->DIRSET = (1UL << A2035H_NCS_PIN);
+	NRF_GPIO->OUTSET = (1UL << A2035H_NCS_PIN); 
+	
+	spi_master_mode0_init(SPI_TO_USE, NULL, false);  										// NULL ---> No handler, msb first
+
+//	AD9837_Reset();
+//	AD9837_SetFrequency(FREQREG_TO_USE, freq);
+//	AD9837_SetPhase(PHAREG_TO_USE, phase);
+	
+    return (1);
+}
 
 /**@brief Function for sending and receiving data.
  *
@@ -205,12 +298,12 @@ char AT45_spi_write(uint8_t Byte) {
 
 
 //	Start transfer.
-	AT45_NCS_LOW;
+//	AT45_NCS_LOW;														// nCS controlled within AT45.c	
 	uint32_t err_code = spi_master_send_recv(SPI_TO_USE, p_tx_data, 1, p_rx_data, 1);
-	AT45_NCS_LOW;
+//	AT45_NCS_HIGH;														// nCS controlled within AT45.c	
 	
 	APP_ERROR_CHECK(err_code);
-	return RxByte;			//p_rx_data[0];
+	return RxByte;														//p_rx_data[0];
 }
 
 
@@ -220,10 +313,31 @@ uint16_t AT45_SPIM0_write_16b(unsigned short regValue) {
 	
 	data[0] = (unsigned char)((regValue & 0xFF00) >> 8);
 	data[1] = (unsigned char)((regValue & 0x00FF) >> 0);
-	AT45_NCS_LOW;
+//	AT45_NCS_LOW;														// nCS controlled within AT45.c	
 	SPI_write(SPI_TO_USE, data, m_rx_data_spi ,2);
-	AT45_NCS_HIGH;
+//	AT45_NCS_HIGH;														// nCS controlled within AT45.c	
 	
+	RxByte = m_rx_data_spi[1] << 8;
+	RxByte = RxByte & m_rx_data_spi[0];
+	
+	return RxByte;
+}
+
+uint32_t AT45_SPIM0_write_32b(uint32_t Value) {
+	unsigned char data[4];
+	uint32_t	RxByte;
+	
+	data[0] = (unsigned char)((Value & 0xFF000000) >> 24);
+	data[1] = (unsigned char)((Value & 0x00FF0000) >> 16);
+	data[2] = (unsigned char)((Value & 0x0000FF00) >>  8);
+	data[3] = (unsigned char)((Value & 0x000000FF) >>  0);
+	
+//	AT45_NCS_LOW;														// nCS controlled within AT45.c	
+	SPI_write(SPI_TO_USE, data, m_rx_data_spi ,4);
+//	AT45_NCS_HIGH;														// nCS controlled within AT45.c	
+	
+	RxByte = m_rx_data_spi[3] << 8;
+	RxByte = m_rx_data_spi[2] << 8;
 	RxByte = m_rx_data_spi[1] << 8;
 	RxByte = RxByte & m_rx_data_spi[0];
 	
@@ -237,9 +351,9 @@ uint16_t A2035H_SPIM0_Write_16b(unsigned short regValue) {
 	
 	data[0] = (unsigned char)((regValue & 0xFF00) >> 8);
 	data[1] = (unsigned char)((regValue & 0x00FF) >> 0);
-	AT45_NCS_LOW;
+	A2035H_NCS_LOW;
 	SPI_write(SPI_TO_USE, data, m_rx_data_spi ,2);
-	AT45_NCS_HIGH;
+	A2035H_NCS_HIGH;
 	
 	RxByte = m_rx_data_spi[1] << 8;
 	RxByte = RxByte & m_rx_data_spi[0];

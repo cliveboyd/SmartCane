@@ -49,32 +49,29 @@
 #include "app_util_platform.h"
 #include "nrf_delay.h"
 #include "Communication.h"				// includes I2C and SPI master definitions
-#include "spi_master.h"
+#include "global.h"
+
+//#include "spi_master.h"
 
 
-#define SPI_BCM_SCK_PIN       (19U)     										//	AT45DB161E SFLASH BIT CRUNCH MASTER SCLK  
-#define SPI_BCM_MISO_PIN      (20U)     										//	AT45DB161E SFLASH BIT CRUNCH MASTER MOSI
-#define SPI_BCM_MOSI_PIN      (17U)     										//	AT45DB161E SFLASH BIT CRUNCH MASTER MISO
-#define SPI_BCM_SS_PIN        (18U)  											//	AT45DB161E SFLASH BIT CRUNCH MASTER nCS
+
+#define AT45_MOSI_PIN			(17U)				/**<  GPS int GPIO pin number. */
+#define AT45_MISO_PIN			(20U)				/**<  GPS int GPIO pin number. */
+#define AT45_SCLK_PIN			(19U)				/**<  GPS int GPIO pin number. */
+#define AT45_NCS_PIN 			(18U)     			/**< A2035H SPI-M0-NCS GPIO pin number. */
 
 
-//	WARNING...	A2035H GPS Module needs to be in Reset State during operation of AT45DB161E SFLASH
+//	WARNING...	A2035H GPS Module needs to be inInitialised before AT45 SFLASH to facilitate SPI Mode Operation
+//	Note:		The Host MASTER SPI is initialised within A2035 GPS Initialisation. 
 
-#define AT45_NCS_HIGH		NRF_GPIO->OUTSET = (1UL << SPI_BCM_SS_PIN)			// Macro to Assert   AT45DB161 NCS HIGH (OFF)
-#define AT45_NCS_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_BCM_SS_PIN)			// Macro to Deassert AT45DB161 NCS LOW  (ON)
+#define AT45_NCS_HIGH		NRF_GPIO->OUTSET = (1UL << AT45_NCS_PIN)			// Macro to Assert   AT45DB161 NCS HIGH (OFF)
+#define AT45_NCS_LOW		NRF_GPIO->OUTCLR = (1UL << AT45_NCS_PIN)			// Macro to Deassert AT45DB161 NCS LOW  (ON)
 
-#define AT45_SCLK_HIGH		NRF_GPIO->OUTSET = (1UL << SPI_BCM_SCK_PIN)			// Macro to Deassert AT45DB161 SCLK HIGH
-#define AT45_SCLK_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_BCM_SCK_PIN)			// Macro to Deassert AT45DB161 NCS LOW
-
-#define AT45_MOSI_HIGH		NRF_GPIO->OUTSET = (1UL << SPI_BCM_MOSI_PIN)		// Macro to Deassert AT45DB161 MOSI PIN HIGH
-#define AT45_MOSI_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_BCM_MOSI_PIN)		// Macro to Deassert AT45DB161 MOSI PIN LOW
-
-#define AT45_MISO_READ() 	((NRF_GPIO->IN >> SPI_BCM_MISO_PIN) & 0x1UL)		//  Reads current state of MISO Pin 
 
 
 #define TX_RX_MSG_LENGTH	3
 
-static uint8_t AT45_spi_RxData[TX_RX_MSG_LENGTH];					/**< AT45 SPI RX buffer. */
+static uint8_t AT45_spi_RxData[TX_RX_MSG_LENGTH];								/**< AT45 SPI RX buffer. */
 
 //=============================================================================
 // Public functions
@@ -91,6 +88,7 @@ bool deep_down = true;															// Variable for deep power down function (a
 bool deep_down_onoff = false;													// Variable for deep power down function (On/Off) 
  
 void AT45DB161E_init(void) {													// AT45DB161E == 16Mbit --> http://www.adestotech.com/wp-content/uploads/doc8782.pdf
+	SPI_AT45_Init();
 	AT45_initialize();
 	
 //	nrf_delay_us(100000);														// 100ms Delay required to return correct during initial read of WhoAmI Value!!!
@@ -198,10 +196,10 @@ int AT45_write_page(char* data, int page) {
 	}
 
 	//   AT45_deselect();        
-	//   AT45_busy();																// Make sure the Flash isn't busy
+	//   AT45_busy();															// Make sure the Flash isn't busy
 																				// Issue command to write buffer 1 to the appropraite flash page
 	AT45_select();  
-	AT45_spi_write (0x83);  														// SRAM Buffer 1 to SFLASH Main Memory (Pg Size = 512 byte)
+	AT45_spi_write (0x83);  													// SRAM Buffer 1 to SFLASH Main Memory (Pg Size = 512 byte)
 	AT45_sendaddr (AT45_getpaddr(address));										// Get Page Address
 	AT45_deselect();
 
@@ -435,7 +433,8 @@ void AT45_chip_erase(void) { 													// Erase the entire chip
 
 	AT45_busy();																// Make erase a blocking function
 }        
- 
+
+
 void AT45_(int block) {															// Erase one block  
 	int address = -1;
 																				// Calculate page addresses
@@ -488,7 +487,7 @@ void AT45_sector_erase(int erase_sector) {										// Erase a Sector 0-15... On
 	int address = -1;
 
 	// Calculate page addresses
-	if(erase_sector < sectors || erase_sector != 0) {							// skip sector 0 as it it is split into 0a and 0b 1_to_16 OK
+	if(erase_sector < sectors || erase_sector != 0) {							// Skip sector 0 as it it is split into 0a and 0b 1_to_16 OK
 		if(pagesize == 256)			{address = erase_sector * 65536;}
 		else if(pagesize == 264)	{address = erase_sector * 67584;}
 		else if(pagesize == 512)	{address = erase_sector * 131072;}
@@ -513,7 +512,7 @@ void AT45_block_erase(int erase_block) {										// Erase a Block... One block 
 	int address = -1;
 
 	// Calculate page addresses
-	if(erase_block < blocks || erase_block == 0) {								// skip sector 0 as it it is split into 0a and 0b 1_to_16 OK
+	if(erase_block < blocks || erase_block == 0) {								// Skip sector 0 as it it is split into 0a and 0b 1_to_16 OK
 		if(pagesize == 256)			{address = erase_block * 4096;}
 		else if(pagesize == 264)	{address = erase_block * 4224;}
 		else if(pagesize == 512)	{address = erase_block * 4096;}
@@ -564,8 +563,8 @@ int AT45DB161E_blocks (void) {													// Return the number of blocks in thi
     return blocks;				// Hardset										// ToDo read device
 }
 
-int AT45_WhoAmI(void) { 
-	int id = 0;
+int AT45_WhoAmI(void) { 														// ERROR The SFLASH returns correct value However SPI Rx Buff Returns ZERO
+	int id = 0;																	// ALSO  The CS Within SPI has been bypassed else activates per byte and causes At45 to reset cmd
 	AT45_select();
 	AT45_spi_write(0x9f);														// cmd to read Manufactures id ==0x1f, Device id Byte 1 == 0x26h, device id byte 2 == 0x00
 	id = (AT45_spi_write(0x00) << 8);
@@ -584,6 +583,7 @@ int AT45_id(void) { 															// Return id of the part == 0x1f26
 	return id;
 }
 
+
 /*	To read the Status Register, the nCS pin must first be asserted 
 	and then the opcode D7h must be clocked into the device.
 	After the opcode has been clocked in, the device will begin outputting 
@@ -594,10 +594,11 @@ int AT45_status(void) { 														// Return the Status  ready xx.7=1 busy xx
     int status = 0;
     AT45_select();
 	AT45_spi_write(0xd7);														// cmd to read status register
-    status = (AT45_spi_write(0x00));												// write out dummy and read back first(1st) byte of status
+    status = (AT45_spi_write(0x00));											// write out dummy and read back first(1st) byte of status
     AT45_deselect();            
     return status; 
 }
+
 
 int AT45_test_pagesize_528(void) { 												// Test Page Size via status.0 (xx.0=1 --> Page Size=512    xx.0=0 ---> Page Size=528
     int status = AT45_status();
@@ -710,18 +711,16 @@ int AT45_initialize(void) {
 	return 0;
 }
  
-void AT45_select(void) {
-//	AT45_ncs = 0;
-//	AT45DB_NCS_LOW;
+void AT45_select(void) {														// Assert nCS = LOW  (Enabled)
+	AT45_NCS_LOW;
 }
 
-void AT45_deselect(void) {
-//	AT45_ncs = 1;
-//	AT45DB_NCS_HIGH;
+void AT45_deselect(void) {														// Assert nCS = HIGH (Disabled)
+	AT45_NCS_HIGH;
 }
  
 void AT45_busy(void) {
-	volatile int iambusy = 1;  
+	volatile int iambusy = 1;
 	while (iambusy) {
 		if ( AT45_status() & 0x80 ) {iambusy = 0;}								// If bit 7 is set, we can proceed
 	}
@@ -877,18 +876,6 @@ void AT45_sendaddr (int sendadd) {
 	AT45_spi_write(sendadd);      
 }
 
-
-
-//	#define AT45DB_NCS_HIGH		NRF_GPIO->OUTSET = (1UL << SPI_SS_PIN)			// Macro to Assert   AT45DB161 NCS HIGH (OFF)
-//	#define AT45DB_NCS_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_SS_PIN)			// Macro to Deassert AT45DB161 NCS LOW  (ON)
-
-//	#define AT45DB_SCLK_HIGH	NRF_GPIO->OUTSET = (1UL << SPI_SCK_PIN)			// Macro to Deassert AT45DB161 SCLK HIGH
-//	#define AT45DB_SCLK_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_SCK_PIN)			// Macro to Deassert AT45DB161 NCS LOW
-
-//	#define AT45DB_MOSI_HIGH	NRF_GPIO->OUTSET = (1UL << SPI_MOSI_PIN)		// Macro to Deassert AT45DB161 MOSI PIN HIGH
-//	#define AT45DB_MOSI_LOW		NRF_GPIO->OUTCLR = (1UL << SPI_MOSI_PIN)		// Macro to Deassert AT45DB161 MOSI PIN LOW
-
-//	#define AT45_MISO_READ() 	((NRF_GPIO->IN >> SPI_MISO_PIN) & 0x1UL)		//  Reads current state of MISO Pin 
 
 
 

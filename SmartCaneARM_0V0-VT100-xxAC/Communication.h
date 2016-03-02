@@ -59,9 +59,11 @@ uint16_t AT45_SPIM0_write_16b(unsigned short regValue);
 
 uint16_t A2035H_SPIM0_Write_16b(unsigned short regValue);
 						
-unsigned char SPI_Init(void);
+unsigned char SPI_A2035H_Init(void);
 
+unsigned char SPI_AT45_Init(void);
 
+uint32_t AT45_SPIM0_write_32b(uint32_t Value);
 						
 
 /* Initializes the I2C communication peripheral. */

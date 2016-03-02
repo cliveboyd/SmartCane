@@ -66,6 +66,9 @@ Note	The A2035-H SPI loads a fifo at the rate of 100bytes/second
 
 /* 
 NOTE:	The A2035H and the AT45DB161 share the SPi Clk MISO and MOSI signal lines
+
+WARNING: SFLASH AT45 Requires SPI Mode 0 or 3 ==> Swap SPI Nodes between device calls
+WARNING: A2035H GPS  Requires SPI Mode 1      ==> Swap SPI Nodes between device calls
 		
 		To Place the A2035H in SSPI Mode ---> Upon 3V3GPS PowerUp
 		
@@ -113,7 +116,6 @@ NOTE:	The A2035H and the AT45DB161 share the SPi Clk MISO and MOSI signal lines
 #define A2035H_NCS_PIN 			(15U)     			/**< A2035H SPI-M0-NCS GPIO pin number. */
 
 #define AT45_ALT_NCS			(18U)				/**<  Alternate AT45 SFLASH Definition as double security to ensure chip is tristate when A2035 is enabled */
-
 
 
 #define SPI_TO_USE SPI_MASTER_0
@@ -373,7 +375,7 @@ void initA2035H(void) {
 	nrf_delay_us(250000); 												// Wait 250ms
 	A2035H_Configure_Non_SPI_IOPins();									// Gonfigures Inputs and Sets Output Defaults --> Reasserts 3vV3GPS Power, Asserts Reset HIGH, Sets ON-OFF to LOW
 	
-	SPI_Init();															// Restart the SPI Master ---> Required only after A2035 Powerup Note: A2035 Initialised First before AT45
+	SPI_A2035H_Init();													// Restart the SPI Master Mode 1 (Note: AT45 requires Mode 0)
 	
 	nrf_delay_us(250000); 												// Delay 250msec then initiate Off-On-Off
 	A2035H_Toggle_ONOFF();

@@ -75,7 +75,7 @@ typedef volatile	u64			vu64;
 /******************************************************************************/
 
 /* Toggle the Start On-OFF Pin. */
-void initA2035H(void);
+void initA2035H(void);   						// init with Power Sequence
 
 /* Initializes the SPI communication peripheral and reset the part. */
 void A2035H_Init_IO(void);

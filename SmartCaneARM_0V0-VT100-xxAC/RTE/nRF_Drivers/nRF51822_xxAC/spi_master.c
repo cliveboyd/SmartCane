@@ -409,9 +409,9 @@ uint32_t spi_master_send_recv(const spi_master_hw_instance_t spi_master_hw_insta
 {
     #if defined(SPI_MASTER_0_ENABLE) || defined(SPI_MASTER_1_ENABLE)
 
-    volatile spi_master_instance_t * p_spi_instance = spi_master_get_instance(
-        spi_master_hw_instance);
-    APP_ERROR_CHECK_BOOL(p_spi_instance != NULL);
+    volatile spi_master_instance_t * p_spi_instance = spi_master_get_instance(spi_master_hw_instance);
+	
+	APP_ERROR_CHECK_BOOL(p_spi_instance != NULL);
 
     uint32_t err_code   = NRF_SUCCESS;
     uint16_t max_length = 0;
@@ -448,7 +448,8 @@ uint32_t spi_master_send_recv(const spi_master_hw_instance_t spi_master_hw_insta
                                    &(p_spi_instance->p_tx_buffer),
                                    &(p_spi_instance->tx_length),
                                    &(p_spi_instance->tx_index));
-            spi_master_buffer_init(p_rx_buf,
+            
+			spi_master_buffer_init(p_rx_buf,
                                    rx_buf_len,
                                    &(p_spi_instance->p_rx_buffer),
                                    &(p_spi_instance->rx_length),

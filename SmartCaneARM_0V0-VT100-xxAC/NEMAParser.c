@@ -67,15 +67,14 @@ int axtoi( const char *hexStg ) {
 	return (intValue);
 }
 
-void Parse(const char *buf, const uint16_t bufSize) {		// CSB---> Main recursive parser entry. Feed text *buf into here
+void Parse(const char *buf, const uint16_t bufSize) {									// CSB---> Main recursive parser entry. Feed text *buf into here
 
 	m_State = SearchForSOS;
 	
-//
 	for( uint16_t i = 0; i < bufSize; i++ ) ParseRecursive(buf[i]);
 		
 
-//	load up Global Buffers and direct up to main()
+//	Load up Global Buffers and direct up to main()
 	main_latitude=m_GPSInfo.m_latitude;						// Pass back the values of m_GPSInfo up to main global variables
 	main_longitude=m_GPSInfo.m_longitude;
 	main_altitude=m_GPSInfo.m_altitude;
@@ -221,7 +220,7 @@ void ParseNMEASentence(const char *addressField, const char *buf, const uint16_t
 //	return m_GPSInfo;
 }
 
-void ProcessGPGGA(const char *buf, const uint16_t bufSize) {			// Global Positioning System Fix Data
+void ProcessGPGGA(const char *buf, const uint16_t bufSize) {							// Global Positioning System Fix Data
 /*
 GPGGA Sentence format
 $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M, ,*47
@@ -406,7 +405,7 @@ $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M, ,*47
 	
 }
 
-void ProcessGPGSA(const char *buf, const uint16_t bufSize) {			// GPS DOP and active satellites
+void ProcessGPGSA(const char *buf, const uint16_t bufSize) {							// GPS DOP and active satellites
 /*
 	GPS DOP and active satellites
 
@@ -429,7 +428,7 @@ eg2. $GPGSA,A,3,19,28,14,18,27,22,31,39,,,,,1.7,1.0,1.3*35
 
 }
 
-void ProcessGPGSV(const char *buf, const uint16_t bufSize) {			// Satellites in View
+void ProcessGPGSV(const char *buf, const uint16_t bufSize) {							// Satellites in View
 /*
 	GPS Satellites in view
 
@@ -452,7 +451,7 @@ eg. $GPGSV,3,1,11,03,03,111,00,04,15,270,00,06,01,010,00,13,06,292,00*74
 
 }
 
-void ProcessGPRMB(const char *buf, const uint16_t bufSize) {			// Recommended minimum navigation info
+void ProcessGPRMB(const char *buf, const uint16_t bufSize) {							// Recommended minimum navigation info
 /*
 	$GPRMB
 
@@ -513,7 +512,7 @@ eg3. $GPRMB,A,x.x,a,c--c,d--d,llll.ll,e,yyyyy.yy,f,g.g,h.h,i.i,j*kk
 
 }
 
-void ProcessGPRMC(const char *buf, const uint16_t bufSize) {			// Recommended minimum specific GPS/Transit data
+void ProcessGPRMC(const char *buf, const uint16_t bufSize) {							// Recommended minimum specific GPS/Transit data
 /*
 	Format
 	$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A
@@ -665,7 +664,8 @@ void ProcessGPRMC(const char *buf, const uint16_t bufSize) {			// Recommended mi
 	m_GPSInfo.m_second			= sec;	
 }
 
-void ProcessGPZDA(const char *buf, const uint16_t bufSize) { 			// Date & Time  Note: Currently Untested as No GPZDA data from A2035H
+
+void ProcessGPZDA(const char *buf, const uint16_t bufSize) { 							// Date & Time  Note: Currently Untested as No GPZDA data from A2035H
 /*	$GPZDA	Date & Time
 
 	UTC, day, month, year, and local time zone.
@@ -738,20 +738,20 @@ void ProcessGPZDA(const char *buf, const uint16_t bufSize) { 			// Date & Time  
 	year = atoi(auxBuf);
 	p1 = p2 + 1;
 	
-	uint16_t localhourzone;											// ToDo Currrently not used
+//	uint16_t localhourzone;											// ToDo Currrently not used
 	if((uint16_t)(p1 - buf) >= bufSize)		return;
 	if((p2 = strchr(p1, ',')) == NULL)		return;
 	strncpy(auxBuf, p1, 2);
 	auxBuf[2] = '\0';
-	localhourzone = atoi(auxBuf);
+//	localhourzone = atoi(auxBuf);
 	p1 = p2 + 1;
 	
-	uint16_t localminutezone;										// ToDo Currrently not used
+//	uint16_t localminutezone;										// ToDo Currrently not used
 	if((uint16_t)(p1 - buf) >= bufSize)		return;
 	if((p2 = strchr(p1, ',')) == NULL)		return;
 	strncpy(auxBuf, p1, 2);
 	auxBuf[2] = '\0';
-	localhourzone = atoi(auxBuf);
+//	localhourzone = atoi(auxBuf);
 	p1 = p2 + 1;
 	
 	m_GPSInfo.m_year			= year;
