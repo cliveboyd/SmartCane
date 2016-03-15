@@ -99,6 +99,8 @@ typedef enum
     SPI_MASTER_HW_ENABLED_COUNT /**< A number of enabled instances of the SPI master. */
 } spi_master_hw_instance_t;
 
+
+
 /**@brief Type of generic callback function handler to be used by all SPI MASTER driver events.
  * 
  * @param[in] spi_master_evt    SPI MASTER driver event.
@@ -122,6 +124,7 @@ typedef void (*spi_master_event_handler_t)(spi_master_evt_t spi_master_evt);
  *                                    has to be called previously.
  * @retval NRF_ERROR_NULL             Operation failure. NULL pointer supplied.
  */
+ 
 uint32_t spi_master_open(const spi_master_hw_instance_t    spi_master_hw_instance,
                          spi_master_config_t const * const p_spi_master_config);
 

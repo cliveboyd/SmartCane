@@ -758,7 +758,7 @@ static void button_event_handler(bsp_event_t event) {
 	Button-1 FRONT  ---> Cane End
 */	
 
-	unsigned char status = 0;	
+//	unsigned char status = 0;	
 
 	switch(event) {
 		
@@ -2587,7 +2587,9 @@ void SmartCane_peripheral_init() {									// $$$$$$ Initialisation of SmartCane
 	setbit(&Process_6, 3);											// AT45  SPI Mode 0 Active
 	int tempx=AT45_WhoAmI();
 	if (tempx==0x1f26) setbit(&Process_5, 5);
-	
+
+
+
 //	Process_5.6	= Flag EEPROM Present
 //	Test for Presence of 1WI EEPROM DS28E02 by reading Unique Regestration Number 
 	Grab_EEPROM_ID(DS28E02_ID, 16);
